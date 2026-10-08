@@ -96,8 +96,14 @@ Two unrelated wallets were merged because they shared **two** ancestors on one f
 ### Live worker
 `pnpm worker` tails new blocks and chains signers → funding → metrics (≤ 1/min, only on new activity) → publish (when a key and feed are configured). Smoke test: caught up 17k blocks in 84 s and picked up a new launch, `HOPNAD` (`0x7a1a…7777`, block 111,714,423), created by operator wallet `0xdd1c…` and assigned to the same entity live (72 tokens, 1 entity).
 
+### Code review (`/code-review xhigh`), 15 findings, all fixed in `efd0e9a`
+Most serious: the evidence root included `sourceBlock`, so every recompute would have republished every token on-chain. Others: null results cached (stuck worker), rate-limit errors treated as fatal, timeout not covering the response body, graduations lost in out-of-order backfill chunks, funding-queue starvation, API vs metrics attribution mismatch, spoofable rate limiter and unbounded maps, worker publish retry and hot-loop issues, cursor not re-read after errors, unbounded RPC cache, unvalidated env vars, worker ignoring `PUBLISH_CHAIN_ID`, infrastructure list not reloaded, fixed-bucket same-funder windows. 115 TS tests pass.
+
+### Platform pivot (from the updated CLAUDE.md/SPEC.md)
+The project docs now require **Cloudflare only** (Workers + Cron + D1) with a local SQLite backfill, an address dictionary and a storage budget. Current storage (Postgres) and runtime (Node API + worker) must be migrated; the engines carry over. Plan in `CLAUDE.md` → "Current state". The updated docs are in `CLAUDE.md.new`/`SPEC.md.new`, because the originals are root-owned and read-only to Claude.
+
 ### Next step
-Deploy contracts to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
+Migration to SQLite/D1/Workers. Then deploy contracts to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
 
 ### Deployed addresses / tx hashes
 None yet.
