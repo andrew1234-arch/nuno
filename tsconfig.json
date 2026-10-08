@@ -6,8 +6,6 @@
     { "path": "packages/funding" },
     { "path": "packages/cluster" },
     { "path": "packages/metrics" },
-    { "path": "packages/publisher" },
-    { "path": "apps/api" },
-    { "path": "packages/worker" }
+    { "path": "packages/publisher" }
   ]
 }

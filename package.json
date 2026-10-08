@@ -20,7 +20,11 @@
     "api": "pnpm --filter @nuno/api start",
     "web": "pnpm --filter @nuno/web dev",
     "infra:scan": "pnpm --filter @nuno/metrics infra-scan",
-    "worker": "pnpm --filter @nuno/worker start"
+    "worker": "pnpm --filter @nuno/worker start",
+    "backfill:local": "pnpm --filter @nuno/indexer backfill && pnpm --filter @nuno/funding resolve",
+    "cluster:full": "pnpm --filter @nuno/metrics run run",
+    "metrics:full": "pnpm --filter @nuno/metrics run run",
+    "storage:report": "pnpm --filter @nuno/metrics storage-report"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

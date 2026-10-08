@@ -1,15 +1,17 @@
 import { writeFileSync } from "node:fs";
 import type { Address, Hex } from "viem";
-import { RpcClient, config, createDb, schema, toHex } from "@nuno/shared";
+import { AddressBook, RpcClient, sqliteSchema as s, toHex } from "@nuno/shared";
+import { config, openLocal } from "@nuno/shared/node";
 import { isExchangeLike, loadInfrastructure, INFRA_MIN_BALANCE_MON, INFRA_MIN_NONCE, type InfraEntry } from "./infrastructure.js";
 
 // Profiles every funding origin on-chain and writes exchange-like ones to infrastructure.json.
 // Manual entries are kept. usage: tsx src/infra-scan.ts
 async function main() {
-  const { db, sql } = createDb();
+  const { db, close } = openLocal(config.localDbPath);
   const rpc = new RpcClient({ url: config.mainnetRpcUrl, maxConcurrency: 6 });
   const block = Number(await rpc.call<Hex>("eth_blockNumber", []));
-  const origins = [...new Set((await db.select({ o: schema.fundingEdges.origin }).from(schema.fundingEdges)).map((r) => r.o))];
+  const originIds = [...new Set((await db.select({ o: s.fundingEdges.origin }).from(s.fundingEdges)).map((r) => r.o))];
+  const origins = [...(await new AddressBook(db).hexes(originIds)).values()].map((h) => h.toLowerCase());
 
   const flagged: InfraEntry[] = [];
   await Promise.all(
@@ -35,7 +37,7 @@ async function main() {
   writeFileSync(new URL("./infrastructure.json", import.meta.url), JSON.stringify(all, null, 2) + "\n");
   console.log(`[infra] scanned ${origins.length} funding origins at block ${block}: ${flagged.length} exchange-like, ${manual.length} manual`);
   for (const e of all) console.log(`  ${e.address} ${e.reason}`);
-  await sql.end();
+  close();
 }
 
 main().catch((err) => {

@@ -1,4 +1,5 @@
-import { AddressBook, RpcClient, blockAtTimestamp, config, getBlockNumber, openLocal, sleep } from "@nuno/shared";
+import { AddressBook, RpcClient, blockAtTimestamp, getBlockNumber, sleep } from "@nuno/shared";
+import { config, openLocal } from "@nuno/shared/node";
 import {
   CURVE_CURSOR,
   INDEXER_CURSOR,

@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPublicClient, createWalletClient, defineChain, http, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { nunoFeedAbi, nunoFeedBytecode, organicGateAbi, organicGateBytecode } from "@nuno/shared";
+import { hexToBytes } from "viem";
+import { AddressBook, nunoFeedAbi, nunoFeedBytecode, organicGateAbi, organicGateBytecode, sqliteSchema as s } from "@nuno/shared";
+import { openLocal } from "@nuno/shared/node";
+import { publishAll } from "./publisher.js";
 import { toSnapshot } from "./snapshot.js";
 
 // Integration test against a local anvil chain (Foundry). Skipped when anvil is not installed.
@@ -71,5 +74,41 @@ describe.skipIf(!ANVIL)("NunoFeed on anvil", () => {
 
     expect(await pub.readContract({ address: gate, abi: organicGateAbi, functionName: "isOrganic", args: [token, 5000, 3600n] })).toBe(true);
     expect(await pub.readContract({ address: gate, abi: organicGateAbi, functionName: "isOrganic", args: [token, 3000, 3600n] })).toBe(false);
+  });
+
+  it("publishAll publishes stored metrics from SQLite once and records the tx", async () => {
+    const deployHash = await wallet.deployContract({ abi: nunoFeedAbi, bytecode: nunoFeedBytecode, args: [account.address] });
+    const feed = (await pub.waitForTransactionReceipt({ hash: deployHash })).contractAddress as Address;
+    const { db, close } = openLocal(":memory:");
+    const book = new AddressBook(db);
+    const token = "0x00000000000000000000000000000000000000bb";
+    await db.insert(s.tokenMetrics).values({
+      token: await book.id(token),
+      sourceBlock: 111_700_000,
+      totalSupply: "1000",
+      rawHolders: 12,
+      realHolders: 4,
+      effectiveTop10Bps: 9000,
+      clusterSupplyBps: 7000,
+      creatorLinkedSupplyBps: 5000,
+      rawVolume: "10",
+      organicVolume: "1",
+      organicVolumeBps: 1000,
+      evidenceRoot: hexToBytes(`0x${"cd".repeat(32)}`),
+      computedAt: Date.now(),
+    });
+    const ctx = { db, book, rpcUrl: RPC, chainId: 31337, feed, privateKey: PK };
+    const first = await publishAll(ctx);
+    expect(first).toHaveLength(1);
+    expect(first[0]!.txHash).toMatch(/^0x[0-9a-f]{64}$/);
+    const snaps = await db.select().from(s.snapshots);
+    expect(snaps).toHaveLength(1);
+    expect(snaps[0]!.gasUsed).toBeGreaterThan(0);
+    const onChain = await pub.readContract({ address: feed, abi: nunoFeedAbi, functionName: "latest", args: [token as Address] });
+    expect(onChain.clusterSupplyBps).toBe(7000);
+    const second = await publishAll(ctx);
+    expect(second[0]).toMatchObject({ reason: "no meaningful change" });
+    expect(second[0]!.txHash).toBeUndefined();
+    close();
   });
 });

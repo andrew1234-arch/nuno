@@ -1,33 +1,23 @@
-import { RpcClient, config, createDb, getCursorBlock } from "@nuno/shared";
-import { runAll, storeRun } from "./pipeline.js";
+import { AddressBook, RpcClient } from "@nuno/shared";
+import { config, openLocal } from "@nuno/shared/node";
+import { getCursor } from "@nuno/indexer";
 import { infrastructureSet } from "./infrastructure.js";
+import { fullRun } from "./store.js";
 
-// Global entity resolution + per-token metrics over everything indexed so far.
+// pnpm cluster:full / metrics:full — local full recompute of entities + metrics (never on Workers).
 async function main() {
-  const { db, sql } = createDb();
-  const rpc = new RpcClient({ url: config.mainnetRpcUrl, maxConcurrency: 6 });
-  const sourceBlock = await getCursorBlock(db, "indexer");
-  if (sourceBlock === null) throw new Error("no indexer cursor: run pnpm index:backfill first");
-
-  const run = await runAll({ db, rpc, infrastructure: infrastructureSet(), log: console.log }, sourceBlock);
-  await storeRun(db, run);
-
-  console.log(`[metrics] ${run.result.clusters.length} multi-wallet entities; largest:`);
-  console.table(
-    run.result.clusters.slice(0, 10).map((c) => ({
-      id: c.id.slice(0, 12),
-      wallets: c.members.length,
-      tokensCreated: c.createdTokens.length,
-      edgeTypes: [...new Set(c.links.map((l) => l.type))].join(","),
-    })),
-  );
+  const { db, close } = openLocal(config.localDbPath);
+  const sourceBlock = await getCursor(db, "indexer");
+  if (sourceBlock === null) throw new Error("no indexer cursor: run pnpm backfill:local first");
+  const rpc = new RpcClient({ url: config.mainnetRpcUrl, maxConcurrency: 6, cacheSize: 20_000 });
+  const run = await fullRun({ db, book: new AddressBook(db), rpc, infrastructure: infrastructureSet(), log: console.log }, sourceBlock);
   const rows = run.tokens
-    .map(({ symbol, token, clusterCount, metrics: m }) => ({
+    .map(({ symbol, metrics: m, entities }) => ({
       symbol,
-      token: token.slice(0, 10),
+      token: m.token.slice(0, 10),
       rawHolders: m.rawHolders,
       realHolders: m.realHolders,
-      entities: clusterCount,
+      entities,
       clusterBps: m.clusterSupplyBps,
       creatorBps: m.creatorLinkedSupplyBps,
       top10Bps: m.effectiveTop10Bps,
@@ -36,8 +26,8 @@ async function main() {
     }))
     .sort((a, b) => b.rawVolMON - a.rawVolMON);
   console.table(rows.slice(0, 30));
-  console.log(`[metrics] ${rows.length} tokens at source block ${sourceBlock}`);
-  await sql.end();
+  console.log(`[metrics] ${rows.length} tokens, ${run.entities} multi-wallet entities at block ${sourceBlock}`);
+  close();
 }
 
 main().catch((err) => {

@@ -1,14 +1,18 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { sql } from "drizzle-orm";
-import { createDb, getCursorBlock } from "@nuno/shared";
+import { eq, sql } from "drizzle-orm";
+import { DEFAULT_CLUSTER_CONFIG } from "@nuno/cluster";
+import { getCursor } from "@nuno/indexer";
+import { AddressBook, rows, sqliteSchema as s } from "@nuno/shared";
+import { config, openLocal } from "@nuno/shared/node";
+import { clustersFor } from "./store.js";
 
 // Builds docs/VALIDATION.md's review sheet: up to 20 flagged links (spread across entities) and 10
 // random unflagged wallets, each with explorer links. Verdicts are filled in by hand afterwards.
-// usage: tsx src/validation.ts [seed]
+// usage: tsx src/validation.ts [seed] [--force]
 
 const EXPLORER = "https://monadscan.com";
-const seed = Number(process.argv[2] ?? 42);
+const seed = Number(process.argv.slice(2).find((x) => /^\d+$/.test(x)) ?? 42);
 
 /** Small deterministic PRNG so the sample is reproducible from the seed. */
 function mulberry32(a: number) {
@@ -31,15 +35,21 @@ function shuffle<T>(xs: T[], rnd: () => number): T[] {
 }
 
 async function main() {
-  const { db, sql: pg } = createDb();
+  const out = resolve(import.meta.dirname, "../../../docs/VALIDATION.md");
+  // Never clobber a reviewed sheet: verdicts are hand work.
+  if (existsSync(out) && /\| (TP|FP|TN|FN) \|/.test(readFileSync(out, "utf8")) && !process.argv.includes("--force")) {
+    throw new Error(`${out} already contains verdicts; pass --force to regenerate (verdicts will be lost)`);
+  }
+  const { db, close } = openLocal(config.localDbPath);
+  const book = new AddressBook(db);
   const rnd = mulberry32(seed);
-  const block = await getCursorBlock(db, "indexer");
+  const block = await getCursor(db, "indexer");
 
-  const links = [
-    ...(await db.execute<{ entity_id: string; a: string; b: string; type: string; evidence: Array<{ txHash: string; block: number; detail?: string; token?: string }> }>(
-      sql`select entity_id, a, b, type, evidence from entity_links`,
-    )),
-  ];
+  const entityIds = [...new Set((await db.select({ e: s.entityMembers.entity }).from(s.entityMembers)).map((r) => r.e))];
+  const clusters = await clustersFor({ db, book }, entityIds, DEFAULT_CLUSTER_CONFIG);
+  const links = clusters.flatMap((c) =>
+    c.links.map((l) => ({ entity_id: c.id, a: l.a, b: l.b, type: l.type, evidence: l.evidence.map((e) => ({ txHash: e.txHash, block: e.block, detail: e.detail, token: e.token })) })),
+  );
   // Round-robin across entities so one big cluster doesn't fill the sample.
   const byEntity = new Map<string, typeof links>();
   for (const l of shuffle(links, rnd)) byEntity.set(l.entity_id, [...(byEntity.get(l.entity_id) ?? []), l]);
@@ -51,12 +61,17 @@ async function main() {
     }
   }
 
-  const unflagged = [
-    ...(await db.execute<{ trader: string }>(sql`
-      select distinct ct.trader from curve_trades ct
-      join wallets w on w.address = ct.trader and w.is_contract = false
-      where ct.trader not in (select wallet from entity_members)`)),
-  ].map((r) => r.trader);
+  // Unflagged = buyers (attributed to the signer for bot-contract trades) that are EOAs outside any entity.
+  const buyerRows = await rows<{ buyer: number }>(
+    db,
+    sql`select distinct case when sw.is_contract = 1 and ct.tx_from is not null then ct.tx_from else ct.trader end as buyer
+        from curve_trades ct left join wallets sw on sw.id = ct.trader`,
+    ["buyer"],
+  );
+  const members = new Set((await db.select({ w: s.entityMembers.wallet }).from(s.entityMembers)).map((r) => r.w));
+  const contracts = new Set((await db.select({ id: s.wallets.id }).from(s.wallets).where(eq(s.wallets.isContract, 1))).map((r) => r.id));
+  const unflaggedIds = buyerRows.map((r) => Number(r.buyer)).filter((id) => !members.has(id) && !contracts.has(id));
+  const unflagged = [...(await book.hexes(unflaggedIds)).values()].map((h) => h.toLowerCase());
   const unflaggedSample = shuffle(unflagged.sort(), rnd).slice(0, 10);
 
   const a = (x: string) => `[\`${x.slice(0, 10)}…\`](${EXPLORER}/address/${x})`;
@@ -92,10 +107,9 @@ async function main() {
     "_To be filled after review: TP / FP / ? counts, observed precision, and any false-positive patterns found._",
     "",
   ];
-  const out = resolve(import.meta.dirname, "../../../docs/VALIDATION.md");
   writeFileSync(out, lines.join("\n"));
   console.log(`[validation] wrote ${out}: ${flagged.length} flagged, ${unflaggedSample.length} unflagged`);
-  await pg.end();
+  close();
 }
 
 main().catch((err) => {

@@ -1,4 +1,5 @@
-import { AddressBook, RpcClient, config, openLocal } from "@nuno/shared";
+import { AddressBook, RpcClient } from "@nuno/shared";
+import { config, openLocal } from "@nuno/shared/node";
 import { pendingBuyers, resolveFundingTree } from "./resolver.js";
 
 // usage: tsx src/cli.ts [limit] [maxHops]   (local SQLite file)

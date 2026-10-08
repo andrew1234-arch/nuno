@@ -10,11 +10,13 @@
     "@nuno/cluster": "workspace:*",
     "@nuno/shared": "workspace:*",
     "viem": "^2.21.0",
-    "drizzle-orm": "^0.38.3"
+    "drizzle-orm": "^0.38.3",
+    "@nuno/indexer": "workspace:*"
   },
   "scripts": {
     "run": "tsx src/cli.ts",
     "validation": "tsx src/validation.ts",
-    "infra-scan": "tsx src/infra-scan.ts"
+    "infra-scan": "tsx src/infra-scan.ts",
+    "storage-report": "tsx src/storage-report.ts"
   }
 }

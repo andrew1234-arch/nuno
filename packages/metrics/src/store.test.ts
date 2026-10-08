@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bytesToHex } from "viem";
-import { AddressBook, openLocal, sqliteSchema as s, txBytes, type RpcClient, type SqlDb } from "@nuno/shared";
+import { AddressBook, sqliteSchema as s, txBytes, type RpcClient, type SqlDb } from "@nuno/shared";
+import { openLocal } from "@nuno/shared/node";
 import { evidenceRoot } from "./metrics.js";
 import { evidenceJsonFor, fullRun, incrementalRun } from "./store.js";
 

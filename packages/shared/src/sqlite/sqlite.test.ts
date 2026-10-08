@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { AddressBook, txBytes, txHex } from "./addresses.js";
-import { insertIgnore, openLocal } from "./client.js";
+import { insertIgnore } from "./client.js";
+import { openLocal } from "./local.js";
 import { curveTrades, cursors, tokenMetrics } from "./schema.js";
 
 // Hand-built test fixtures (not real chain data).

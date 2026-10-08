@@ -111,6 +111,9 @@ importers:
       '@nuno/cluster':
         specifier: workspace:*
         version: link:../cluster
+      '@nuno/indexer':
+        specifier: workspace:*
+        version: link:../indexer
       '@nuno/shared':
         specifier: workspace:*
         version: link:../shared

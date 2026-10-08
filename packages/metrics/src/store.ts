@@ -242,7 +242,7 @@ function participants(data: Loaded, attributed: TradeRow[], excluded: Set<number
 }
 
 /** Clusters (engine shape, hex) for the given entity ids, with their accepted links' evidence. */
-async function clustersFor(ctx: StoreCtx, entityIds: number[], cfg: ClusterConfig): Promise<Cluster[]> {
+async function clustersFor(ctx: Pick<StoreCtx, "db" | "book">, entityIds: number[], cfg: ClusterConfig): Promise<Cluster[]> {
   if (!entityIds.length) return [];
   const members = await inChunks(entityIds, (part) => ctx.db.select().from(s.entityMembers).where(inArray(s.entityMembers.entity, part)));
   const byEntity = new Map<number, number[]>();

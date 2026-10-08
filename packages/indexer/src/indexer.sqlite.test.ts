@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { encodeAbiParameters, encodeEventTopics, type Hex } from "viem";
-import { AddressBook, NADFUN_MAINNET, curveEventsAbi, erc20TransferAbi, openLocal, sqliteSchema as s, txHex, type RpcClient, type RpcLog } from "@nuno/shared";
+import { AddressBook, NADFUN_MAINNET, curveEventsAbi, erc20TransferAbi, sqliteSchema as s, txHex, type RpcClient, type RpcLog } from "@nuno/shared";
+import { openLocal } from "@nuno/shared/node";
 import { applyGraduations, countRows, indexCurveRange, indexTokenRange, trackedTokens } from "./indexer.js";
 
 // Hand-built test fixtures (not real chain data): ABI-encoded logs served by a fake RPC.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
-import { AddressBook, openLocal, sqliteSchema as s, txBytes, type RpcClient } from "@nuno/shared";
+import { AddressBook, sqliteSchema as s, txBytes, type RpcClient } from "@nuno/shared";
+import { openLocal } from "@nuno/shared/node";
 import { MAX_FUNDING_ATTEMPTS, pendingBuyers, resolveFundingTree } from "./resolver.js";
 
 // Hand-built test fixtures (not real chain data): a fake archive node.
