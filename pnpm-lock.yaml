@@ -62,9 +62,18 @@ importers:
 
   packages/metrics:
     dependencies:
+      '@nuno/cluster':
+        specifier: workspace:*
+        version: link:../cluster
       '@nuno/shared':
         specifier: workspace:*
         version: link:../shared
+      drizzle-orm:
+        specifier: ^0.38.3
+        version: 0.38.4(postgres@3.4.9)
+      viem:
+        specifier: ^2.21.0
+        version: 2.57.4(typescript@5.9.3)
 
   packages/shared:
     dependencies:

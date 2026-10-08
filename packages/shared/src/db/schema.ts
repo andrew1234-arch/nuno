@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -126,3 +127,50 @@ export const fundingEdges = pgTable(
     index("funding_edges_origin_idx").on(t.origin),
   ],
 );
+
+/** Multi-wallet clusters per token from the latest cluster run. */
+export const clusters = pgTable(
+  "clusters",
+  {
+    token: text("token").notNull(),
+    id: text("id").notNull(),
+    members: text("members").array().notNull(),
+    containsCreator: boolean("contains_creator").notNull(),
+    sourceBlock: block("source_block").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.token, t.id] })],
+);
+
+/** Accepted links inside a cluster, each with its evidence list (edge type, tx hash, block). */
+export const clusterLinks = pgTable(
+  "cluster_links",
+  {
+    token: text("token").notNull(),
+    clusterId: text("cluster_id").notNull(),
+    a: text("a").notNull(),
+    b: text("b").notNull(),
+    type: text("type").notNull(),
+    weight: real("weight").notNull(),
+    evidence: jsonb("evidence").$type<Array<{ type: string; txHash: string; block: number; detail?: string }>>().notNull(),
+  },
+  (t) => [index("cluster_links_cluster_idx").on(t.token, t.clusterId)],
+);
+
+/** Latest computed metrics per token. Amounts in wei-style integers. */
+export const tokenMetrics = pgTable("token_metrics", {
+  token: text("token").primaryKey(),
+  sourceBlock: block("source_block").notNull(),
+  totalSupply: amount("total_supply").notNull(),
+  rawHolders: integer("raw_holders").notNull(),
+  realHolders: integer("real_holders").notNull(),
+  effectiveTop10Bps: integer("effective_top10_bps").notNull(),
+  clusterSupplyBps: integer("cluster_supply_bps").notNull(),
+  creatorLinkedSupplyBps: integer("creator_linked_supply_bps").notNull(),
+  rawVolume: amount("raw_volume").notNull(),
+  organicVolume: amount("organic_volume").notNull(),
+  organicVolumeBps: integer("organic_volume_bps").notNull(),
+  evidenceRoot: text("evidence_root").notNull(),
+  /** Canonical JSON hashed into evidenceRoot, so anyone can recompute it. */
+  evidenceJson: text("evidence_json").notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});

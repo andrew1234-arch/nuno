@@ -205,10 +205,11 @@ export const WINDOW_CURSOR = "indexer:window_start";
  *  2. transfers + swaps for every token tracked by the end of pass 1.
  * Afterwards the shared INDEXER_CURSOR is set to `to` for the live tail.
  */
-export async function backfill(ctx: IndexerCtx, from: number, to: number, concurrency = 6): Promise<void> {
+export async function backfill(ctx: IndexerCtx, from: number, to: number, concurrency = 12): Promise<void> {
   const log = ctx.log ?? (() => {});
   const curveFrom = Math.max(from, ((await getCursor(ctx.db, CURVE_CURSOR)) ?? from - 1) + 1);
   const curveChunks = chunkRange(curveFrom, to, ctx.logsRange);
+  let logged1 = 0;
   log(`[indexer] pass 1 curve: ${curveChunks.length} chunks from ${curveFrom}`);
   await runChunks(
     curveChunks,
@@ -216,13 +217,17 @@ export async function backfill(ctx: IndexerCtx, from: number, to: number, concur
     async (a, b) => void (await indexCurveRange(ctx, a, b)),
     async (mark, n) => {
       await setCursor(ctx.db, CURVE_CURSOR, mark);
-      if (n % 100 === 0 || n === curveChunks.length) log(`[indexer] pass 1: ${n}/${curveChunks.length} chunks, watermark ${mark}`);
+      if (n - logged1 >= 100 || n === curveChunks.length) {
+        logged1 = n;
+        log(`[indexer] pass 1: ${n}/${curveChunks.length} chunks, watermark ${mark}`);
+      }
     },
   );
 
   const tracked = await trackedTokens(ctx.db, to);
   const tokenFrom = Math.max(from, ((await getCursor(ctx.db, TOKEN_CURSOR)) ?? from - 1) + 1);
   const tokenChunks = chunkRange(tokenFrom, to, ctx.logsRange);
+  let logged2 = 0;
   log(`[indexer] pass 2 transfers/swaps for ${tracked.length} tokens: ${tokenChunks.length} chunks from ${tokenFrom}`);
   await runChunks(
     tokenChunks,
@@ -230,7 +235,10 @@ export async function backfill(ctx: IndexerCtx, from: number, to: number, concur
     async (a, b) => void (await indexTokenRange(ctx, a, b, tracked)),
     async (mark, n) => {
       await setCursor(ctx.db, TOKEN_CURSOR, mark);
-      if (n % 100 === 0 || n === tokenChunks.length) log(`[indexer] pass 2: ${n}/${tokenChunks.length} chunks, watermark ${mark}`);
+      if (n - logged2 >= 100 || n === tokenChunks.length) {
+        logged2 = n;
+        log(`[indexer] pass 2: ${n}/${tokenChunks.length} chunks, watermark ${mark}`);
+      }
     },
   );
   await setCursor(ctx.db, INDEXER_CURSOR, to);

@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@nuno/shared": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nuno/cluster": "workspace:*",
+    "@nuno/shared": "workspace:*",
+    "viem": "^2.21.0",
+    "drizzle-orm": "^0.38.3"
+  },
+  "scripts": {
+    "run": "tsx src/cli.ts"
+  }
 }

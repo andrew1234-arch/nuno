@@ -10,7 +10,9 @@
     "db:push": "pnpm --filter @nuno/shared db:push",
     "index:backfill": "pnpm --filter @nuno/indexer backfill",
     "index:tail": "pnpm --filter @nuno/indexer tail",
-    "funding:resolve": "pnpm --filter @nuno/funding resolve"
+    "funding:resolve": "pnpm --filter @nuno/funding resolve",
+    "cluster:run": "pnpm --filter @nuno/metrics run run",
+    "metrics:run": "pnpm --filter @nuno/metrics run run"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

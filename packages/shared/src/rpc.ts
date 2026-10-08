@@ -31,7 +31,8 @@ export class RpcLimitError extends RpcError {
 }
 
 export interface RpcClientOptions {
-  url: string;
+  /** One URL, or several to round-robin across (retries move to the next URL). */
+  url: string | string[];
   timeoutMs?: number;
   retries?: number;
   maxConcurrency?: number;
@@ -57,7 +58,8 @@ export function classifyRpcError(method: string, code: number, message: string):
 }
 
 export class RpcClient {
-  readonly url: string;
+  readonly urls: string[];
+  private rr = 0;
   private readonly timeoutMs: number;
   private readonly retries: number;
   private readonly maxConcurrency: number;
@@ -67,7 +69,8 @@ export class RpcClient {
   private readonly waiters: Array<() => void> = [];
 
   constructor(opts: RpcClientOptions) {
-    this.url = opts.url;
+    this.urls = Array.isArray(opts.url) ? opts.url : [opts.url];
+    if (this.urls.length === 0) throw new Error("RpcClient needs at least one URL");
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.retries = opts.retries ?? 4;
     this.maxConcurrency = opts.maxConcurrency ?? 8;
@@ -104,7 +107,8 @@ export class RpcClient {
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     let res: Response;
     try {
-      res = await fetch(this.url, {
+      const url = this.urls[this.rr++ % this.urls.length]!;
+      res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
