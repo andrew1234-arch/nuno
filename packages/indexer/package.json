@@ -3,7 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "backfill": "tsx src/cli.ts backfill", "tail": "tsx src/cli.ts tail" },
-  "dependencies": { "@nuno/shared": "workspace:*", "drizzle-orm": "^0.38.3", "viem": "^2.21.0" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "backfill": "tsx src/cli.ts backfill",
+    "tail": "tsx src/cli.ts tail",
+    "signers": "tsx src/cli.ts signers"
+  },
+  "dependencies": {
+    "@nuno/shared": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "viem": "^2.21.0"
+  }
 }

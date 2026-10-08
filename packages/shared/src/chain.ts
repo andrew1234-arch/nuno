@@ -71,3 +71,14 @@ export async function blockAtTimestamp(rpc: RpcClient, ts: number, head: number)
   }
   return guess;
 }
+
+/**
+ * True for real contract code. EIP-7702 delegated EOAs carry code `0xef0100 || address` (23 bytes)
+ * but are still key-controlled wallets, so they are NOT contracts for clustering or funding.
+ */
+export function isContractCode(code: Hex | string): boolean {
+  const c = code.toLowerCase();
+  if (c === "0x" || c.length <= 2) return false;
+  if (c.length === 2 + 46 && c.startsWith("0xef0100")) return false;
+  return true;
+}

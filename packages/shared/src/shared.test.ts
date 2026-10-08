@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { isContractCode } from "./chain.js";
 import { chunkRange } from "./ranges.js";
 import { RpcClient, RpcError, RpcLimitError, classifyRpcError } from "./rpc.js";
 
@@ -77,5 +78,19 @@ describe("RpcClient", () => {
     await rpc.call("eth_blockNumber", []);
     await rpc.call("eth_blockNumber", []);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("isContractCode", () => {
+  it("treats empty code as an EOA", () => {
+    expect(isContractCode("0x")).toBe(false);
+  });
+  it("treats EIP-7702 delegation designators as EOAs", () => {
+    // Exact shape observed on Monad mainnet (e.g. 0xd243…f160): 0xef0100 + 20-byte delegate.
+    expect(isContractCode("0xef010063" + "ab".repeat(19))).toBe(false);
+  });
+  it("treats real bytecode as a contract, including code that merely starts with ef01", () => {
+    expect(isContractCode("0x6080604052")).toBe(true);
+    expect(isContractCode("0xef0100" + "ab".repeat(21))).toBe(true);
   });
 });

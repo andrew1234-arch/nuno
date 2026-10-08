@@ -18,7 +18,8 @@
     "contracts:abi": "cd contracts && forge build && cd .. && node scripts/export-abi.mjs",
     "publish:snapshots": "pnpm --filter @nuno/publisher publish-snapshots",
     "api": "pnpm --filter @nuno/api start",
-    "web": "pnpm --filter @nuno/web dev"
+    "web": "pnpm --filter @nuno/web dev",
+    "infra:scan": "pnpm --filter @nuno/metrics infra-scan"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

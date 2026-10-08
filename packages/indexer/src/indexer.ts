@@ -1,4 +1,4 @@
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { eq, isNotNull, isNull, sql } from "drizzle-orm";
 import {
   NADFUN_MAINNET,
   TOPICS,
@@ -69,6 +69,7 @@ export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number)
           ...m,
           token: r.token,
           trader: r.trader,
+          txFrom: await txSigner(logsRpc, m.txHash),
           side: r.side,
           amountIn: r.amountIn.toString(),
           amountOut: r.amountOut.toString(),
@@ -84,6 +85,34 @@ export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number)
     }
   }
   return stats;
+}
+
+/** Transaction signer (tx.from), lowercase. Cached: one lookup per tx even with several trades. */
+export async function txSigner(rpc: RpcClient, txHash: string): Promise<string> {
+  const tx = await rpc.call<{ from: string } | null>("eth_getTransactionByHash", [txHash], { cache: true });
+  if (!tx) throw new Error(`transaction ${txHash} not found`);
+  return tx.from.toLowerCase();
+}
+
+/** Fill tx_from for trades indexed before the column existed. Resumable: only touches NULL rows. */
+export async function backfillTxSigners(ctx: IndexerCtx, concurrency = 8): Promise<number> {
+  const rows = await ctx.db
+    .selectDistinct({ txHash: schema.curveTrades.txHash })
+    .from(schema.curveTrades)
+    .where(isNull(schema.curveTrades.txFrom));
+  let i = 0;
+  let done = 0;
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      while (i < rows.length) {
+        const { txHash } = rows[i++]!;
+        const from = await txSigner(ctx.logsRpc, txHash);
+        await ctx.db.update(schema.curveTrades).set({ txFrom: from }).where(eq(schema.curveTrades.txHash, txHash));
+        if (++done % 100 === 0) ctx.log?.(`[indexer] tx signers ${done}/${rows.length}`);
+      }
+    }),
+  );
+  return rows.length;
 }
 
 export interface TrackedToken {

@@ -87,6 +87,12 @@ Two unrelated wallets were merged because they shared **two** ancestors on one f
 ### Validation
 `docs/VALIDATION.md` sheet generated (seed 42): 20 flagged links (all from the one entity, since only one exists) and 10 unflagged buyers. **Verdicts not filled yet** (hand review).
 
+### Attribution + infrastructure (approved by user)
+- Curve trades now store the tx signer (`tx_from`); a trade with a contract `sender` is attributed to its signer. 94 of 537 trades re-attributed.
+- EIP-7702 delegated wallets (code `0xef0100…`) were wrongly treated as contracts; fixed. 6 active traders affected, incl. `0xd243…` (50 trades).
+- `pnpm infra:scan`: funding origins with ≥ 5,000 txs or ≥ 1M MON are exchange-like infrastructure (16 of 46 on 2026-10-08), with evidence in `packages/metrics/src/infrastructure.json`.
+- Effect: same single operator entity. Volume-weighted organic volume dropped ~20% → ~1.2% because round-trip traders (notably sniper `0x022e…`) now count as wash under the SPEC's net-position rule. **Raised with the user** as a definitional question.
+
 ### Next step
 Deploy contracts to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
 

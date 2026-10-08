@@ -1,6 +1,7 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { Address, Hex } from "viem";
 import {
+  isContractCode,
   schema,
   toHex,
   type BlockTraceEntry,
@@ -24,8 +25,7 @@ export type WalletFunding =
   | { status: "contract"; isContract: true };
 
 async function isContract(rpc: RpcClient, addr: Address, block: number): Promise<boolean> {
-  const code = await rpc.call<Hex>("eth_getCode", [addr, toHex(block)], { cache: true });
-  return code !== "0x" && code.length > 2;
+  return isContractCode(await rpc.call<Hex>("eth_getCode", [addr, toHex(block)], { cache: true }));
 }
 
 async function touched(rpc: RpcClient, addr: Address, block: number): Promise<boolean> {
@@ -154,16 +154,23 @@ export async function resolveFundingTree(ctx: FundingCtx, wallet: Address, befor
   }
 }
 
-/** Buyers of tracked tokens with their first buy block, not yet resolved. */
+/**
+ * Buyers of tracked tokens with their first buy block, not yet resolved. A buy whose curve
+ * `sender` is a known contract (a bot router) is attributed to the transaction signer.
+ */
 export async function pendingBuyers(db: Db, limit: number): Promise<Array<{ trader: Address; firstBuy: number }>> {
-  const rows = await db
-    .select({ trader: schema.curveTrades.trader, firstBuy: sql<number>`min(${schema.curveTrades.block})::bigint` })
-    .from(schema.curveTrades)
-    .leftJoin(schema.wallets, eq(schema.wallets.address, schema.curveTrades.trader))
-    .where(and(eq(schema.curveTrades.side, "buy"), sql`(${schema.wallets.fundingStatus} is null or ${schema.wallets.fundingStatus} in ('pending','error'))`))
-    .groupBy(schema.curveTrades.trader)
-    .limit(limit);
-  return rows.map((r) => ({ trader: r.trader as Address, firstBuy: Number(r.firstBuy) }));
+  const rows = await db.execute<{ buyer: string; first_buy: string }>(sql`
+    with buys as (
+      select case when sw.is_contract and ct.tx_from is not null then ct.tx_from else ct.trader end as buyer, ct.block
+      from curve_trades ct left join wallets sw on sw.address = ct.trader
+      where ct.side = 'buy'
+    )
+    select b.buyer, min(b.block)::bigint as first_buy
+    from buys b left join wallets w on w.address = b.buyer
+    where w.funding_status is null or w.funding_status in ('pending', 'error')
+    group by b.buyer
+    limit ${limit}`);
+  return [...rows].map((r) => ({ trader: r.buyer as Address, firstBuy: Number(r.first_buy) }));
 }
 
 export async function fundingEdgesFor(db: Db, wallets: Address[]) {

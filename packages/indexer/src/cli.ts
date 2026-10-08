@@ -5,6 +5,7 @@ import {
   TOKEN_CURSOR,
   WINDOW_CURSOR,
   backfill,
+  backfillTxSigners,
   countRows,
   getCursor,
   indexBlocks,
@@ -16,11 +17,17 @@ const SAFE_LAG = 10;
 
 async function main() {
   const mode = process.argv[2];
-  if (mode !== "backfill" && mode !== "tail") throw new Error("usage: cli.ts backfill|tail");
+  if (mode !== "backfill" && mode !== "tail" && mode !== "signers") throw new Error("usage: cli.ts backfill|tail|signers");
 
   const { db, sql } = createDb();
   const logsRpc = new RpcClient({ url: config.mainnetLogsRpcUrls, maxConcurrency: 8 });
   const ctx = { db, logsRpc, logsRange: config.logsRange, log: console.log };
+
+  if (mode === "signers") {
+    console.log(`[indexer] resolved tx signers for ${await backfillTxSigners(ctx)} transactions`);
+    await sql.end();
+    return;
+  }
 
   const head = (await getBlockNumber(logsRpc)) - SAFE_LAG;
   if (mode === "backfill") {
@@ -36,6 +43,7 @@ async function main() {
     }
     console.log(`[indexer] backfill ${windowStart}..${head} (${head - windowStart + 1} blocks)`);
     await backfill(ctx, windowStart, head);
+    await backfillTxSigners(ctx);
     console.log("[indexer] counts", await countRows(db));
     await sql.end();
     return;

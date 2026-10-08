@@ -43,7 +43,10 @@ export const curveTrades = pgTable(
     logIndex: integer("log_index").notNull(),
     block: block("block").notNull(),
     token: text("token").notNull(),
+    /** `sender` from the curve event: the trading wallet, or a contract (bot router) acting for it. */
     trader: text("trader").notNull(),
+    /** Transaction signer. Used as the trader when `trader` is a contract. Null until resolved. */
+    txFrom: text("tx_from"),
     side: text("side", { enum: ["buy", "sell"] }).notNull(),
     // buy: amountIn = MON, amountOut = token. sell: amountIn = token, amountOut = MON.
     amountIn: amount("amount_in").notNull(),

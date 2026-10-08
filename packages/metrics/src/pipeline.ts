@@ -1,7 +1,8 @@
 import { inArray, sql } from "drizzle-orm";
 import type { Address, Hex } from "viem";
 import { clusterWallets, clustersForToken, type ClusterResult, type FundingEdge } from "@nuno/cluster";
-import { NADFUN_MAINNET, schema, toHex, type Db, type RpcClient } from "@nuno/shared";
+import { NADFUN_MAINNET, isContractCode, schema, toHex, type Db, type RpcClient } from "@nuno/shared";
+import { effectiveTrader } from "./attribution.js";
 import { ZERO, computeMetrics, evidenceRoot, type TokenMetrics, type VolumeTrade } from "./metrics.js";
 
 /** nad.fun protocol contracts that hold supply but are never holders (from nad.fun/skill.md). */
@@ -38,7 +39,7 @@ async function contractSet(ctx: PipelineCtx, addrs: string[], atBlock: number): 
   await Promise.all(
     unknown.map(async (a) => {
       const code = await ctx.rpc.call<Hex>("eth_getCode", [a as Address, toHex(atBlock)], { cache: true });
-      const isContract = code !== "0x" && code.length > 2;
+      const isContract = isContractCode(code);
       map.set(a, isContract);
       await ctx.db
         .insert(schema.wallets)
@@ -101,13 +102,22 @@ export async function runAll(ctx: PipelineCtx, sourceBlock: number): Promise<Glo
     if (t.graduatedPool) excluded.add(t.graduatedPool);
   }
 
+  // Classify every address first: trades by bot contracts are re-attributed to the signer.
+  const candidates = new Set<string>(tokens.map((t) => t.creator));
+  for (const t of transfers) for (const a of [t.from, t.to]) if (!excluded.has(a)) candidates.add(a);
+  for (const t of trades) for (const a of [t.trader, t.txFrom]) if (a && !excluded.has(a)) candidates.add(a);
+  const contracts = await contractSet(ctx, [...candidates], sourceBlock);
+  for (const a of excluded) contracts.add(a);
+
+  const attributed = trades.map((t) => ({ ...t, trader: effectiveTrader(t.trader, t.txFrom, contracts) }));
+  const reattributed = attributed.filter((t, i) => t.trader !== trades[i]!.trader).length;
+  ctx.log?.(`[pipeline] ${reattributed} of ${trades.length} curve trades attributed to their tx signer (bot-contract sender)`);
+
   const participantsByToken = new Map<string, Set<string>>(tokens.map((t) => [t.address, new Set([t.creator])]));
   for (const t of transfers) for (const a of [t.from, t.to]) if (!excluded.has(a)) participantsByToken.get(t.token)?.add(a);
-  for (const t of trades) if (!excluded.has(t.trader)) participantsByToken.get(t.token)?.add(t.trader);
+  for (const t of attributed) if (!contracts.has(t.trader)) participantsByToken.get(t.token)?.add(t.trader);
   const participants = [...new Set([...participantsByToken.values()].flatMap((s) => [...s]))];
 
-  const contracts = await contractSet(ctx, participants, sourceBlock);
-  for (const a of excluded) contracts.add(a);
   const funding = await fundingAncestry(db, participants, 3);
   ctx.log?.(`[pipeline] ${tokens.length} tokens, ${participants.length} wallets, ${funding.length} funding edges`);
 
@@ -117,12 +127,12 @@ export async function runAll(ctx: PipelineCtx, sourceBlock: number): Promise<Glo
     contracts,
     infrastructure: ctx.infrastructure,
     funding,
-    trades: trades.map((t) => ({ token: t.token, wallet: t.trader, side: t.side, block: t.block, txHash: t.txHash })),
+    trades: attributed.map((t) => ({ token: t.token, wallet: t.trader, side: t.side, block: t.block, txHash: t.txHash })),
     transfers: transfers.map((t) => ({ token: t.token, from: t.from, to: t.to, block: t.block, txHash: t.txHash })),
   });
 
   const transfersByToken = groupBy(transfers, (t) => t.token);
-  const tradesByToken = groupBy(trades, (t) => t.token);
+  const tradesByToken = groupBy(attributed, (t) => t.token);
   const runs: TokenRun[] = tokens.map((token) => {
     const tokClusters = clustersForToken(result, participantsByToken.get(token.address) ?? []);
     const volumeTrades: VolumeTrade[] = (tradesByToken.get(token.address) ?? []).map((t) =>
