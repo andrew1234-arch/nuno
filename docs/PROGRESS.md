@@ -62,15 +62,33 @@ Clustering now runs once across all tokens. Same-block signals are grouped per (
 - `forge` installed at `~/.foundry/bin` but not on PATH.
 - Nansen: no API key yet. Needed for infra exclusion (e.g. `0xabde…9d76` received 15.4M MON, likely an exchange).
 - `docs/BOUNTIES.md`: bounty texts not pasted yet.
-- Not yet built: publisher, API, web, METHODOLOGY.md, VALIDATION.md.
+- Not done: testnet deploy + real snapshot txs (no keys), Nansen integration (no key), validation verdicts, hosting, video.
 - DEX swap volume isn't attributed to traders yet (Swap `sender` is the router). No graduated tokens in the window so far, so no impact yet.
 - `.env.example` still names `MONAD_MAINNET_LOGS_RPC_URL` (rpc3, range 1000). Permission rules block me from editing `.env*`. It should be `MONAD_MAINNET_LOGS_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz` and `MONAD_MAINNET_LOGS_RANGE=100`.
 
 ### Risk to raise with user
 nad.fun mainnet volume is low (~10 launches/day, ~20 curve buys/day). The 7-day window gives only ~70 tokens. Consider a longer backfill (P1) once P0 is green.
 
+### 7-day results (source block 111,709,445; window from block 109,707,415)
+| Count | Value |
+|---|---|
+| Tokens launched | 71 (0 graduated) |
+| Curve trades | 537 |
+| Transfers | 542 |
+| Wallets clustered | 34 (26 funding edges) |
+| Multi-wallet entities | **1**: 10 wallets, **created all 71 tokens**; links: same_direct_funder + common_funding_source |
+| Typical token | 0–2 holders left (operator buys, then sells back to the curve); organic volume ≈ 17–30% |
+
+The highest-volume token is `DUMP` (`0x63bce320…7777`): 11,474 MON raw, 59.7% organic.
+
+### Bug found and fixed on real data
+Two unrelated wallets were merged because they shared **two** ancestors on one funding chain, and `common_funding_source` was counted once per shared ancestor (0.8 + 0.8). It now counts once per pair. Regression test added; the false entity (`0x6f37…`) is gone.
+
+### Validation
+`docs/VALIDATION.md` sheet generated (seed 42): 20 flagged links (all from the one entity, since only one exists) and 10 unflagged buyers. **Verdicts not filled yet** (hand review).
+
 ### Next step
-Finish the 7-day backfill, then `pnpm funding:resolve` and `pnpm metrics:run`, and log the real top-tokens table here. Then publisher (snapshots to testnet NunoFeed) and API.
+Deploy contracts to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
 
 ### Deployed addresses / tx hashes
 None yet.
