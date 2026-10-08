@@ -8,6 +8,7 @@ import {
   tokenTransferLinks,
 } from "./edges.js";
 import { UnionFind } from "./unionfind.js";
+import { meetsThreshold, pairWeight } from "./weights.js";
 import {
   DEFAULT_CLUSTER_CONFIG,
   type Addr,
@@ -20,29 +21,32 @@ import {
 
 const pairKey = (a: Addr, b: Addr) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
-/**
- * Global weighted union-find over all edge types and all tokens. Link weights between the same pair accumulate;
- * the pair is unioned once its total reaches the threshold. Pure: same input, same output.
- */
-export function clusterWallets(input: ClusterInput, cfg: ClusterConfig = DEFAULT_CLUSTER_CONFIG): ClusterResult {
+/** Every candidate link (accepted or not) produced by the six edge builders. */
+export function buildLinks(input: ClusterInput, cfg: ClusterConfig = DEFAULT_CLUSTER_CONFIG): Link[] {
   const ancestors = fundingAncestors(input, cfg.maxFundingHops);
-  const links: Link[] = [
+  return [
     ...sameDirectFunderLinks(input, cfg),
     ...commonSourceLinks(input, cfg, ancestors),
     ...creatorFundedLinks(input, cfg, ancestors),
     ...tokenTransferLinks(input, cfg),
     ...earlyBuyLinks(input, cfg),
     ...sameBlockSellLinks(input, cfg),
-  ];
+  ].filter((l) => l.a !== l.b);
+}
 
-  const pairs = new Map<string, { weight: number; links: Link[] }>();
+/**
+ * Global weighted union-find over all edge types and all tokens. A pair's weight is derived from
+ * its evidence (see weights.ts) and the pair is unioned once it reaches the threshold.
+ * Pure: same input, same output.
+ */
+export function clusterWallets(input: ClusterInput, cfg: ClusterConfig = DEFAULT_CLUSTER_CONFIG): ClusterResult {
+  const links = buildLinks(input, cfg);
+  const pairs = new Map<string, Link[]>();
   for (const l of links) {
-    if (l.a === l.b) continue;
     const k = pairKey(l.a, l.b);
-    const p = pairs.get(k) ?? { weight: 0, links: [] };
-    p.weight += l.weight;
-    p.links.push(l);
-    pairs.set(k, p);
+    const list = pairs.get(k);
+    if (list) list.push(l);
+    else pairs.set(k, [l]);
   }
 
   const uf = new UnionFind();
@@ -51,10 +55,9 @@ export function clusterWallets(input: ClusterInput, cfg: ClusterConfig = DEFAULT
   for (const w of members) uf.add(w);
 
   const accepted: Link[] = [];
-  // Small epsilon so 0.5 + 0.5 reliably meets 1.0.
-  for (const p of pairs.values()) {
-    if (p.weight + 1e-9 >= cfg.unionThreshold) {
-      for (const l of p.links) {
+  for (const pairLinks of pairs.values()) {
+    if (meetsThreshold(pairWeight(pairLinks.flatMap((l) => l.evidence.map((e) => ({ ...e, type: l.type }))), cfg), cfg)) {
+      for (const l of pairLinks) {
         uf.union(l.a, l.b);
         accepted.push(l);
       }
