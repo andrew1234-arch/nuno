@@ -72,7 +72,7 @@ export class RpcClient {
     this.urls = Array.isArray(opts.url) ? opts.url : [opts.url];
     if (this.urls.length === 0) throw new Error("RpcClient needs at least one URL");
     this.timeoutMs = opts.timeoutMs ?? 30_000;
-    this.retries = opts.retries ?? 4;
+    this.retries = opts.retries ?? 6;
     this.maxConcurrency = opts.maxConcurrency ?? 8;
     this.cacheSize = opts.cacheSize ?? 50_000;
   }
@@ -96,7 +96,11 @@ export class RpcClient {
       } catch (err) {
         lastErr = err;
         if (err instanceof RpcError && !err.retryable) throw err;
-        if (attempt < this.retries) await sleep(400 * 2 ** attempt + Math.random() * 200);
+        if (attempt < this.retries) {
+          // Rate limits need a much longer pause than transient errors.
+          const base = err instanceof RpcError && err.code === 429 ? 2_000 : 400;
+          await sleep(Math.min(30_000, base * 2 ** attempt) + Math.random() * 300);
+        }
       }
     }
     throw lastErr;

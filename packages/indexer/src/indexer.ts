@@ -205,7 +205,7 @@ export const WINDOW_CURSOR = "indexer:window_start";
  *  2. transfers + swaps for every token tracked by the end of pass 1.
  * Afterwards the shared INDEXER_CURSOR is set to `to` for the live tail.
  */
-export async function backfill(ctx: IndexerCtx, from: number, to: number, concurrency = 12): Promise<void> {
+export async function backfill(ctx: IndexerCtx, from: number, to: number, concurrency = 8): Promise<void> {
   const log = ctx.log ?? (() => {});
   const curveFrom = Math.max(from, ((await getCursor(ctx.db, CURVE_CURSOR)) ?? from - 1) + 1);
   const curveChunks = chunkRange(curveFrom, to, ctx.logsRange);

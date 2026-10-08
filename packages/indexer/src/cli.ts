@@ -19,7 +19,7 @@ async function main() {
   if (mode !== "backfill" && mode !== "tail") throw new Error("usage: cli.ts backfill|tail");
 
   const { db, sql } = createDb();
-  const logsRpc = new RpcClient({ url: config.mainnetLogsRpcUrls, maxConcurrency: 12 });
+  const logsRpc = new RpcClient({ url: config.mainnetLogsRpcUrls, maxConcurrency: 8 });
   const ctx = { db, logsRpc, logsRange: config.logsRange, log: console.log };
 
   const head = (await getBlockNumber(logsRpc)) - SAFE_LAG;

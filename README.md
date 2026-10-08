@@ -51,6 +51,7 @@ _TODO: observed precision on the hand-reviewed sample in `docs/VALIDATION.md` on
 
 - [viem](https://viem.sh) (MIT): RPC encoding/decoding
 - [Drizzle ORM](https://orm.drizzle.team) (Apache-2.0), [postgres.js](https://github.com/porsager/postgres) (Unlicense)
+- [Foundry](https://getfoundry.sh) and [forge-std](https://github.com/foundry-rs/forge-std) (MIT/Apache-2.0), vendored in `contracts/lib/forge-std`
 - [Vitest](https://vitest.dev) (MIT), [TypeScript](https://www.typescriptlang.org) (Apache-2.0), [tsx](https://github.com/privatenumber/tsx) (MIT)
 - nad.fun event ABIs and contract addresses copied from nad.fun's published docs (`nad.fun/abi.md`, `nad.fun/skill.md`)
 
