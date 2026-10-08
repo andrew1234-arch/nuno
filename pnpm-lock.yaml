@@ -149,6 +149,27 @@ importers:
         specifier: ^0.30.1
         version: 0.30.6
 
+  packages/worker:
+    dependencies:
+      '@nuno/funding':
+        specifier: workspace:*
+        version: link:../funding
+      '@nuno/indexer':
+        specifier: workspace:*
+        version: link:../indexer
+      '@nuno/metrics':
+        specifier: workspace:*
+        version: link:../metrics
+      '@nuno/publisher':
+        specifier: workspace:*
+        version: link:../publisher
+      '@nuno/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.21.0
+        version: 2.57.4(typescript@5.9.3)
+
 packages:
 
   '@adraffy/ens-normalize@1.11.1':

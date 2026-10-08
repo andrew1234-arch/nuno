@@ -93,6 +93,9 @@ Two unrelated wallets were merged because they shared **two** ancestors on one f
 - `pnpm infra:scan`: funding origins with ≥ 5,000 txs or ≥ 1M MON are exchange-like infrastructure (16 of 46 on 2026-10-08), with evidence in `packages/metrics/src/infrastructure.json`.
 - Effect: same single operator entity. Volume-weighted organic volume dropped ~20% → ~1.2% because round-trip traders (notably sniper `0x022e…`) now count as wash under the SPEC's net-position rule. **Raised with the user** as a definitional question.
 
+### Live worker
+`pnpm worker` tails new blocks and chains signers → funding → metrics (≤ 1/min, only on new activity) → publish (when a key and feed are configured). Smoke test: caught up 17k blocks in 84 s and picked up a new launch, `HOPNAD` (`0x7a1a…7777`, block 111,714,423), created by operator wallet `0xdd1c…` and assigned to the same entity live (72 tokens, 1 entity).
+
 ### Next step
 Deploy contracts to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
 

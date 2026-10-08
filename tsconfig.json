@@ -7,6 +7,7 @@
     { "path": "packages/cluster" },
     { "path": "packages/metrics" },
     { "path": "packages/publisher" },
-    { "path": "apps/api" }
+    { "path": "apps/api" },
+    { "path": "packages/worker" }
   ]
 }

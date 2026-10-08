@@ -65,9 +65,11 @@ pnpm metrics:run                   # global entity resolution + per-token metric
 pnpm deploy:contracts              # NunoFeed + OrganicGate on Monad testnet -> deployments/monad-testnet.json
 pnpm publish:snapshots             # write changed snapshots to NunoFeed
 
+pnpm infra:scan                    # mark exchange-like funding origins as infrastructure (re-run occasionally)
+
+pnpm worker                        # live: tail blocks -> signers -> funding -> metrics (debounced) -> publish
 pnpm api                           # REST API on :8787 (OpenAPI at /openapi.json)
-pnpm --filter @nuno/web dev        # screener on :3000 (NUNO_API_URL defaults to http://localhost:8787)
-pnpm index:tail                    # keep indexing new blocks
+pnpm web                           # screener on :3000 (NUNO_API_URL defaults to http://localhost:8787)
 
 pnpm test && pnpm typecheck && pnpm lint
 cd contracts && forge test

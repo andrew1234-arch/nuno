@@ -1,0 +1,15 @@
+{
+  "name": "@nuno/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "tsx src/worker.ts" },
+  "dependencies": {
+    "@nuno/funding": "workspace:*",
+    "@nuno/indexer": "workspace:*",
+    "@nuno/metrics": "workspace:*",
+    "@nuno/publisher": "workspace:*",
+    "@nuno/shared": "workspace:*",
+    "viem": "^2.21.0"
+  }
+}

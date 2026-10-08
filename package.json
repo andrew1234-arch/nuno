@@ -19,7 +19,8 @@
     "publish:snapshots": "pnpm --filter @nuno/publisher publish-snapshots",
     "api": "pnpm --filter @nuno/api start",
     "web": "pnpm --filter @nuno/web dev",
-    "infra:scan": "pnpm --filter @nuno/metrics infra-scan"
+    "infra:scan": "pnpm --filter @nuno/metrics infra-scan",
+    "worker": "pnpm --filter @nuno/worker start"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

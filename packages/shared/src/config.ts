@@ -36,7 +36,9 @@ export const config = {
   },
   /** Comma-separated list; eth_getLogs calls round-robin across them. */
   get mainnetLogsRpcUrls(): string[] {
-    const raw = process.env.MONAD_MAINNET_LOGS_RPC_URLS || req("MONAD_MAINNET_RPC_URL");
+    // MONAD_MAINNET_LOGS_RPC_URL (single URL) is the older name; still honoured.
+    const raw =
+      process.env.MONAD_MAINNET_LOGS_RPC_URLS || process.env.MONAD_MAINNET_LOGS_RPC_URL || req("MONAD_MAINNET_RPC_URL");
     return raw.split(",").map((u) => u.trim()).filter(Boolean);
   },
   /** Max inclusive block span per eth_getLogs call, measured per endpoint (see docs/PROGRESS.md). */
