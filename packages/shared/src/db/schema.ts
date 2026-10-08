@@ -182,3 +182,21 @@ export const tokenMetrics = pgTable("token_metrics", {
   evidenceJson: text("evidence_json").notNull(),
   computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Every NunoFeed publish tx, for evidence links and measured cost/frequency. */
+export const snapshots = pgTable(
+  "snapshots",
+  {
+    txHash: text("tx_hash").primaryKey(),
+    chainId: integer("chain_id").notNull(),
+    feed: text("feed").notNull(),
+    token: text("token").notNull(),
+    sourceBlock: block("source_block").notNull(),
+    publishBlock: block("publish_block").notNull(),
+    evidenceRoot: text("evidence_root").notNull(),
+    gasUsed: amount("gas_used").notNull(),
+    effectiveGasPrice: amount("effective_gas_price").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("snapshots_token_idx").on(t.token, t.publishBlock)],
+);

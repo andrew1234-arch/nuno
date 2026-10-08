@@ -5,6 +5,7 @@
     { "path": "packages/indexer" },
     { "path": "packages/funding" },
     { "path": "packages/cluster" },
-    { "path": "packages/metrics" }
+    { "path": "packages/metrics" },
+    { "path": "packages/publisher" }
   ]
 }

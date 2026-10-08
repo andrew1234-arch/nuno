@@ -5,3 +5,4 @@ export * from "./abis.js";
 export * from "./ranges.js";
 export * as schema from "./db/schema.js";
 export { createDb, getCursorBlock, type Db } from "./db/client.js";
+export * from "./feedAbi.js";
