@@ -3,6 +3,7 @@
   "references": [
     { "path": "packages/shared" },
     { "path": "packages/indexer" },
-    { "path": "packages/funding" }
+    { "path": "packages/funding" },
+    { "path": "packages/cluster" }
   ]
 }

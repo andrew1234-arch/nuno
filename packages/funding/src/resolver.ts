@@ -102,41 +102,54 @@ async function store(db: Db, wallet: Address, f: WalletFunding): Promise<Address
   return [...new Set(f.transfers.map((t) => t.origin))].filter((o) => o !== wallet);
 }
 
+type Hop = { addr: Address; before: number };
+
+// Concurrent workers often reach the same funder; share one lookup per address.
+const inflight = new Map<Address, Promise<Hop[]>>();
+
+/** Resolve one address (DB cache first) and return its funders as the next hop. */
+function resolveOne(ctx: FundingCtx, addr: Address, before: number, hop: number): Promise<Hop[]> {
+  const existing = inflight.get(addr);
+  if (existing) return existing;
+  const p = (async (): Promise<Hop[]> => {
+    const [c] = await ctx.db.select().from(schema.wallets).where(eq(schema.wallets.address, addr));
+    if (c && c.fundingStatus !== "pending" && c.fundingStatus !== "error") {
+      if (c.fundingStatus !== "resolved" || c.firstFundedBlock === null) return [];
+      const edges = await ctx.db
+        .select({ origin: schema.fundingEdges.origin })
+        .from(schema.fundingEdges)
+        .where(eq(schema.fundingEdges.wallet, addr));
+      const block = c.firstFundedBlock;
+      return edges.filter((e) => e.origin !== addr).map((e) => ({ addr: e.origin as Address, before: block }));
+    }
+    try {
+      const f = await resolveFirstFunding(ctx.rpc, addr, before);
+      const origins = await store(ctx.db, addr, f);
+      ctx.log?.(`[funding] hop ${hop} ${addr}: ${f.status}${f.status === "resolved" ? ` @${f.block} <- ${origins.join(",") || "(none)"}` : ""}`);
+      return f.status === "resolved" ? origins.map((o) => ({ addr: o, before: f.block })) : [];
+    } catch (err) {
+      const msg = (err as Error).message.slice(0, 500);
+      await ctx.db
+        .insert(schema.wallets)
+        .values({ address: addr, fundingStatus: "error", fundingError: msg })
+        .onConflictDoUpdate({ target: schema.wallets.address, set: { fundingStatus: "error", fundingError: msg } });
+      ctx.log?.(`[funding] hop ${hop} ${addr}: ERROR ${msg}`);
+      return [];
+    }
+  })().finally(() => inflight.delete(addr));
+  inflight.set(addr, p);
+  return p;
+}
+
 /**
  * Resolve first funding for `wallet`, then its funders' first funding, up to `maxHops`.
  * Cached: wallets already resolved/unfunded in the DB are not re-queried.
  */
 export async function resolveFundingTree(ctx: FundingCtx, wallet: Address, beforeBlock: number, maxHops = 3) {
-  let frontier: Array<{ addr: Address; before: number }> = [{ addr: wallet, before: beforeBlock }];
+  let frontier: Hop[] = [{ addr: wallet, before: beforeBlock }];
   for (let hop = 1; hop <= maxHops && frontier.length; hop++) {
-    const next: Array<{ addr: Address; before: number }> = [];
-    for (const { addr, before } of frontier) {
-      const cached = await ctx.db.select().from(schema.wallets).where(eq(schema.wallets.address, addr));
-      const c = cached[0];
-      if (c && c.fundingStatus !== "pending" && c.fundingStatus !== "error") {
-        if (c.fundingStatus === "resolved" && c.firstFundedBlock !== null) {
-          const edges = await ctx.db
-            .select({ origin: schema.fundingEdges.origin })
-            .from(schema.fundingEdges)
-            .where(eq(schema.fundingEdges.wallet, addr));
-          for (const e of edges) if (e.origin !== addr) next.push({ addr: e.origin as Address, before: c.firstFundedBlock });
-        }
-        continue;
-      }
-      try {
-        const f = await resolveFirstFunding(ctx.rpc, addr, before);
-        const origins = await store(ctx.db, addr, f);
-        if (f.status === "resolved") for (const o of origins) next.push({ addr: o, before: f.block });
-        ctx.log?.(`[funding] hop ${hop} ${addr}: ${f.status}${f.status === "resolved" ? ` @${f.block} <- ${origins.join(",") || "(none)"}` : ""}`);
-      } catch (err) {
-        const msg = (err as Error).message.slice(0, 500);
-        await ctx.db
-          .insert(schema.wallets)
-          .values({ address: addr, fundingStatus: "error", fundingError: msg })
-          .onConflictDoUpdate({ target: schema.wallets.address, set: { fundingStatus: "error", fundingError: msg } });
-        ctx.log?.(`[funding] hop ${hop} ${addr}: ERROR ${msg}`);
-      }
-    }
+    const next: Hop[] = [];
+    for (const { addr, before } of frontier) next.push(...(await resolveOne(ctx, addr, before, hop)));
     frontier = next;
   }
 }
