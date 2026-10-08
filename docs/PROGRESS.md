@@ -33,24 +33,37 @@ No public `trace_filter`, and native MON transfers emit no logs. For each wallet
 
 Limitation: this finds the **first** funding only, not every inbound transfer before the first buy.
 
+### Later in session 1
+- 7-day backfill (window start block 109,705,483) **in progress**, resumable. rpc3 turned out slow on older ranges (~20 s per 1000-block call), so logs now round-robin over rpc1, monadinfra and rpc.monad.xyz at 100-block ranges, concurrency 8. One run died on `RpcError: HTTP 429` at concurrency 12; added long backoff on 429 and resumed.
+- Partial 7-day data so far: 24 tokens, 191 curve trades (29 unique buyers), 39 wallets with resolved funding, 0 graduations.
+- `pnpm metrics:run` works end to end (clusters + metrics stored per token). Holder metrics need pass 2 (transfers) to finish before they mean anything.
+- Contracts: NunoFeed + OrganicGate, 15 Foundry tests (incl. fuzz), zero lint warnings. Deploy script `pnpm deploy:contracts` (testnet 10143 only), **not deployed**: needs `DEPLOYER_PRIVATE_KEY` in `.env`.
+
+### Open design question (asked user)
+Clustering is per token (SPEC §7.3). The serial-launcher pattern above (one funder behind every creator) is only visible **across** tokens. Global entity resolution would catch it, but it's a scope change, so I'm waiting for the user's call.
+
 ### What works
 - `pnpm index:backfill` (2-pass parallel, resumable via `indexer:curve`/`indexer:tokens` cursors, window-widening safe), `pnpm index:tail`
 - `pnpm funding:resolve [limit] [hops]`, DB-cached, in-flight deduped
 - `packages/cluster`: weighted union-find, all 6 edge types, unit-tested (not yet wired to DB)
-- `pnpm test`: 44 tests passing; `pnpm typecheck` clean
+- `packages/metrics`: all SPEC §7.4 metrics + evidenceRoot, unit-tested; `pnpm metrics:run` / `pnpm cluster:run`
+- `contracts`: `forge test` 15/15
+- `pnpm test`: 60 tests passing; `pnpm typecheck` clean
 
 ### Broken / not started
 - No `docker compose` plugin on this machine; DB started with `docker run --name nuno-db … -p 5433:5432 postgres:16` (`docker-compose.yml` matches it).
 - `forge` installed at `~/.foundry/bin` but not on PATH.
 - Nansen: no API key yet. Needed for infra exclusion (e.g. `0xabde…9d76` received 15.4M MON, likely an exchange).
 - `docs/BOUNTIES.md`: bounty texts not pasted yet.
-- Not yet built: metrics, cluster DB runner, contracts, API, web.
+- Not yet built: publisher, API, web, METHODOLOGY.md, VALIDATION.md.
+- DEX swap volume isn't attributed to traders yet (Swap `sender` is the router). No graduated tokens in the window so far, so no impact yet.
+- `.env.example` still names `MONAD_MAINNET_LOGS_RPC_URL` (rpc3, range 1000). Permission rules block me from editing `.env*`. It should be `MONAD_MAINNET_LOGS_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz` and `MONAD_MAINNET_LOGS_RANGE=100`.
 
 ### Risk to raise with user
 nad.fun mainnet volume is low (~10 launches/day, ~20 curve buys/day). The 7-day window gives only ~70 tokens. Consider a longer backfill (P1) once P0 is green.
 
 ### Next step
-Run the full 7-day backfill and resolve funding at scale; wire the cluster engine to the DB (`pnpm cluster:run`); metrics engine + tests.
+Finish the 7-day backfill, then `pnpm funding:resolve` and `pnpm metrics:run`, and log the real top-tokens table here. Then publisher (snapshots to testnet NunoFeed) and API.
 
 ### Deployed addresses / tx hashes
 None yet.
