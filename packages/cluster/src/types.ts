@@ -12,6 +12,8 @@ export interface Evidence {
   type: EdgeType;
   txHash: string;
   block: number;
+  /** Token the evidence relates to (trade/transfer/creator edges); absent for pure funding edges. */
+  token?: Addr;
   /** Extra context, e.g. the shared funder address. */
   detail?: string;
 }
@@ -37,6 +39,7 @@ export interface FundingEdge {
 }
 
 export interface Trade {
+  token: Addr;
   wallet: Addr;
   side: "buy" | "sell";
   block: number;
@@ -44,17 +47,26 @@ export interface Trade {
 }
 
 export interface TokenTransfer {
+  token: Addr;
   from: Addr;
   to: Addr;
   block: number;
   txHash: string;
 }
 
-export interface ClusterInput {
+export interface TokenLaunch {
   token: Addr;
   creator: Addr;
   createBlock: number;
-  /** Wallets to cluster: the token's traders and holders. */
+}
+
+/**
+ * Global input: every tracked token at once. Funding and transfer links naturally span tokens;
+ * same-block signals are grouped per (token, block) and accumulate across tokens per wallet pair.
+ */
+export interface ClusterInput {
+  launches: TokenLaunch[];
+  /** Wallets to cluster: traders and holders of any tracked token, plus creators. */
   wallets: Addr[];
   /** Addresses known to be contracts; never cluster members. */
   contracts: Set<Addr>;
@@ -92,13 +104,13 @@ export const DEFAULT_CLUSTER_CONFIG: ClusterConfig = {
 export interface Cluster {
   id: string;
   members: Addr[];
-  containsCreator: boolean;
+  /** Tokens whose creator is a member of this cluster. */
+  createdTokens: Addr[];
   /** Links whose accumulated pair weight crossed the threshold, with evidence. */
   links: Link[];
 }
 
 export interface ClusterResult {
-  token: Addr;
   /** Wallet -> entity id. Singletons map to their own address. */
   entityOf: Map<Addr, string>;
   /** Multi-wallet clusters only. */

@@ -128,32 +128,40 @@ export const fundingEdges = pgTable(
   ],
 );
 
-/** Multi-wallet clusters per token from the latest cluster run. */
-export const clusters = pgTable(
-  "clusters",
+/** Multi-wallet entities from the latest global cluster run (ids are the smallest member address). */
+export const entities = pgTable("entities", {
+  id: text("id").primaryKey(),
+  members: text("members").array().notNull(),
+  size: integer("size").notNull(),
+  /** Tracked tokens whose creator is a member. */
+  createdTokens: text("created_tokens").array().notNull(),
+  sourceBlock: block("source_block").notNull(),
+});
+
+/** Wallet -> entity lookup for wallets in multi-wallet entities. */
+export const entityMembers = pgTable(
+  "entity_members",
   {
-    token: text("token").notNull(),
-    id: text("id").notNull(),
-    members: text("members").array().notNull(),
-    containsCreator: boolean("contains_creator").notNull(),
-    sourceBlock: block("source_block").notNull(),
+    wallet: text("wallet").primaryKey(),
+    entityId: text("entity_id").notNull(),
   },
-  (t) => [primaryKey({ columns: [t.token, t.id] })],
+  (t) => [index("entity_members_entity_idx").on(t.entityId)],
 );
 
-/** Accepted links inside a cluster, each with its evidence list (edge type, tx hash, block). */
-export const clusterLinks = pgTable(
-  "cluster_links",
+/** Accepted links inside an entity, each with its evidence list (edge type, tx hash, block, token). */
+export const entityLinks = pgTable(
+  "entity_links",
   {
-    token: text("token").notNull(),
-    clusterId: text("cluster_id").notNull(),
+    entityId: text("entity_id").notNull(),
     a: text("a").notNull(),
     b: text("b").notNull(),
     type: text("type").notNull(),
     weight: real("weight").notNull(),
-    evidence: jsonb("evidence").$type<Array<{ type: string; txHash: string; block: number; detail?: string }>>().notNull(),
+    evidence: jsonb("evidence")
+      .$type<Array<{ type: string; txHash: string; block: number; token?: string; detail?: string }>>()
+      .notNull(),
   },
-  (t) => [index("cluster_links_cluster_idx").on(t.token, t.clusterId)],
+  (t) => [index("entity_links_entity_idx").on(t.entityId)],
 );
 
 /** Latest computed metrics per token. Amounts in wei-style integers. */

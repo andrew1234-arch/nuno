@@ -26,7 +26,7 @@ function cluster(members: string[]): Cluster {
   return {
     id: sorted[0]!,
     members: sorted,
-    containsCreator: sorted.includes(CREATOR),
+    createdTokens: sorted.includes(CREATOR) ? ["0x70"] : [],
     links: sorted.slice(1).map((m, i) => ({
       a: sorted[0]!,
       b: m,

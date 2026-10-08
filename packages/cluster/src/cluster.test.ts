@@ -1,18 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { clusterToken } from "./engine.js";
+import { clusterWallets, clustersForToken } from "./engine.js";
 import { UnionFind } from "./unionfind.js";
-import { DEFAULT_CLUSTER_CONFIG, type ClusterInput, type FundingEdge } from "./types.js";
+import { DEFAULT_CLUSTER_CONFIG, type ClusterInput, type FundingEdge, type TokenTransfer, type Trade } from "./types.js";
 
 // Hand-built test fixtures (not real chain data). Short fake addresses for readability.
 const CREATOR = "0xc0";
 const TOKEN = "0x70";
 const H = 3600;
 
-function input(over: Partial<ClusterInput>): ClusterInput {
-  return {
-    token: TOKEN,
-    creator: CREATOR,
-    createBlock: 1000,
+type SingleTokenInput = Omit<ClusterInput, "launches" | "trades" | "transfers"> & {
+  trades: Array<Omit<Trade, "token"> & { token?: string }>;
+  transfers: Array<Omit<TokenTransfer, "token"> & { token?: string }>;
+};
+
+/** Single-token convenience input (TOKEN created by CREATOR at block 1000). */
+function input(over: Partial<SingleTokenInput>): ClusterInput {
+  const base: SingleTokenInput = {
     wallets: [],
     contracts: new Set(),
     infrastructure: new Set(),
@@ -21,7 +24,15 @@ function input(over: Partial<ClusterInput>): ClusterInput {
     transfers: [],
     ...over,
   };
+  return {
+    ...base,
+    launches: [{ token: TOKEN, creator: CREATOR, createBlock: 1000 }],
+    trades: base.trades.map((t) => ({ token: TOKEN, ...t })),
+    transfers: base.transfers.map((t) => ({ token: TOKEN, ...t })),
+  };
 }
+
+const clusterToken = (i: ClusterInput, cfg = DEFAULT_CLUSTER_CONFIG) => clusterWallets(i, cfg);
 
 const fund = (wallet: string, origin: string, blockTime = 0, funder = origin): FundingEdge => ({
   wallet,
@@ -115,7 +126,7 @@ describe("creator_funded", () => {
     const r = clusterToken(input({ wallets: ["0xa", "0xz"], funding: [fund("0xa", "0xm1"), fund("0xm1", CREATOR)] }));
     const c = clusterOf(r, "0xa")!;
     expect(c.members).toEqual(["0xa", CREATOR].sort());
-    expect(c.containsCreator).toBe(true);
+    expect(c.createdTokens).toEqual([TOKEN]);
     expect(clusterOf(r, "0xz")).toBeUndefined();
   });
 });
@@ -123,7 +134,7 @@ describe("creator_funded", () => {
 describe("token_transfer", () => {
   it("links two holders that transferred the token", () => {
     const r = clusterToken(input({ wallets: ["0xa", "0xb"], transfers: [{ from: "0xa", to: "0xb", block: 9, txHash: "0xt" }] }));
-    expect(r.clusters[0]?.links[0]?.evidence[0]).toEqual({ type: "token_transfer", txHash: "0xt", block: 9 });
+    expect(r.clusters[0]?.links[0]?.evidence[0]).toEqual({ type: "token_transfer", txHash: "0xt", block: 9, token: TOKEN });
   });
 
   it("ignores transfers involving contracts (pool, router)", () => {
@@ -187,5 +198,89 @@ describe("engine invariants", () => {
     const r = clusterToken(input({ wallets, funding: wallets.map((w, i) => fund(w, "0xbot", i)) }));
     expect(r.clusters).toHaveLength(1);
     expect(r.clusters[0]!.members).toHaveLength(150);
+  });
+});
+
+describe("global (cross-token) resolution", () => {
+  const T2 = "0x71";
+  const C2 = "0xc2";
+
+  it("accumulates weak same-block signals across tokens", () => {
+    // One same-block sell on one token (0.5) is not enough; the same pair doing it on a second token is.
+    const sells = (token: string, block: number) => [
+      { token, wallet: "0xa", side: "sell" as const, block, txHash: `0x${token}a` },
+      { token, wallet: "0xb", side: "sell" as const, block, txHash: `0x${token}b` },
+    ];
+    const base: ClusterInput = {
+      launches: [
+        { token: TOKEN, creator: CREATOR, createBlock: 1000 },
+        { token: T2, creator: C2, createBlock: 2000 },
+      ],
+      wallets: ["0xa", "0xb"],
+      contracts: new Set(),
+      infrastructure: new Set(),
+      funding: [],
+      trades: sells(TOKEN, 5000),
+      transfers: [],
+    };
+    expect(clusterWallets(base).clusters).toHaveLength(0);
+    const r = clusterWallets({ ...base, trades: [...sells(TOKEN, 5000), ...sells(T2, 6000)] });
+    expect(r.clusters[0]?.members).toEqual(["0xa", "0xb"]);
+    const tokens = new Set(r.clusters[0]!.links.flatMap((l) => l.evidence.map((e) => e.token)));
+    expect(tokens).toEqual(new Set([TOKEN, T2]));
+  });
+
+  it("does not link same-block trades on different tokens", () => {
+    const r = clusterWallets({
+      launches: [
+        { token: TOKEN, creator: CREATOR, createBlock: 1000 },
+        { token: T2, creator: C2, createBlock: 1000 },
+      ],
+      wallets: ["0xa", "0xb"],
+      contracts: new Set(),
+      infrastructure: new Set(),
+      funding: [],
+      trades: [
+        { token: TOKEN, wallet: "0xa", side: "sell", block: 5000, txHash: "0x1" },
+        { token: T2, wallet: "0xb", side: "sell", block: 5000, txHash: "0x2" },
+        { token: TOKEN, wallet: "0xa", side: "buy", block: 1001, txHash: "0x3" },
+        { token: T2, wallet: "0xb", side: "buy", block: 1001, txHash: "0x4" },
+      ],
+      transfers: [],
+    });
+    expect(r.clusters).toHaveLength(0);
+  });
+
+  it("groups serial launchers: creators of different tokens funded by one source", () => {
+    const r = clusterWallets({
+      launches: [
+        { token: TOKEN, creator: CREATOR, createBlock: 1000 },
+        { token: T2, creator: C2, createBlock: 9000 },
+      ],
+      wallets: [CREATOR, C2, "0xa"],
+      contracts: new Set(),
+      infrastructure: new Set(),
+      funding: [fund(CREATOR, "0xop", 100), fund(C2, "0xop", 110)],
+      trades: [],
+      transfers: [],
+    });
+    expect(r.clusters).toHaveLength(1);
+    expect(r.clusters[0]!.createdTokens).toEqual([TOKEN, T2].sort());
+    expect(r.entityOf.get(CREATOR)).toBe(r.entityOf.get(C2));
+  });
+
+  it("clustersForToken returns only clusters with a participant in that token", () => {
+    const r = clusterWallets({
+      launches: [{ token: TOKEN, creator: CREATOR, createBlock: 1000 }],
+      wallets: ["0xa", "0xb", "0xc", "0xd"],
+      contracts: new Set(),
+      infrastructure: new Set(),
+      funding: [fund("0xa", "0xf1"), fund("0xb", "0xf1"), fund("0xc", "0xf2"), fund("0xd", "0xf2")],
+      trades: [],
+      transfers: [],
+    });
+    expect(r.clusters).toHaveLength(2);
+    expect(clustersForToken(r, ["0xb"]).map((c) => c.id)).toEqual(["0xa"]);
+    expect(clustersForToken(r, ["0xzz"])).toEqual([]);
   });
 });

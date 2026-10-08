@@ -107,7 +107,7 @@ export function commonSourceLinks(
   return out;
 }
 
-/** Wallets with the token creator among their funding ancestors are linked to the creator. */
+/** Wallets with a token's creator among their funding ancestors are linked to that creator. */
 export function creatorFundedLinks(
   input: ClusterInput,
   cfg: ClusterConfig,
@@ -115,16 +115,20 @@ export function creatorFundedLinks(
 ): Link[] {
   const ok = eligible(input);
   const out: Link[] = [];
+  const creators = new Map<Addr, Addr[]>();
+  for (const l of input.launches) creators.set(l.creator, [...(creators.get(l.creator) ?? []), l.token]);
   for (const [w, anc] of ancestors) {
-    if (!ok(w) || w === input.creator) continue;
-    const e = anc.get(input.creator);
-    if (e) {
+    if (!ok(w)) continue;
+    for (const [creator, tokens] of creators) {
+      if (w === creator) continue;
+      const e = anc.get(creator);
+      if (!e) continue;
       out.push({
-        a: input.creator,
+        a: creator,
         b: w,
         type: "creator_funded",
         weight: cfg.weights.creator_funded,
-        evidence: [{ type: "creator_funded", txHash: e.txHash, block: e.block, detail: input.creator }],
+        evidence: [{ type: "creator_funded", txHash: e.txHash, block: e.block, token: tokens[0], detail: creator }],
       });
     }
   }
@@ -141,7 +145,7 @@ export function tokenTransferLinks(input: ClusterInput, cfg: ClusterConfig): Lin
       b: t.to,
       type: "token_transfer" as const,
       weight: cfg.weights.token_transfer,
-      evidence: [{ type: "token_transfer" as const, txHash: t.txHash, block: t.block }],
+      evidence: [{ type: "token_transfer" as const, txHash: t.txHash, block: t.block, token: t.token }],
     }));
 }
 
@@ -150,24 +154,28 @@ function sameBlockLinks(
   side: "buy" | "sell",
   type: "same_block_early_buy" | "same_block_sell",
   weight: number,
-  blockFilter: (b: number) => boolean,
+  keep: (token: Addr, block: number) => boolean,
 ): Link[] {
   const ok = eligible(input);
-  const byBlock = new Map<number, Array<{ wallet: Addr; ev: Evidence }>>();
+  const groups = new Map<string, Array<{ wallet: Addr; ev: Evidence }>>();
   for (const t of input.trades) {
-    if (t.side !== side || !ok(t.wallet) || !blockFilter(t.block)) continue;
-    const list = byBlock.get(t.block) ?? [];
-    list.push({ wallet: t.wallet, ev: { type, txHash: t.txHash, block: t.block } });
-    byBlock.set(t.block, list);
+    if (t.side !== side || !ok(t.wallet) || !keep(t.token, t.block)) continue;
+    const k = `${t.token}:${t.block}`;
+    const list = groups.get(k) ?? [];
+    list.push({ wallet: t.wallet, ev: { type, txHash: t.txHash, block: t.block, token: t.token } });
+    groups.set(k, list);
   }
   const out: Link[] = [];
-  for (const group of byBlock.values()) out.push(...linkGroup(group, type, weight));
+  for (const group of groups.values()) out.push(...linkGroup(group, type, weight));
   return out;
 }
 
 export function earlyBuyLinks(input: ClusterInput, cfg: ClusterConfig): Link[] {
-  const end = input.createBlock + cfg.earlyBuyBlocks;
-  return sameBlockLinks(input, "buy", "same_block_early_buy", cfg.weights.same_block_early_buy, (b) => b <= end);
+  const created = new Map(input.launches.map((l) => [l.token, l.createBlock]));
+  return sameBlockLinks(input, "buy", "same_block_early_buy", cfg.weights.same_block_early_buy, (token, b) => {
+    const c = created.get(token);
+    return c !== undefined && b <= c + cfg.earlyBuyBlocks;
+  });
 }
 
 export function sameBlockSellLinks(input: ClusterInput, cfg: ClusterConfig): Link[] {

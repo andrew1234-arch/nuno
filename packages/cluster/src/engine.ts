@@ -21,10 +21,10 @@ import {
 const pairKey = (a: Addr, b: Addr) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /**
- * Weighted union-find over all edge types. Link weights between the same pair accumulate;
+ * Global weighted union-find over all edge types and all tokens. Link weights between the same pair accumulate;
  * the pair is unioned once its total reaches the threshold. Pure: same input, same output.
  */
-export function clusterToken(input: ClusterInput, cfg: ClusterConfig = DEFAULT_CLUSTER_CONFIG): ClusterResult {
+export function clusterWallets(input: ClusterInput, cfg: ClusterConfig = DEFAULT_CLUSTER_CONFIG): ClusterResult {
   const ancestors = fundingAncestors(input, cfg.maxFundingHops);
   const links: Link[] = [
     ...sameDirectFunderLinks(input, cfg),
@@ -47,7 +47,7 @@ export function clusterToken(input: ClusterInput, cfg: ClusterConfig = DEFAULT_C
 
   const uf = new UnionFind();
   const members = new Set(input.wallets.filter((w) => !input.contracts.has(w)));
-  members.add(input.creator);
+  for (const l of input.launches) members.add(l.creator);
   for (const w of members) uf.add(w);
 
   const accepted: Link[] = [];
@@ -61,6 +61,9 @@ export function clusterToken(input: ClusterInput, cfg: ClusterConfig = DEFAULT_C
     }
   }
 
+  const createdBy = new Map<Addr, Addr[]>();
+  for (const l of input.launches) createdBy.set(l.creator, [...(createdBy.get(l.creator) ?? []), l.token]);
+
   const entityOf = new Map<Addr, string>();
   const clusters: Cluster[] = [];
   for (const group of uf.groups().values()) {
@@ -72,10 +75,23 @@ export function clusterToken(input: ClusterInput, cfg: ClusterConfig = DEFAULT_C
     clusters.push({
       id,
       members: sorted,
-      containsCreator: set.has(input.creator),
+      createdTokens: sorted.flatMap((w) => createdBy.get(w) ?? []).sort(),
       links: accepted.filter((l) => set.has(l.a)),
     });
   }
   clusters.sort((a, b) => b.members.length - a.members.length || a.id.localeCompare(b.id));
-  return { token: input.token, entityOf, clusters };
+  return { entityOf, clusters };
+}
+
+/**
+ * Clusters relevant to one token: global clusters with at least one member among `participants`.
+ * Membership stays global, so the same entity has the same id on every token.
+ */
+export function clustersForToken(result: ClusterResult, participants: Iterable<Addr>): Cluster[] {
+  const ids = new Set<string>();
+  for (const p of participants) {
+    const id = result.entityOf.get(p);
+    if (id !== undefined) ids.add(id);
+  }
+  return result.clusters.filter((c) => ids.has(c.id));
 }

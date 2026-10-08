@@ -1,6 +1,6 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import type { Address, Hex } from "viem";
-import { clusterToken, type ClusterInput, type ClusterResult, type FundingEdge } from "@nuno/cluster";
+import { clusterWallets, clustersForToken, type ClusterResult, type FundingEdge } from "@nuno/cluster";
 import { NADFUN_MAINNET, schema, toHex, type Db, type RpcClient } from "@nuno/shared";
 import { ZERO, computeMetrics, evidenceRoot, type TokenMetrics, type VolumeTrade } from "./metrics.js";
 
@@ -16,7 +16,7 @@ const PROTOCOL_ADDRESSES = [
 
 export interface PipelineCtx {
   db: Db;
-  /** Archive RPC used for eth_getCode on holders not yet classified. */
+  /** Archive RPC used for eth_getCode on addresses not yet classified. */
   rpc: RpcClient;
   /** Addresses never used as linking funders (Nansen-labelled or manual list). */
   infrastructure: Set<string>;
@@ -25,11 +25,16 @@ export interface PipelineCtx {
 
 /** Mark unknown addresses as contract/EOA via eth_getCode, caching in `wallets`. */
 async function contractSet(ctx: PipelineCtx, addrs: string[], atBlock: number): Promise<Set<string>> {
-  const known = addrs.length
-    ? await ctx.db.select({ a: schema.wallets.address, c: schema.wallets.isContract }).from(schema.wallets).where(inArray(schema.wallets.address, addrs))
-    : [];
-  const map = new Map(known.map((k) => [k.a, k.c]));
+  const map = new Map<string, boolean | null>();
+  for (let i = 0; i < addrs.length; i += 1000) {
+    const rows = await ctx.db
+      .select({ a: schema.wallets.address, c: schema.wallets.isContract })
+      .from(schema.wallets)
+      .where(inArray(schema.wallets.address, addrs.slice(i, i + 1000)));
+    for (const r of rows) map.set(r.a, r.c);
+  }
   const unknown = addrs.filter((a) => map.get(a) == null);
+  ctx.log?.(`[pipeline] eth_getCode for ${unknown.length} unclassified addresses`);
   await Promise.all(
     unknown.map(async (a) => {
       const code = await ctx.rpc.call<Hex>("eth_getCode", [a as Address, toHex(atBlock)], { cache: true });
@@ -44,118 +49,154 @@ async function contractSet(ctx: PipelineCtx, addrs: string[], atBlock: number): 
   return new Set([...map].filter(([, c]) => c).map(([a]) => a));
 }
 
+/** Stored funding edges reachable from `wallets` within `hops` hops. */
+async function fundingAncestry(db: Db, wallets: string[], hops: number): Promise<FundingEdge[]> {
+  const out: FundingEdge[] = [];
+  const seen = new Set<string>();
+  let frontier = wallets;
+  for (let hop = 0; hop < hops && frontier.length; hop++) {
+    const next: string[] = [];
+    for (let i = 0; i < frontier.length; i += 1000) {
+      const rows = await db.select().from(schema.fundingEdges).where(inArray(schema.fundingEdges.wallet, frontier.slice(i, i + 1000)));
+      for (const r of rows) {
+        const key = `${r.wallet}|${r.txHash}|${r.funder}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ wallet: r.wallet, funder: r.funder, origin: r.origin, block: r.block, blockTime: r.blockTime, txHash: r.txHash });
+        next.push(r.origin);
+      }
+    }
+    frontier = [...new Set(next)];
+  }
+  return out;
+}
+
 export interface TokenRun {
   token: string;
   symbol: string;
-  clusters: ClusterResult;
+  clusterCount: number;
   metrics: TokenMetrics;
   evidenceJson: string;
 }
 
-export async function runToken(ctx: PipelineCtx, tokenAddr: string, sourceBlock: number): Promise<TokenRun | null> {
+export interface GlobalRun {
+  sourceBlock: number;
+  result: ClusterResult;
+  tokens: TokenRun[];
+}
+
+/**
+ * One global entity resolution over every tracked token, then per-token metrics that use the
+ * global wallet -> entity map. A token's clusters are the global entities active in that token.
+ */
+export async function runAll(ctx: PipelineCtx, sourceBlock: number): Promise<GlobalRun> {
   const { db } = ctx;
-  const [token] = await db.select().from(schema.tokens).where(eq(schema.tokens.address, tokenAddr));
-  if (!token) return null;
+  const tokens = await db.select().from(schema.tokens).where(sql`${schema.tokens.createBlock} <= ${sourceBlock}`);
+  const transfers = await db.select().from(schema.transfers).where(sql`${schema.transfers.block} <= ${sourceBlock}`);
+  const trades = await db.select().from(schema.curveTrades).where(sql`${schema.curveTrades.block} <= ${sourceBlock}`);
 
-  const transfers = await db
-    .select()
-    .from(schema.transfers)
-    .where(and(eq(schema.transfers.token, tokenAddr), sql`${schema.transfers.block} <= ${sourceBlock}`));
-  const trades = await db
-    .select()
-    .from(schema.curveTrades)
-    .where(and(eq(schema.curveTrades.token, tokenAddr), sql`${schema.curveTrades.block} <= ${sourceBlock}`));
-
-  const excluded = new Set([...PROTOCOL_ADDRESSES, token.curvePool, ...(token.graduatedPool ? [token.graduatedPool] : []), ZERO]);
-  const participants = [...new Set([...transfers.flatMap((t) => [t.from, t.to]), ...trades.map((t) => t.trader), token.creator])].filter(
-    (a) => !excluded.has(a),
-  );
-  const contracts = await contractSet(ctx, participants, sourceBlock);
-  for (const a of excluded) contracts.add(a);
-
-  // Funding ancestry: walk stored edges from participants up to 3 hops.
-  const funding: FundingEdge[] = [];
-  let frontier = participants;
-  const seen = new Set<string>();
-  for (let hop = 0; hop < 3 && frontier.length; hop++) {
-    const rows = await db.select().from(schema.fundingEdges).where(inArray(schema.fundingEdges.wallet, frontier));
-    const next: string[] = [];
-    for (const r of rows) {
-      const key = `${r.wallet}|${r.txHash}|${r.funder}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      funding.push({ wallet: r.wallet, funder: r.funder, origin: r.origin, block: r.block, blockTime: r.blockTime, txHash: r.txHash });
-      next.push(r.origin);
-    }
-    frontier = [...new Set(next)];
+  const excluded = new Set<string>([ZERO, ...PROTOCOL_ADDRESSES]);
+  for (const t of tokens) {
+    excluded.add(t.curvePool);
+    if (t.graduatedPool) excluded.add(t.graduatedPool);
   }
 
-  const input: ClusterInput = {
-    token: tokenAddr,
-    creator: token.creator,
-    createBlock: token.createBlock,
+  const participantsByToken = new Map<string, Set<string>>(tokens.map((t) => [t.address, new Set([t.creator])]));
+  for (const t of transfers) for (const a of [t.from, t.to]) if (!excluded.has(a)) participantsByToken.get(t.token)?.add(a);
+  for (const t of trades) if (!excluded.has(t.trader)) participantsByToken.get(t.token)?.add(t.trader);
+  const participants = [...new Set([...participantsByToken.values()].flatMap((s) => [...s]))];
+
+  const contracts = await contractSet(ctx, participants, sourceBlock);
+  for (const a of excluded) contracts.add(a);
+  const funding = await fundingAncestry(db, participants, 3);
+  ctx.log?.(`[pipeline] ${tokens.length} tokens, ${participants.length} wallets, ${funding.length} funding edges`);
+
+  const result = clusterWallets({
+    launches: tokens.map((t) => ({ token: t.address, creator: t.creator, createBlock: t.createBlock })),
     wallets: participants,
     contracts,
     infrastructure: ctx.infrastructure,
     funding,
-    trades: trades.map((t) => ({ wallet: t.trader, side: t.side, block: t.block, txHash: t.txHash })),
-    transfers: transfers.map((t) => ({ from: t.from, to: t.to, block: t.block, txHash: t.txHash })),
-  };
-  const clusters = clusterToken(input);
-
-  const volumeTrades: VolumeTrade[] = trades.map((t) =>
-    t.side === "buy"
-      ? { wallet: t.trader, side: "buy", block: t.block, mon: BigInt(t.amountIn), tokens: BigInt(t.amountOut) }
-      : { wallet: t.trader, side: "sell", block: t.block, mon: BigInt(t.amountOut), tokens: BigInt(t.amountIn) },
-  );
-  const metrics = computeMetrics({
-    token: tokenAddr,
-    creator: token.creator,
-    sourceBlock,
-    transfers: transfers.map((t) => ({ from: t.from, to: t.to, value: BigInt(t.value) })),
-    excludedHolders: contracts,
-    entityOf: clusters.entityOf,
-    clusters: clusters.clusters,
-    trades: volumeTrades,
+    trades: trades.map((t) => ({ token: t.token, wallet: t.trader, side: t.side, block: t.block, txHash: t.txHash })),
+    transfers: transfers.map((t) => ({ token: t.token, from: t.from, to: t.to, block: t.block, txHash: t.txHash })),
   });
-  const { canonical } = evidenceRoot(tokenAddr, sourceBlock, clusters.clusters);
-  return { token: tokenAddr, symbol: token.symbol, clusters, metrics, evidenceJson: canonical };
+
+  const transfersByToken = groupBy(transfers, (t) => t.token);
+  const tradesByToken = groupBy(trades, (t) => t.token);
+  const runs: TokenRun[] = tokens.map((token) => {
+    const tokClusters = clustersForToken(result, participantsByToken.get(token.address) ?? []);
+    const volumeTrades: VolumeTrade[] = (tradesByToken.get(token.address) ?? []).map((t) =>
+      t.side === "buy"
+        ? { wallet: t.trader, side: "buy", block: t.block, mon: BigInt(t.amountIn), tokens: BigInt(t.amountOut) }
+        : { wallet: t.trader, side: "sell", block: t.block, mon: BigInt(t.amountOut), tokens: BigInt(t.amountIn) },
+    );
+    const metrics = computeMetrics({
+      token: token.address,
+      creator: token.creator,
+      sourceBlock,
+      transfers: (transfersByToken.get(token.address) ?? []).map((t) => ({ from: t.from, to: t.to, value: BigInt(t.value) })),
+      excludedHolders: contracts,
+      entityOf: result.entityOf,
+      clusters: tokClusters,
+      trades: volumeTrades,
+    });
+    const { canonical } = evidenceRoot(token.address, sourceBlock, tokClusters);
+    return { token: token.address, symbol: token.symbol, clusterCount: tokClusters.length, metrics, evidenceJson: canonical };
+  });
+
+  return { sourceBlock, result, tokens: runs };
 }
 
-/** Replace a token's stored clusters/links and upsert its metrics, in one transaction. */
-export async function storeRun(db: Db, run: TokenRun): Promise<void> {
-  const m = run.metrics;
+function groupBy<T>(xs: T[], key: (x: T) => string): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const x of xs) {
+    const k = key(x);
+    const list = m.get(k);
+    if (list) list.push(x);
+    else m.set(k, [x]);
+  }
+  return m;
+}
+
+/** Replace all stored entities and upsert every token's metrics, in one transaction. */
+export async function storeRun(db: Db, run: GlobalRun): Promise<void> {
   await db.transaction(async (tx) => {
-    await tx.delete(schema.clusterLinks).where(eq(schema.clusterLinks.token, run.token));
-    await tx.delete(schema.clusters).where(eq(schema.clusters.token, run.token));
-    for (const c of run.clusters.clusters) {
-      await tx.insert(schema.clusters).values({ token: run.token, id: c.id, members: c.members, containsCreator: c.containsCreator, sourceBlock: m.sourceBlock });
-      if (c.links.length) {
-        await tx.insert(schema.clusterLinks).values(
-          c.links.map((l) => ({ token: run.token, clusterId: c.id, a: l.a, b: l.b, type: l.type, weight: l.weight, evidence: l.evidence })),
+    await tx.delete(schema.entityLinks);
+    await tx.delete(schema.entityMembers);
+    await tx.delete(schema.entities);
+    for (const c of run.result.clusters) {
+      await tx.insert(schema.entities).values({
+        id: c.id,
+        members: c.members,
+        size: c.members.length,
+        createdTokens: c.createdTokens,
+        sourceBlock: run.sourceBlock,
+      });
+      await tx.insert(schema.entityMembers).values(c.members.map((w) => ({ wallet: w, entityId: c.id })));
+      for (let i = 0; i < c.links.length; i += 500) {
+        await tx.insert(schema.entityLinks).values(
+          c.links.slice(i, i + 500).map((l) => ({ entityId: c.id, a: l.a, b: l.b, type: l.type, weight: l.weight, evidence: l.evidence })),
         );
       }
     }
-    const row = {
-      sourceBlock: m.sourceBlock,
-      totalSupply: m.totalSupply.toString(),
-      rawHolders: m.rawHolders,
-      realHolders: m.realHolders,
-      effectiveTop10Bps: m.effectiveTop10Bps,
-      clusterSupplyBps: m.clusterSupplyBps,
-      creatorLinkedSupplyBps: m.creatorLinkedSupplyBps,
-      rawVolume: m.rawVolume.toString(),
-      organicVolume: m.organicVolume.toString(),
-      organicVolumeBps: m.organicVolumeBps,
-      evidenceRoot: m.evidenceRoot,
-      evidenceJson: run.evidenceJson,
-      computedAt: new Date(),
-    };
-    await tx.insert(schema.tokenMetrics).values({ token: run.token, ...row }).onConflictDoUpdate({ target: schema.tokenMetrics.token, set: row });
+    for (const t of run.tokens) {
+      const m = t.metrics;
+      const row = {
+        sourceBlock: m.sourceBlock,
+        totalSupply: m.totalSupply.toString(),
+        rawHolders: m.rawHolders,
+        realHolders: m.realHolders,
+        effectiveTop10Bps: m.effectiveTop10Bps,
+        clusterSupplyBps: m.clusterSupplyBps,
+        creatorLinkedSupplyBps: m.creatorLinkedSupplyBps,
+        rawVolume: m.rawVolume.toString(),
+        organicVolume: m.organicVolume.toString(),
+        organicVolumeBps: m.organicVolumeBps,
+        evidenceRoot: m.evidenceRoot,
+        evidenceJson: t.evidenceJson,
+        computedAt: new Date(),
+      };
+      await tx.insert(schema.tokenMetrics).values({ token: t.token, ...row }).onConflictDoUpdate({ target: schema.tokenMetrics.token, set: row });
+    }
   });
-}
-
-export async function allTokens(db: Db): Promise<string[]> {
-  const rows = await db.select({ a: schema.tokens.address }).from(schema.tokens);
-  return rows.map((r) => r.a);
 }
