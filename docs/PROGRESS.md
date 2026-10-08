@@ -39,8 +39,15 @@ Limitation: this finds the **first** funding only, not every inbound transfer be
 - `pnpm metrics:run` works end to end (clusters + metrics stored per token). Holder metrics need pass 2 (transfers) to finish before they mean anything.
 - Contracts: NunoFeed + OrganicGate, 15 Foundry tests (incl. fuzz), zero lint warnings. Deploy script `pnpm deploy:contracts` (testnet 10143 only), **not deployed**: needs `DEPLOYER_PRIVATE_KEY` in `.env`.
 
-### Open design question (asked user)
-Clustering is per token (SPEC §7.3). The serial-launcher pattern above (one funder behind every creator) is only visible **across** tokens. Global entity resolution would catch it, but it's a scope change, so I'm waiting for the user's call.
+### Global entity resolution (approved by user 2026-10-08)
+Clustering now runs once across all tokens. Same-block signals are grouped per (token, block) and their weights accumulate across tokens per wallet pair. Per-token metrics use the global wallet→entity map. On the partial 7-day data (64 tokens): **one 10-wallet entity created all 64 tokens**. Each creator was first funded with exactly 14,995 MON by `0xb245…66d3b3` (tx evidence stored); those creators made 201 of 483 curve trades.
+
+### Built later in session 1
+- Publisher (`pnpm publish:snapshots`): change policy (holders changed, ≥25 bps move, evidence changed, or 6 h heartbeat); records tx hash, gas and price per snapshot in `snapshots`. Integration-tested on anvil (deploy + publish + read-back + OrganicGate).
+- API (`pnpm api`): Hono, 5 endpoints + `/openapi.json`, 15 s cache, 120 req/min/IP. Smoke-tested on real data.
+- `docs/METHODOLOGY.md` written.
+- Web app (`apps/web`): screener, token page (metrics, cluster graph, evidence table with Monadscan links, snapshot), cluster page, methodology page.
+- `pnpm --filter @nuno/metrics validation [seed]` generates the VALIDATION.md review sheet.
 
 ### What works
 - `pnpm index:backfill` (2-pass parallel, resumable via `indexer:curve`/`indexer:tokens` cursors, window-widening safe), `pnpm index:tail`

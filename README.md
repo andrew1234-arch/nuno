@@ -8,7 +8,11 @@ Nuno detects coordinated wallet clusters behind [nad.fun](https://nad.fun) token
 
 ## Problem and intended user
 
-_TODO_
+nad.fun is Monad's main token launchpad. Its raw holder counts and volume are easy to fake, and the tooling is public: bundler/volume bots spread funds across 100+ wallets, generate automated buy/sell volume, and advertise "stealth" modes that defeat bubble maps. Screeners, launchpad trending lists, trading agents and holders all read the raw numbers these bots inflate.
+
+Nuno counts by **entity**, not wallet, and strips volume an entity trades with itself.
+
+**Intended users are integrators**: screeners, trackers, launchpad UIs, trading agents and smart contracts that want honest token metrics. They call the REST API or read `NunoFeed` on-chain. The screener in `apps/web` is the reference integration. `OrganicGate.sol` is an example contract consumer that reverts when a token's cluster-held supply is too high or Nuno's data is stale.
 
 ## Baseline: what already exists
 
@@ -16,7 +20,28 @@ GMGN (closed, commercial) already reports bundler share, insider-pattern volume 
 
 ## Architecture
 
-_TODO_
+```
+Monad mainnet (read-only)
+  nad.fun curve events ─┐
+  Uniswap V3 swaps ─────┼─► packages/indexer ─► Postgres
+  ERC-20 Transfers ─────┘          │
+  archive state + debug traces ─► packages/funding (first funder, ≤3 hops, with tx evidence)
+                                   │
+              packages/cluster (global weighted union-find, 6 evidence-backed edge types)
+                                   │
+                    packages/metrics (per-token metrics + evidenceRoot)
+                  ┌────────────────┼──────────────────┐
+             apps/api        packages/publisher      apps/web
+           (REST+OpenAPI)   NunoFeed.sol (testnet)  (screener, evidence pages)
+                                   │
+                         OrganicGate.sol (example consumer)
+```
+
+Every metric is defined in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md), which is also rendered at `/methodology` in the web app.
+
+## Stack
+
+TypeScript (pnpm workspaces), viem, Postgres + Drizzle, Vitest, Hono (API), Next.js App Router + Tailwind (web), Solidity + Foundry (contracts).
 
 ## Data split
 
@@ -25,15 +50,42 @@ _TODO_
 
 ## Setup
 
+Requirements: Node 22+, pnpm 10, Docker, [Foundry](https://getfoundry.sh).
+
 ```bash
 pnpm i
-cp .env.example .env
-docker compose up -d db        # Postgres on localhost:5433
-pnpm db:push                   # create tables
-pnpm index:backfill            # BACKFILL_DAYS (default 7) of nad.fun activity
-pnpm funding:resolve           # first-funding resolution for every buyer, 3 hops
-pnpm test
+cp .env.example .env               # fill PUBLISHER_PRIVATE_KEY / DEPLOYER_PRIVATE_KEY for testnet
+docker compose up -d db            # Postgres on localhost:5433
+pnpm db:push                       # create tables
+
+pnpm index:backfill                # BACKFILL_DAYS (default 7) of nad.fun launches, resumable
+pnpm funding:resolve               # first funder of every buyer, up to 3 hops, with tx evidence
+pnpm metrics:run                   # global entity resolution + per-token metrics
+
+pnpm deploy:contracts              # NunoFeed + OrganicGate on Monad testnet -> deployments/monad-testnet.json
+pnpm publish:snapshots             # write changed snapshots to NunoFeed
+
+pnpm api                           # REST API on :8787 (OpenAPI at /openapi.json)
+pnpm --filter @nuno/web dev        # screener on :3000 (NUNO_API_URL defaults to http://localhost:8787)
+pnpm index:tail                    # keep indexing new blocks
+
+pnpm test && pnpm typecheck && pnpm lint
+cd contracts && forge test
 ```
+
+Public Monad RPCs differ in what they serve (log ranges, archive state, debug traces); the measured table is in [`docs/PROGRESS.md`](docs/PROGRESS.md). Funding resolution needs an endpoint with archive state and `debug_traceBlockByNumber` (`https://rpc1.monad.xyz` works).
+
+## API
+
+| Endpoint | Returns |
+|---|---|
+| `GET /tokens?sort=holder_gap\|cluster_supply\|creator_supply\|wash\|raw_volume\|newest` | Tokens with raw vs adjusted metrics |
+| `GET /tokens/:address` | One token, its metrics and latest NunoFeed snapshot tx |
+| `GET /tokens/:address/clusters` | Entities active in the token, every link with evidence |
+| `GET /clusters/:id` | One entity: members, tokens it created, evidence |
+| `GET /wallets/:address` | A wallet's entity, funders, funded wallets, trades |
+
+Rate-limited (120 req/min/IP) and cached (15 s).
 
 ## Why Monad
 

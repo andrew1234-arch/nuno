@@ -13,6 +13,7 @@
     "drizzle-orm": "^0.38.3"
   },
   "scripts": {
-    "run": "tsx src/cli.ts"
+    "run": "tsx src/cli.ts",
+    "validation": "tsx src/validation.ts"
   }
 }
