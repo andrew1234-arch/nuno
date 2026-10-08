@@ -108,6 +108,13 @@ describe("common_funding_source", () => {
     expect(new Set(r.clusters[0]!.links.map((l) => l.type))).toEqual(new Set(["common_funding_source", "same_block_sell"]));
   });
 
+  it("counts a shared lineage once, not once per shared ancestor", () => {
+    // a <- m1 <- root <- root2 ; b <- m2 <- root <- root2. Two shared ancestors, one lineage: 0.8, not 1.6.
+    const funding = [fund("0xa", "0xm1"), fund("0xb", "0xm2"), fund("0xm1", "0xroot"), fund("0xm2", "0xroot"), fund("0xroot", "0xroot2")];
+    const r = clusterToken(input({ wallets: ["0xa", "0xb"], funding }));
+    expect(r.clusters).toHaveLength(0);
+  });
+
   it("stops at maxFundingHops", () => {
     // a <- m1 <- m2 <- m3 <- root ; b <- root. root is 4 hops from a.
     const funding = [fund("0xa", "0xm1"), fund("0xm1", "0xm2"), fund("0xm2", "0xm3"), fund("0xm3", "0xroot"), fund("0xb", "0xroot")];

@@ -102,9 +102,18 @@ export function commonSourceLinks(
       bySource.set(src, list);
     }
   }
-  const out: Link[] = [];
-  for (const group of bySource.values()) out.push(...linkGroup(group, "common_funding_source", cfg.weights.common_funding_source));
-  return out;
+  // Shared ancestors on one lineage (e.g. hop 2 and hop 3 of the same chain) are one signal:
+  // emit at most one link per pair, carrying the evidence of every shared source.
+  const byPair = new Map<string, Link>();
+  for (const group of bySource.values()) {
+    for (const l of linkGroup(group, "common_funding_source", cfg.weights.common_funding_source)) {
+      const k = l.a < l.b ? `${l.a}|${l.b}` : `${l.b}|${l.a}`;
+      const prev = byPair.get(k);
+      if (prev) prev.evidence.push(...l.evidence);
+      else byPair.set(k, l);
+    }
+  }
+  return [...byPair.values()];
 }
 
 /** Wallets with a token's creator among their funding ancestors are linked to that creator. */

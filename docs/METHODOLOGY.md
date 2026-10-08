@@ -34,7 +34,7 @@ Entity resolution runs **globally across every tracked token at once**. That way
 | Edge | Weight | Rule |
 |---|---|---|
 | `same_direct_funder` | 1.0 | Both wallets' first funding came from the same non-infrastructure origin, within 24 h of each other |
-| `common_funding_source` | 0.8 | The wallets share any non-infrastructure ancestor within 3 funding hops |
+| `common_funding_source` | 0.8 | The wallets share any non-infrastructure ancestor within 3 funding hops. Counted once per pair, however many ancestors they share (several shared ancestors on one chain are one signal) |
 | `creator_funded` | 1.0 | A token's creator is among the wallet's funding ancestors (≤ 3 hops); links wallet and creator |
 | `token_transfer` | 1.0 | One wallet sent a tracked token directly to the other (neither is a contract) |
 | `same_block_early_buy` | 0.5 | Both bought the same token in the same block, within 200 blocks (~1 min) of its creation |
