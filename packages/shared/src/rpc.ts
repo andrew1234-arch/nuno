@@ -45,11 +45,19 @@ interface JsonRpcResponse<T> {
   error?: { code: number; message: string };
 }
 
+// Provider throttling: always retryable with backoff (checked first: "rate limit exceeded" must
+// not be mistaken for a request-size limit).
+const RATE_LIMIT_PATTERNS = [/rate/i, /too many/i, /capacity/i, /throttl/i, /quota/i];
+const RATE_LIMIT_CODES = new Set([429, -32005]);
+// Request-size limits (block range, response size): not retryable with the same params.
 const LIMIT_PATTERNS = [/range/i, /too large/i, /limited to/i, /exceed/i];
 // Messages that indicate the request itself is wrong; never retry these.
 const FATAL_PATTERNS = [/not found/i, /not allowed/i, /not available/i, /invalid/i];
 
 export function classifyRpcError(method: string, code: number, message: string): RpcError {
+  if (RATE_LIMIT_CODES.has(code) || RATE_LIMIT_PATTERNS.some((p) => p.test(message))) {
+    return new RpcError(message, method, 429, true);
+  }
   if (LIMIT_PATTERNS.some((p) => p.test(message))) return new RpcLimitError(message, method, code);
   if (code === -32601 || FATAL_PATTERNS.some((p) => p.test(message))) {
     return new RpcError(message, method, code, false);
@@ -85,7 +93,8 @@ export class RpcClient {
     for (let attempt = 0; attempt <= this.retries; attempt++) {
       try {
         const result = await this.withSlot(() => this.send<T>(method, params));
-        if (key) {
+        // Never cache null/undefined: a lagging node may not have the tx/block yet.
+        if (key && result !== null && result !== undefined) {
           if (this.cache.size >= this.cacheSize) {
             const oldest = this.cache.keys().next().value;
             if (oldest !== undefined) this.cache.delete(oldest);
@@ -109,29 +118,33 @@ export class RpcClient {
   private async send<T>(method: string, params: unknown[]): Promise<T> {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+    // The timeout covers the whole exchange, including reading the (possibly multi-MB) body.
     let res: Response;
-    try {
-      const url = this.urls[this.rr++ % this.urls.length]!;
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-        signal: ctrl.signal,
-      });
-    } catch (err) {
-      if (ctrl.signal.aborted) throw new RpcTimeoutError(method, this.timeoutMs);
-      throw new RpcError(`network error: ${(err as Error).message}`, method, undefined, true);
-    } finally {
-      clearTimeout(timer);
-    }
-    if (res.status === 429 || res.status >= 500) {
-      throw new RpcError(`HTTP ${res.status}`, method, res.status, true);
-    }
     let body: JsonRpcResponse<T>;
     try {
-      body = (await res.json()) as JsonRpcResponse<T>;
-    } catch {
-      throw new RpcError(`HTTP ${res.status}: non-JSON response`, method, res.status, true);
+      const url = this.urls[this.rr++ % this.urls.length]!;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+          signal: ctrl.signal,
+        });
+      } catch (err) {
+        if (ctrl.signal.aborted) throw new RpcTimeoutError(method, this.timeoutMs);
+        throw new RpcError(`network error: ${(err as Error).message}`, method, undefined, true);
+      }
+      if (res.status === 429 || res.status >= 500) {
+        throw new RpcError(`HTTP ${res.status}`, method, res.status, true);
+      }
+      try {
+        body = (await res.json()) as JsonRpcResponse<T>;
+      } catch {
+        if (ctrl.signal.aborted) throw new RpcTimeoutError(method, this.timeoutMs);
+        throw new RpcError(`HTTP ${res.status}: non-JSON response`, method, res.status, true);
+      }
+    } finally {
+      clearTimeout(timer);
     }
     if (body.error) throw classifyRpcError(method, body.error.code, body.error.message);
     if (!("result" in body)) throw new RpcError("response missing result", method, undefined, true);

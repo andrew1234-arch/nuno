@@ -189,15 +189,19 @@ describe("volume", () => {
 });
 
 describe("evidenceRoot", () => {
-  it("is order-independent and changes when evidence changes", () => {
+  it("is order-independent, block-independent, and changes only when evidence changes", () => {
     const c1 = cluster(["0xa", "0xb"]);
     const c2 = cluster(["0xc", "0xd"]);
-    const r1 = evidenceRoot("0x70", 100, [c1, c2]).root;
-    const r2 = evidenceRoot("0x70", 100, [c2, { ...c1, members: [...c1.members].reverse() }]).root;
+    const r1 = evidenceRoot("0x70", [c1, c2]).root;
+    const r2 = evidenceRoot("0x70", [c2, { ...c1, members: [...c1.members].reverse() }]).root;
     expect(r1).toBe(r2);
     expect(r1).toMatch(/^0x[0-9a-f]{64}$/);
-    expect(evidenceRoot("0x70", 101, [c1, c2]).root).not.toBe(r1);
+    // Recomputing at a later block with the same evidence must give the same root (publisher relies on it).
+    expect(computeMetrics(base({ sourceBlock: 100, clusters: [c1] })).evidenceRoot).toBe(
+      computeMetrics(base({ sourceBlock: 999, clusters: [c1] })).evidenceRoot,
+    );
+    expect(evidenceRoot("0x71", [c1, c2]).root).not.toBe(r1);
     const changed = { ...c1, links: [{ ...c1.links[0]!, evidence: [{ ...c1.links[0]!.evidence[0]!, txHash: "0xother" }] }] };
-    expect(evidenceRoot("0x70", 100, [changed, c2]).root).not.toBe(r1);
+    expect(evidenceRoot("0x70", [changed, c2]).root).not.toBe(r1);
   });
 });

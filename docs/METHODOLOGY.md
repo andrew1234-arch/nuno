@@ -89,13 +89,13 @@ Because entities span wallets, one wallet buying while a sibling wallet sells is
 `evidenceRoot = keccak256(utf8(canonicalJson))`, where `canonicalJson` is:
 
 ```json
-{"token": "<addr>", "sourceBlock": <n>, "clusters": [
+{"token": "<addr>", "clusters": [
   {"id": "<addr>", "members": ["<sorted addrs>"],
    "evidence": ["<a>:<b>:<edgeType>:<txHash>:<block>", "... sorted, deduplicated"]}
 ]}
 ```
 
-`clusters` lists the entities active in the token, sorted by id. The canonical JSON is stored and served, so anyone can recompute the root and compare it with the one on-chain.
+`clusters` lists the entities active in the token, sorted by id. The source block is **not** part of the hash, so the root changes only when the evidence changes; the block is published alongside it as `sourceBlock`. The canonical JSON is stored and served, so anyone can recompute the root and compare it with the one on-chain.
 
 ## 6. On-chain feed
 

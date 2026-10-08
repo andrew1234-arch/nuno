@@ -38,19 +38,29 @@ export function sameDirectFunderLinks(input: ClusterInput, cfg: ClusterConfig): 
     list.push(f);
     byFunder.set(f.origin, list);
   }
+  // Sliding window: every pair funded within the window is linked (not fixed buckets, which
+  // would miss two fundings 1 h apart that straddle a bucket boundary). Each wallet links to at
+  // most MAX_PAIRWISE_GROUP following wallets, keeping work O(n) for huge fan-outs; consecutive
+  // pairs are always included, so connectivity is unaffected.
   const out: Link[] = [];
   for (const [funder, edges] of byFunder) {
-    edges.sort((x, y) => x.blockTime - y.blockTime);
-    // Split into windows: consecutive fundings no more than the window apart from the window start.
-    let start = 0;
-    for (let i = 1; i <= edges.length; i++) {
-      if (i === edges.length || edges[i]!.blockTime - edges[start]!.blockTime > cfg.sameFunderWindowSecs) {
-        const group = edges.slice(start, i).map((e) => ({
-          wallet: e.wallet,
-          ev: { type: "same_direct_funder" as const, txHash: e.txHash, block: e.block, detail: funder },
-        }));
-        out.push(...linkGroup(group, "same_direct_funder", cfg.weights.same_direct_funder));
-        start = i;
+    const firstPerWallet = [...new Map([...edges].sort((x, y) => x.blockTime - y.blockTime).map((e) => [e.wallet, e])).values()];
+    firstPerWallet.sort((x, y) => x.blockTime - y.blockTime);
+    for (let i = 0; i < firstPerWallet.length; i++) {
+      const a = firstPerWallet[i]!;
+      for (let j = i + 1; j < firstPerWallet.length && j <= i + MAX_PAIRWISE_GROUP; j++) {
+        const b = firstPerWallet[j]!;
+        if (b.blockTime - a.blockTime > cfg.sameFunderWindowSecs) break;
+        out.push({
+          a: a.wallet,
+          b: b.wallet,
+          type: "same_direct_funder",
+          weight: cfg.weights.same_direct_funder,
+          evidence: [
+            { type: "same_direct_funder", txHash: a.txHash, block: a.block, detail: funder },
+            { type: "same_direct_funder", txHash: b.txHash, block: b.block, detail: funder },
+          ],
+        });
       }
     }
   }

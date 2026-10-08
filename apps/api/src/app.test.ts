@@ -141,8 +141,21 @@ describe("API routes", () => {
     expect(repo.calls).toBe(2);
   });
 
+  it("ignores X-Forwarded-For unless trustProxy is set (no limit bypass)", async () => {
+    const app = createApp(fakeRepo(), { rateLimit: { max: 1, windowMs: 60_000 }, now: () => 0, clientIp: () => "9.9.9.9" });
+    expect((await app.request("/health", { headers: { "x-forwarded-for": "1.1.1.1" } })).status).toBe(200);
+    expect((await app.request("/health", { headers: { "x-forwarded-for": "2.2.2.2" } })).status).toBe(429);
+  });
+
+  it("ignores unknown query params in the cache key and bounds the cache", async () => {
+    const repo = fakeRepo();
+    const app = createApp(repo, { cacheMaxEntries: 2, now: () => 0 });
+    for (let i = 0; i < 10; i++) await app.request(`/tokens?junk=${i}`);
+    expect(repo.calls).toBe(1);
+  });
+
   it("rate-limits per client", async () => {
-    const app = createApp(fakeRepo(), { rateLimit: { max: 2, windowMs: 60_000 }, now: () => 0 });
+    const app = createApp(fakeRepo(), { rateLimit: { max: 2, windowMs: 60_000 }, now: () => 0, trustProxy: true });
     const hdr = { headers: { "x-forwarded-for": "1.2.3.4" } };
     expect((await app.request("/health", hdr)).status).toBe(200);
     expect((await app.request("/health", hdr)).status).toBe(200);

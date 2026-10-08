@@ -22,11 +22,12 @@ function req(name: string): string {
   return v;
 }
 
-function num(name: string, fallback: number): number {
-  const v = process.env[name];
+function num(name: string, fallback: number, opts: { positive?: boolean } = {}): number {
+  const v = process.env[name]?.trim();
   if (!v) return fallback;
   const n = Number(v);
-  if (!Number.isFinite(n)) throw new Error(`Env var ${name} must be a number, got ${v}`);
+  if (!Number.isFinite(n)) throw new Error(`Env var ${name} must be a number, got "${v}"`);
+  if (opts.positive && n <= 0) throw new Error(`Env var ${name} must be > 0, got ${n}`);
   return n;
 }
 
@@ -53,6 +54,26 @@ export const config = {
   },
   get backfillDays(): number {
     return num("BACKFILL_DAYS", 7);
+  },
+  /** Worker loop sleep between ticks. */
+  get workerPollMs(): number {
+    return num("WORKER_POLL_MS", 3_000, { positive: true });
+  },
+  /** Minimum gap between metrics recomputes (debounce). */
+  get metricsMinIntervalMs(): number {
+    return num("METRICS_MIN_INTERVAL_MS", 60_000, { positive: true });
+  },
+  /** Publisher heartbeat: run the publish policy at least this often. */
+  get publishHeartbeatMs(): number {
+    return num("PUBLISH_HEARTBEAT_MS", 30 * 60_000, { positive: true });
+  },
+  /** Delay before retrying after a failed publish. */
+  get publishRetryMs(): number {
+    return num("PUBLISH_RETRY_MS", 60_000, { positive: true });
+  },
+  /** Chain the feed lives on (10143 = Monad testnet; 31337 for a local anvil demo). */
+  get publishChainId(): number {
+    return num("PUBLISH_CHAIN_ID", 10143, { positive: true });
   },
   get nansenApiKey(): string | undefined {
     return process.env.NANSEN_API_KEY || undefined;

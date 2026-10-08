@@ -46,13 +46,13 @@ export async function resolveFirstFunding(rpc: RpcClient, wallet: Address, befor
   const block = await firstTrueBlock(0, beforeBlock, (b) => touched(rpc, wallet, b));
   if (block === null) return { status: "unfunded", isContract: false };
 
-  const body = await rpc.call<RpcBlock>("eth_getBlockByNumber", [toHex(block), true], { cache: true });
+  // Block bodies and traces can be MBs: never cached (long-running processes would grow unbounded).
+  const body = await rpc.call<RpcBlock>("eth_getBlockByNumber", [toHex(block), true]);
   let transfers = directTransfersFromBlock(body, wallet);
   if (transfers.length === 0) {
     const traces = await rpc.call<BlockTraceEntry[]>(
       "debug_traceBlockByNumber",
       [toHex(block), { tracer: "callTracer" }],
-      { cache: true },
     );
     transfers = extractInboundTransfers(traces, wallet);
   }
@@ -131,8 +131,11 @@ function resolveOne(ctx: FundingCtx, addr: Address, before: number, hop: number)
       const msg = (err as Error).message.slice(0, 500);
       await ctx.db
         .insert(schema.wallets)
-        .values({ address: addr, fundingStatus: "error", fundingError: msg })
-        .onConflictDoUpdate({ target: schema.wallets.address, set: { fundingStatus: "error", fundingError: msg } });
+        .values({ address: addr, fundingStatus: "error", fundingError: msg, fundingAttempts: 1 })
+        .onConflictDoUpdate({
+          target: schema.wallets.address,
+          set: { fundingStatus: "error", fundingError: msg, fundingAttempts: sql`${schema.wallets.fundingAttempts} + 1` },
+        });
       ctx.log?.(`[funding] hop ${hop} ${addr}: ERROR ${msg}`);
       return [];
     }
@@ -154,6 +157,9 @@ export async function resolveFundingTree(ctx: FundingCtx, wallet: Address, befor
   }
 }
 
+/** After this many failed attempts a wallet is left as "error" and shown as unresolved. */
+export const MAX_FUNDING_ATTEMPTS = 3;
+
 /**
  * Buyers of tracked tokens with their first buy block, not yet resolved. A buy whose curve
  * `sender` is a known contract (a bot router) is attributed to the transaction signer.
@@ -167,8 +173,11 @@ export async function pendingBuyers(db: Db, limit: number): Promise<Array<{ trad
     )
     select b.buyer, min(b.block)::bigint as first_buy
     from buys b left join wallets w on w.address = b.buyer
-    where w.funding_status is null or w.funding_status in ('pending', 'error')
-    group by b.buyer
+    where (w.funding_status is null or w.funding_status in ('pending', 'error'))
+      and coalesce(w.funding_attempts, 0) < ${MAX_FUNDING_ATTEMPTS}
+    group by b.buyer, w.funding_attempts
+    -- Never-tried wallets first, so repeat failures cannot starve new buyers.
+    order by coalesce(w.funding_attempts, 0), min(b.block)
     limit ${limit}`);
   return [...rows].map((r) => ({ trader: r.buyer as Address, firstBuy: Number(r.first_buy) }));
 }

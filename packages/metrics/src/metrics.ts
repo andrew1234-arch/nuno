@@ -131,11 +131,14 @@ export function washVolume(trades: VolumeTrade[], entityOf: Map<Addr, string>, c
   return wash;
 }
 
-/** Canonical JSON of the clusters and evidence behind a snapshot, and its keccak256. */
-export function evidenceRoot(token: Addr, sourceBlock: number, clusters: Cluster[]): { root: Hex; canonical: string } {
+/**
+ * Canonical JSON of the clusters and evidence behind a token's metrics, and its keccak256.
+ * Deliberately excludes the source block: the root changes only when the evidence changes, so
+ * publishers can use it to detect real changes (the block is published separately).
+ */
+export function evidenceRoot(token: Addr, clusters: Cluster[]): { root: Hex; canonical: string } {
   const canon = {
     token,
-    sourceBlock,
     clusters: [...clusters]
       .map((c) => ({
         id: c.id,
@@ -190,6 +193,6 @@ export function computeMetrics(input: MetricsInput, cfg: MetricsConfig = DEFAULT
     rawVolume,
     organicVolume,
     organicVolumeBps: toBps(organicVolume, rawVolume),
-    evidenceRoot: evidenceRoot(input.token, input.sourceBlock, input.clusters).root,
+    evidenceRoot: evidenceRoot(input.token, input.clusters).root,
   };
 }

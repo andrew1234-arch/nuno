@@ -77,6 +77,18 @@ describe("same_direct_funder", () => {
     expect(r.clusters).toHaveLength(0);
   });
 
+  it("uses a sliding 24h window, not fixed buckets", () => {
+    // W1 at 0h, W2 at 23.5h, W3 at 24.5h: W2–W3 (1h apart) and W1–W2 link; W1–W3 (24.5h) does not directly.
+    const r = clusterToken(
+      input({ wallets: ["0xa", "0xb", "0xc"], funding: [fund("0xa", "0xf1", 0), fund("0xb", "0xf1", 23.5 * H), fund("0xc", "0xf1", 24.5 * H)] }),
+    );
+    expect(r.clusters[0]?.members).toEqual(["0xa", "0xb", "0xc"]);
+    const pairs = r.clusters[0]!.links.map((l) => [l.a, l.b].sort().join("-")).sort();
+    expect(pairs).toContain("0xb-0xc");
+    expect(pairs).toContain("0xa-0xb");
+    expect(pairs).not.toContain("0xa-0xc");
+  });
+
   it("never links through infrastructure funders", () => {
     const r = clusterToken(
       input({ wallets: ["0xa", "0xb"], infrastructure: new Set(["0xcex"]), funding: [fund("0xa", "0xcex", 0), fund("0xb", "0xcex", 1)] }),

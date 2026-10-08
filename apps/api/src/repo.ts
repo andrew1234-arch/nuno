@@ -152,7 +152,10 @@ export class PgRepo implements Repo {
     const rows = await this.db.execute<{ entity_id: string }>(sql`
       select distinct em.entity_id from entity_members em
       where em.wallet in (
-        select trader from curve_trades where token = ${token}
+        -- Same attribution as the metrics pipeline: a bot-contract trade belongs to its signer.
+        select case when sw.is_contract and ct.tx_from is not null then ct.tx_from else ct.trader end
+          from curve_trades ct left join wallets sw on sw.address = ct.trader
+          where ct.token = ${token}
         union select "from" from transfers where token = ${token}
         union select "to" from transfers where token = ${token}
         union select creator from tokens where address = ${token}
@@ -189,15 +192,16 @@ export class PgRepo implements Repo {
       .select()
       .from(schema.fundingEdges)
       .where(or(eq(schema.fundingEdges.wallet, address), eq(schema.fundingEdges.origin, address)));
-    const trades = await this.db
-      .select({
-        token: schema.curveTrades.token,
-        buys: sql<number>`count(*) filter (where ${schema.curveTrades.side} = 'buy')::int`,
-        sells: sql<number>`count(*) filter (where ${schema.curveTrades.side} = 'sell')::int`,
-      })
-      .from(schema.curveTrades)
-      .where(eq(schema.curveTrades.trader, address))
-      .groupBy(schema.curveTrades.token);
+    // Trades sent directly, plus trades routed through a bot contract that this wallet signed.
+    const trades = [
+      ...(await this.db.execute<{ token: string; buys: number; sells: number }>(sql`
+        select ct.token,
+               count(*) filter (where ct.side = 'buy')::int as buys,
+               count(*) filter (where ct.side = 'sell')::int as sells
+        from curve_trades ct left join wallets sw on sw.address = ct.trader
+        where ct.trader = ${address} or (sw.is_contract and ct.tx_from = ${address})
+        group by ct.token`)),
+    ].map((r) => ({ token: r.token, buys: r.buys, sells: r.sells }));
     if (!w && !m && !edges.length && !trades.length) return null;
     return {
       address,

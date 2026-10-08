@@ -150,7 +150,7 @@ export async function runAll(ctx: PipelineCtx, sourceBlock: number): Promise<Glo
       clusters: tokClusters,
       trades: volumeTrades,
     });
-    const { canonical } = evidenceRoot(token.address, sourceBlock, tokClusters);
+    const { canonical } = evidenceRoot(token.address, tokClusters);
     return { token: token.address, symbol: token.symbol, clusterCount: tokClusters.length, metrics, evidenceJson: canonical };
   });
 

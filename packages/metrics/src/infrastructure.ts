@@ -26,4 +26,7 @@ export function loadInfrastructure(): InfraEntry[] {
   return JSON.parse(readFileSync(new URL("./infrastructure.json", import.meta.url), "utf8")) as InfraEntry[];
 }
 
-export const MANUAL_INFRASTRUCTURE: string[] = loadInfrastructure().map((e) => e.address.toLowerCase());
+/** Current infrastructure set. Re-reads the file on every call so long-running processes pick up `infra:scan` output. */
+export function infrastructureSet(): Set<string> {
+  return new Set(loadInfrastructure().map((e) => e.address.toLowerCase()));
+}

@@ -1,6 +1,6 @@
 import { RpcClient, config, createDb, getCursorBlock } from "@nuno/shared";
 import { runAll, storeRun } from "./pipeline.js";
-import { MANUAL_INFRASTRUCTURE } from "./infrastructure.js";
+import { infrastructureSet } from "./infrastructure.js";
 
 // Global entity resolution + per-token metrics over everything indexed so far.
 async function main() {
@@ -9,7 +9,7 @@ async function main() {
   const sourceBlock = await getCursorBlock(db, "indexer");
   if (sourceBlock === null) throw new Error("no indexer cursor: run pnpm index:backfill first");
 
-  const run = await runAll({ db, rpc, infrastructure: new Set(MANUAL_INFRASTRUCTURE), log: console.log }, sourceBlock);
+  const run = await runAll({ db, rpc, infrastructure: infrastructureSet(), log: console.log }, sourceBlock);
   await storeRun(db, run);
 
   console.log(`[metrics] ${run.result.clusters.length} multi-wallet entities; largest:`);

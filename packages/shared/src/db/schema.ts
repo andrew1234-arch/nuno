@@ -103,6 +103,8 @@ export const wallets = pgTable("wallets", {
     .default("pending"),
   firstFundedBlock: block("first_funded_block"),
   fundingError: text("funding_error"),
+  /** Failed resolution attempts; wallets at MAX_FUNDING_ATTEMPTS are no longer retried. */
+  fundingAttempts: integer("funding_attempts").notNull().default(0),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
 });
 
@@ -203,3 +205,14 @@ export const snapshots = pgTable(
   },
   (t) => [index("snapshots_token_idx").on(t.token, t.publishBlock)],
 );
+
+/**
+ * CurveGraduate events, stored independently of `tokens`: in the parallel backfill a graduation
+ * can be indexed before its token's CurveCreate. `applyGraduations` copies them onto tokens.
+ */
+export const graduations = pgTable("graduations", {
+  token: text("token").primaryKey(),
+  pool: text("pool").notNull(),
+  block: block("block").notNull(),
+  txHash: text("tx_hash").notNull(),
+});

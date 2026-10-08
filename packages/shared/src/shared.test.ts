@@ -39,6 +39,18 @@ describe("classifyRpcError", () => {
     expect(classifyRpcError("debug_traceTransaction", -32053, "API key is not allowed to access method").retryable).toBe(false);
   });
 
+  it.each([
+    ["rate limit exceeded", -32000],
+    ["request rate exceeded", -32005],
+    ["capacity exceeded", -32000],
+    ["Too Many Requests", -32000],
+  ])("treats rate limiting (%s) as retryable, not as a size limit", (msg, code) => {
+    const e = classifyRpcError("eth_getLogs", code, msg);
+    expect(e).not.toBeInstanceOf(RpcLimitError);
+    expect(e.retryable).toBe(true);
+    expect(e.code).toBe(429);
+  });
+
   it("treats unknown server errors as retryable", () => {
     expect(classifyRpcError("eth_call", -32000, "internal error").retryable).toBe(true);
   });
@@ -67,6 +79,33 @@ describe("RpcClient", () => {
     const rpc = new RpcClient({ url: "http://x", retries: 3 });
     await expect(rpc.call("eth_getLogs", [{}])).rejects.toBeInstanceOf(RpcError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never caches null results", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => respond({ jsonrpc: "2.0", id: 1, result: null }))
+      .mockImplementationOnce(() => respond({ jsonrpc: "2.0", id: 1, result: { from: "0xabc" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const rpc = new RpcClient({ url: "http://x" });
+    expect(await rpc.call("eth_getTransactionByHash", ["0x1"], { cache: true })).toBeNull();
+    expect(await rpc.call("eth_getTransactionByHash", ["0x1"], { cache: true })).toEqual({ from: "0xabc" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("times out while reading a stalled body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) =>
+        Promise.resolve({
+          status: 200,
+          json: () =>
+            new Promise((_res, rej) => init.signal!.addEventListener("abort", () => rej(new Error("aborted")))),
+        } as unknown as Response),
+      ),
+    );
+    const rpc = new RpcClient({ url: "http://x", timeoutMs: 20, retries: 0 });
+    await expect(rpc.call("debug_traceBlockByNumber", [])).rejects.toThrow(/timed out/);
   });
 
   it("caches only when asked", async () => {

@@ -78,13 +78,21 @@ export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number)
       stats.trades++;
     } else if (r.kind === "graduate") {
       await db
-        .update(schema.tokens)
-        .set({ graduatedPool: r.pool, graduatedBlock: m.block })
-        .where(eq(schema.tokens.address, r.token));
+        .insert(schema.graduations)
+        .values({ token: r.token, pool: r.pool, block: m.block, txHash: m.txHash })
+        .onConflictDoNothing();
       stats.graduations++;
     }
   }
   return stats;
+}
+
+/** Copy stored graduations onto their tokens. Safe to call any time; idempotent. */
+export async function applyGraduations(db: Db): Promise<void> {
+  await db.execute(sql`
+    update tokens set graduated_pool = g.pool, graduated_block = g.block
+    from graduations g
+    where tokens.address = g.token and tokens.graduated_pool is null`);
 }
 
 /** Transaction signer (tx.from), lowercase. Cached: one lookup per tx even with several trades. */
@@ -165,6 +173,7 @@ export async function indexTokenRange(ctx: IndexerCtx, from: number, to: number,
 /** Both passes for one chunk, in order (used by the live tail). */
 export async function indexRange(ctx: IndexerCtx, from: number, to: number): Promise<RangeStats> {
   const a = await indexCurveRange(ctx, from, to);
+  await applyGraduations(ctx.db);
   const b = await indexTokenRange(ctx, from, to, await trackedTokens(ctx.db, to));
   return addStats(a, b);
 }
@@ -253,6 +262,8 @@ export async function backfill(ctx: IndexerCtx, from: number, to: number, concur
     },
   );
 
+  // Pass 1 ran chunks out of order: attach graduations now that every create is stored.
+  await applyGraduations(ctx.db);
   const tracked = await trackedTokens(ctx.db, to);
   const tokenFrom = Math.max(from, ((await getCursor(ctx.db, TOKEN_CURSOR)) ?? from - 1) + 1);
   const tokenChunks = chunkRange(tokenFrom, to, ctx.logsRange);

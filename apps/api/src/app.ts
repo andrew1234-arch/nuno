@@ -26,19 +26,39 @@ export function sortTokens(tokens: TokenDto[], sort: SortKey): TokenDto[] {
 export interface AppOptions {
   /** Response cache TTL in ms (0 disables). */
   cacheTtlMs?: number;
+  /** Max cached responses; oldest evicted first. */
+  cacheMaxEntries?: number;
   /** Requests per window per client IP. */
   rateLimit?: { max: number; windowMs: number };
+  /**
+   * How to identify the client. Defaults to the socket address supplied by the server adapter.
+   * X-Forwarded-For is only honoured when `trustProxy` is set (behind a known reverse proxy);
+   * otherwise any client could pick a fresh IP per request and bypass the limit.
+   */
+  clientIp?: (c: Context) => string | undefined;
+  trustProxy?: boolean;
   now?: () => number;
 }
 
-/** Fixed-window in-memory limiter keyed by client IP. Good enough for a single instance. */
-function rateLimiter(max: number, windowMs: number, now: () => number): MiddlewareHandler {
+/** Map with a size cap that evicts its oldest entries (insertion order). */
+function boundedSet<K, V>(map: Map<K, V>, key: K, value: V, max: number): void {
+  map.delete(key);
+  map.set(key, value);
+  while (map.size > max) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
+
+/** Fixed-window in-memory limiter keyed by client IP, with bounded memory. */
+function rateLimiter(max: number, windowMs: number, now: () => number, ip: (c: Context) => string): MiddlewareHandler {
   const hits = new Map<string, { start: number; n: number }>();
   return async (c, next) => {
-    const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "local";
+    const key = ip(c);
     const t = now();
-    const h = hits.get(ip);
-    if (!h || t - h.start >= windowMs) hits.set(ip, { start: t, n: 1 });
+    const h = hits.get(key);
+    if (!h || t - h.start >= windowMs) boundedSet(hits, key, { start: t, n: 1 }, 50_000);
     else if (++h.n > max) {
       c.header("retry-after", String(Math.ceil((h.start + windowMs - t) / 1000)));
       return c.json({ error: "rate limited" }, 429);
@@ -47,29 +67,45 @@ function rateLimiter(max: number, windowMs: number, now: () => number): Middlewa
   };
 }
 
+/** Cache key from the path plus only the query parameters the API understands. */
+function cacheKey(c: Context): string {
+  const sort = c.req.query("sort");
+  const limit = c.req.query("limit");
+  return `${c.req.path}?sort=${sort ?? ""}&limit=${limit ?? ""}`;
+}
+
 export function createApp(repo: Repo, opts: AppOptions = {}) {
   const now = opts.now ?? Date.now;
   const ttl = opts.cacheTtlMs ?? 15_000;
+  const maxEntries = opts.cacheMaxEntries ?? 1_000;
   const cache = new Map<string, { at: number; body: unknown; status: number }>();
 
-  /** Cache successful GET JSON bodies by URL for `ttl` ms. */
+  /** Cache successful GET JSON bodies for `ttl` ms. */
   const cached = async (c: Context, compute: () => Promise<{ body: unknown; status?: number }>) => {
-    const key = c.req.url;
+    const key = cacheKey(c);
     const hit = cache.get(key);
     if (ttl > 0 && hit && now() - hit.at < ttl) {
       c.header("x-cache", "hit");
       return c.json(hit.body as object, hit.status as 200);
     }
     const { body, status = 200 } = await compute();
-    if (ttl > 0 && status === 200) cache.set(key, { at: now(), body, status });
+    if (ttl > 0 && status === 200) boundedSet(cache, key, { at: now(), body, status }, maxEntries);
     c.header("x-cache", "miss");
     return c.json(body as object, status as 200);
+  };
+
+  const clientIp = (c: Context): string => {
+    if (opts.trustProxy) {
+      const fwd = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+      if (fwd) return fwd;
+    }
+    return opts.clientIp?.(c) ?? "unknown";
   };
 
   const app = new Hono();
   app.use("*", cors());
   const rl = opts.rateLimit ?? { max: 120, windowMs: 60_000 };
-  app.use("*", rateLimiter(rl.max, rl.windowMs, now));
+  app.use("*", rateLimiter(rl.max, rl.windowMs, now, clientIp));
 
   app.onError((err, c) => {
     console.error(err);
