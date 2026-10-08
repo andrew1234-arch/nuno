@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && pnpm --filter @nuno/web exec tsc --noEmit",
     "lint": "eslint .",
     "db:push": "pnpm --filter @nuno/shared db:push",
     "index:backfill": "pnpm --filter @nuno/indexer backfill",
@@ -17,7 +17,8 @@
     "contracts:test": "cd contracts && forge test",
     "contracts:abi": "cd contracts && forge build && cd .. && node scripts/export-abi.mjs",
     "publish:snapshots": "pnpm --filter @nuno/publisher publish-snapshots",
-    "api": "pnpm --filter @nuno/api start"
+    "api": "pnpm --filter @nuno/api start",
+    "web": "pnpm --filter @nuno/web dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

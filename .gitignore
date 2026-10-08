@@ -13,3 +13,4 @@ contracts/broadcast/*/31337/
 # Local planning docs
 CLAUDE.md
 SPEC.md
+apps/web/next-env.d.ts
