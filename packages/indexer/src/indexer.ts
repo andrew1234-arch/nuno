@@ -1,21 +1,32 @@
-import { eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import {
+  AddressBook,
   NADFUN_MAINNET,
   TOPICS,
   chunkRange,
-  schema,
+  chunks,
+  insertIgnore,
+  scalar,
+  sqliteSchema as s,
   toHex,
-  type Db,
+  txBytes,
+  txHex,
   type RpcClient,
   type RpcLog,
+  type SqlDb,
 } from "@nuno/shared";
 import { decodeCurveLog, decodeSwapLog, decodeTransferLog, logMeta } from "./decode.js";
 
 export const INDEXER_CURSOR = "indexer";
+export const CURVE_CURSOR = "indexer:curve";
+export const TOKEN_CURSOR = "indexer:tokens";
+/** First block of the backfill window currently covered. */
+export const WINDOW_CURSOR = "indexer:window_start";
 const ADDRESS_BATCH = 50;
 
 export interface IndexerCtx {
-  db: Db;
+  db: SqlDb;
+  book: AddressBook;
   logsRpc: RpcClient;
   logsRange: number;
   log?: (msg: string) => void;
@@ -29,13 +40,28 @@ export interface RangeStats {
   swaps: number;
 }
 
+const emptyStats = (): RangeStats => ({ creates: 0, trades: 0, graduations: 0, transfers: 0, swaps: 0 });
+
+function addStats(a: RangeStats, b: RangeStats): RangeStats {
+  const out = emptyStats();
+  for (const k of Object.keys(out) as Array<keyof RangeStats>) out[k] = a[k] + b[k];
+  return out;
+}
+
 async function getLogs(rpc: RpcClient, filter: { address?: string | string[]; topics?: unknown[] }, from: number, to: number) {
   return rpc.call<RpcLog[]>("eth_getLogs", [{ ...filter, fromBlock: toHex(from), toBlock: toHex(to) }]);
 }
 
+/** Transaction signer (tx.from), lowercase. Cached per tx; null results are never cached. */
+export async function txSigner(rpc: RpcClient, txHash: string): Promise<string> {
+  const tx = await rpc.call<{ from: string } | null>("eth_getTransactionByHash", [txHash], { cache: true });
+  if (!tx) throw new Error(`transaction ${txHash} not found`);
+  return tx.from.toLowerCase();
+}
+
 /** Curve events (creates, trades, graduations) for one log-range-sized chunk. Idempotent. */
 export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number): Promise<RangeStats> {
-  const { db, logsRpc } = ctx;
+  const { db, book, logsRpc } = ctx;
   const stats = emptyStats();
   const curveLogs = await getLogs(
     logsRpc,
@@ -43,128 +69,132 @@ export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number)
     from,
     to,
   );
+  const decoded = curveLogs.map((l) => ({ m: logMeta(l), r: decodeCurveLog(l) }));
 
-  for (const l of curveLogs) {
-    const m = logMeta(l);
-    const r = decodeCurveLog(l);
+  // Signers for trades (needed to attribute bot-contract trades to the wallet that signed them).
+  const signers = new Map<string, string>();
+  for (const h of new Set(decoded.filter((d) => d.r.kind === "trade").map((d) => d.m.txHash))) {
+    signers.set(h, await txSigner(logsRpc, h));
+  }
+
+  const addrs: string[] = decoded.flatMap(({ r }) =>
+    r.kind === "create" ? [r.token, r.creator, r.pool] : r.kind === "trade" ? [r.token, r.trader] : r.kind === "graduate" ? [r.token, r.pool] : [],
+  );
+  const ids = await book.ids([...addrs, ...signers.values()]);
+  const id = (a: string) => ids.get(a.toLowerCase())!;
+
+  const tokenRows: Array<typeof s.tokens.$inferInsert> = [];
+  const tradeRows: Array<typeof s.curveTrades.$inferInsert> = [];
+  const gradRows: Array<typeof s.graduations.$inferInsert> = [];
+  for (const { m, r } of decoded) {
     if (r.kind === "create") {
-      await db
-        .insert(schema.tokens)
-        .values({
-          address: r.token,
-          creator: r.creator,
-          curvePool: r.pool,
-          name: r.name,
-          symbol: r.symbol,
-          tokenUri: r.tokenUri,
-          createBlock: m.block,
-          createTx: m.txHash,
-        })
-        .onConflictDoNothing();
+      tokenRows.push({
+        id: id(r.token),
+        creator: id(r.creator),
+        curvePool: id(r.pool),
+        name: r.name,
+        symbol: r.symbol,
+        createBlock: m.block,
+        createTx: txBytes(m.txHash),
+      });
       stats.creates++;
     } else if (r.kind === "trade") {
-      await db
-        .insert(schema.curveTrades)
-        .values({
-          ...m,
-          token: r.token,
-          trader: r.trader,
-          txFrom: await txSigner(logsRpc, m.txHash),
-          side: r.side,
-          amountIn: r.amountIn.toString(),
-          amountOut: r.amountOut.toString(),
-        })
-        .onConflictDoNothing();
+      tradeRows.push({
+        tx: txBytes(m.txHash),
+        logIndex: m.logIndex,
+        block: m.block,
+        token: id(r.token),
+        trader: id(r.trader),
+        txFrom: id(signers.get(m.txHash)!),
+        side: s.SIDE[r.side],
+        amountIn: r.amountIn.toString(),
+        amountOut: r.amountOut.toString(),
+      });
       stats.trades++;
     } else if (r.kind === "graduate") {
-      await db
-        .insert(schema.graduations)
-        .values({ token: r.token, pool: r.pool, block: m.block, txHash: m.txHash })
-        .onConflictDoNothing();
+      gradRows.push({ token: id(r.token), pool: id(r.pool), block: m.block, tx: txBytes(m.txHash) });
       stats.graduations++;
     }
   }
+  await insertIgnore(db, s.tokens, tokenRows);
+  await insertIgnore(db, s.curveTrades, tradeRows);
+  await insertIgnore(db, s.graduations, gradRows);
   return stats;
 }
 
-/** Copy stored graduations onto their tokens. Safe to call any time; idempotent. */
-export async function applyGraduations(db: Db): Promise<void> {
-  await db.execute(sql`
-    update tokens set graduated_pool = g.pool, graduated_block = g.block
-    from graduations g
-    where tokens.address = g.token and tokens.graduated_pool is null`);
-}
-
-/** Transaction signer (tx.from), lowercase. Cached: one lookup per tx even with several trades. */
-export async function txSigner(rpc: RpcClient, txHash: string): Promise<string> {
-  const tx = await rpc.call<{ from: string } | null>("eth_getTransactionByHash", [txHash], { cache: true });
-  if (!tx) throw new Error(`transaction ${txHash} not found`);
-  return tx.from.toLowerCase();
-}
-
-/** Fill tx_from for trades indexed before the column existed. Resumable: only touches NULL rows. */
-export async function backfillTxSigners(ctx: IndexerCtx, concurrency = 8): Promise<number> {
-  const rows = await ctx.db
-    .selectDistinct({ txHash: schema.curveTrades.txHash })
-    .from(schema.curveTrades)
-    .where(isNull(schema.curveTrades.txFrom));
-  let i = 0;
-  let done = 0;
-  await Promise.all(
-    Array.from({ length: concurrency }, async () => {
-      while (i < rows.length) {
-        const { txHash } = rows[i++]!;
-        const from = await txSigner(ctx.logsRpc, txHash);
-        await ctx.db.update(schema.curveTrades).set({ txFrom: from }).where(eq(schema.curveTrades.txHash, txHash));
-        if (++done % 100 === 0) ctx.log?.(`[indexer] tx signers ${done}/${rows.length}`);
-      }
-    }),
-  );
-  return rows.length;
+/** Copy stored graduations onto their tokens. Idempotent; safe after out-of-order chunks. */
+export async function applyGraduations(db: SqlDb): Promise<void> {
+  await db.run(sql`
+    update tokens set
+      graduated_pool = (select g.pool from graduations g where g.token = tokens.id),
+      graduated_block = (select g.block from graduations g where g.token = tokens.id)
+    where graduated_pool is null and id in (select token from graduations)`);
 }
 
 export interface TrackedToken {
-  address: string;
-  pool: string | null;
+  id: number;
+  hex: string;
+  pool: { id: number; hex: string } | null;
 }
 
-export async function trackedTokens(db: Db, upToBlock: number): Promise<TrackedToken[]> {
-  // Tracked tokens = every token whose CurveCreate we've indexed (created within the window).
-  return db
-    .select({ address: schema.tokens.address, pool: schema.tokens.graduatedPool })
-    .from(schema.tokens)
-    .where(sql`${schema.tokens.createBlock} <= ${upToBlock}`);
+/** Tracked tokens = tokens whose CurveCreate we indexed (inside the window), not yet pruned. */
+export async function trackedTokens(ctx: Pick<IndexerCtx, "db" | "book">, upToBlock: number): Promise<TrackedToken[]> {
+  const rows = await ctx.db
+    .select({ id: s.tokens.id, pool: s.tokens.graduatedPool })
+    .from(s.tokens)
+    .where(and(lte(s.tokens.createBlock, upToBlock), eq(s.tokens.pruned, 0)));
+  const hex = await ctx.book.hexes(rows.flatMap((r) => (r.pool ? [r.id, r.pool] : [r.id])));
+  return rows.map((r) => ({ id: r.id, hex: hex.get(r.id)!, pool: r.pool ? { id: r.pool, hex: hex.get(r.pool)! } : null }));
 }
 
 /** ERC-20 Transfers of tracked tokens and Swaps on their graduated pools for one chunk. Idempotent. */
 export async function indexTokenRange(ctx: IndexerCtx, from: number, to: number, tracked: TrackedToken[]): Promise<RangeStats> {
-  const { db, logsRpc } = ctx;
+  const { db, book, logsRpc } = ctx;
   const stats = emptyStats();
+  const tokenByHex = new Map(tracked.map((t) => [t.hex.toLowerCase(), t.id]));
 
-  for (let i = 0; i < tracked.length; i += ADDRESS_BATCH) {
-    const batch = tracked.slice(i, i + ADDRESS_BATCH).map((t) => t.address);
-    const logs = await getLogs(logsRpc, { address: batch, topics: [TOPICS.Transfer] }, from, to);
-    const rows = logs.flatMap((l) => {
+  for (const batch of chunks(tracked, ADDRESS_BATCH)) {
+    const logs = await getLogs(logsRpc, { address: batch.map((t) => t.hex), topics: [TOPICS.Transfer] }, from, to);
+    const decoded = logs.flatMap((l) => {
       const t = decodeTransferLog(l);
-      return t ? [{ ...logMeta(l), token: t.token, from: t.from, to: t.to, value: t.value.toString() }] : [];
+      return t ? [{ m: logMeta(l), t }] : [];
     });
-    if (rows.length) await db.insert(schema.transfers).values(rows).onConflictDoNothing();
+    const ids = await book.ids(decoded.flatMap(({ t }) => [t.from, t.to]));
+    const rows = decoded.map(({ m, t }) => ({
+      tx: txBytes(m.txHash),
+      logIndex: m.logIndex,
+      block: m.block,
+      token: tokenByHex.get(t.token)!,
+      from: ids.get(t.from)!,
+      to: ids.get(t.to)!,
+      value: t.value.toString(),
+    }));
+    await insertIgnore(db, s.transfers, rows);
     stats.transfers += rows.length;
   }
 
-  const pools = tracked.filter((t): t is { address: string; pool: string } => t.pool !== null);
-  const poolToToken = new Map(pools.map((p) => [p.pool, p.address]));
-  for (let i = 0; i < pools.length; i += ADDRESS_BATCH) {
-    const batch = pools.slice(i, i + ADDRESS_BATCH).map((p) => p.pool);
-    const logs = await getLogs(logsRpc, { address: batch }, from, to);
-    const rows = logs.flatMap((l) => {
-      const s = decodeSwapLog(l);
-      const token = s && poolToToken.get(s.pool);
-      return s && token
-        ? [{ ...logMeta(l), pool: s.pool, token, sender: s.sender, recipient: s.recipient, amount0: s.amount0.toString(), amount1: s.amount1.toString() }]
-        : [];
+  const pools = tracked.filter((t): t is TrackedToken & { pool: { id: number; hex: string } } => t.pool !== null);
+  const byPool = new Map(pools.map((p) => [p.pool.hex.toLowerCase(), p]));
+  for (const batch of chunks(pools, ADDRESS_BATCH)) {
+    const logs = await getLogs(logsRpc, { address: batch.map((p) => p.pool.hex) }, from, to);
+    const decoded = logs.flatMap((l) => {
+      const sw = decodeSwapLog(l);
+      const tok = sw && byPool.get(sw.pool);
+      return sw && tok ? [{ m: logMeta(l), sw, tok }] : [];
     });
-    if (rows.length) await db.insert(schema.dexSwaps).values(rows).onConflictDoNothing();
+    const ids = await book.ids(decoded.flatMap(({ sw }) => [sw.sender, sw.recipient]));
+    const rows = decoded.map(({ m, sw, tok }) => ({
+      tx: txBytes(m.txHash),
+      logIndex: m.logIndex,
+      block: m.block,
+      pool: tok.pool.id,
+      token: tok.id,
+      sender: ids.get(sw.sender)!,
+      recipient: ids.get(sw.recipient)!,
+      amount0: sw.amount0.toString(),
+      amount1: sw.amount1.toString(),
+    }));
+    await insertIgnore(db, s.dexSwaps, rows);
     stats.swaps += rows.length;
   }
   return stats;
@@ -174,28 +204,21 @@ export async function indexTokenRange(ctx: IndexerCtx, from: number, to: number,
 export async function indexRange(ctx: IndexerCtx, from: number, to: number): Promise<RangeStats> {
   const a = await indexCurveRange(ctx, from, to);
   await applyGraduations(ctx.db);
-  const b = await indexTokenRange(ctx, from, to, await trackedTokens(ctx.db, to));
+  const b = await indexTokenRange(ctx, from, to, await trackedTokens(ctx, to));
   return addStats(a, b);
 }
 
-const emptyStats = (): RangeStats => ({ creates: 0, trades: 0, graduations: 0, transfers: 0, swaps: 0 });
-
-function addStats(a: RangeStats, b: RangeStats): RangeStats {
-  const out = emptyStats();
-  for (const k of Object.keys(out) as Array<keyof RangeStats>) out[k] = a[k] + b[k];
-  return out;
-}
-
-export async function getCursor(db: Db, name: string): Promise<number | null> {
-  const rows = await db.select().from(schema.cursors).where(eq(schema.cursors.name, name));
+export async function getCursor(db: SqlDb, name: string): Promise<number | null> {
+  const rows = await db.select().from(s.cursors).where(eq(s.cursors.name, name));
   return rows[0]?.block ?? null;
 }
 
-export async function setCursor(db: Db, name: string, block: number): Promise<void> {
+export async function setCursor(db: SqlDb, name: string, block: number): Promise<void> {
+  const updatedAt = Date.now();
   await db
-    .insert(schema.cursors)
-    .values({ name, block })
-    .onConflictDoUpdate({ target: schema.cursors.name, set: { block, updatedAt: new Date() } });
+    .insert(s.cursors)
+    .values({ name, block, updatedAt })
+    .onConflictDoUpdate({ target: s.cursors.name, set: { block, updatedAt } });
 }
 
 /**
@@ -203,39 +226,34 @@ export async function setCursor(db: Db, name: string, block: number): Promise<vo
  * such that every chunk up to it has completed, so a cursor saved there is always safe to resume from.
  */
 export async function runChunks(
-  chunks: Array<[number, number]>,
+  chunkList: Array<[number, number]>,
   concurrency: number,
   fn: (from: number, to: number) => Promise<void>,
   onDone: (watermark: number, completed: number) => Promise<void>,
 ): Promise<void> {
-  const done = new Array<boolean>(chunks.length).fill(false);
+  const done = new Array<boolean>(chunkList.length).fill(false);
   let next = 0;
   let low = 0; // first chunk index not yet known complete
   let completed = 0;
   let flushing = Promise.resolve();
   const worker = async () => {
-    while (next < chunks.length) {
+    while (next < chunkList.length) {
       const i = next++;
-      const [a, b] = chunks[i]!;
+      const [a, b] = chunkList[i]!;
       await fn(a, b);
       done[i] = true;
       completed++;
       if (i === low) {
-        while (low < chunks.length && done[low]) low++;
-        const mark = chunks[low - 1]![1];
+        while (low < chunkList.length && done[low]) low++;
+        const mark = chunkList[low - 1]![1];
         const c = completed;
         flushing = flushing.then(() => onDone(mark, c));
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, chunks.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(concurrency, chunkList.length) }, worker));
   await flushing;
 }
-
-export const CURVE_CURSOR = "indexer:curve";
-export const TOKEN_CURSOR = "indexer:tokens";
-/** First block of the backfill window currently covered. */
-export const WINDOW_CURSOR = "indexer:window_start";
 
 /**
  * Backfill [from, to] in two resumable, parallel passes:
@@ -264,7 +282,7 @@ export async function backfill(ctx: IndexerCtx, from: number, to: number, concur
 
   // Pass 1 ran chunks out of order: attach graduations now that every create is stored.
   await applyGraduations(ctx.db);
-  const tracked = await trackedTokens(ctx.db, to);
+  const tracked = await trackedTokens(ctx, to);
   const tokenFrom = Math.max(from, ((await getCursor(ctx.db, TOKEN_CURSOR)) ?? from - 1) + 1);
   const tokenChunks = chunkRange(tokenFrom, to, ctx.logsRange);
   let logged2 = 0;
@@ -297,14 +315,25 @@ export async function indexBlocks(ctx: IndexerCtx, from: number, to: number): Pr
   return total;
 }
 
-export async function countRows(db: Db) {
-  const [tokens] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.tokens);
-  const [graduated] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(schema.tokens)
-    .where(isNotNull(schema.tokens.graduatedPool));
-  const [trades] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.curveTrades);
-  const [transfers] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.transfers);
-  const [swaps] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.dexSwaps);
-  return { tokens: tokens?.n, graduated: graduated?.n, trades: trades?.n, transfers: transfers?.n, swaps: swaps?.n };
+/** Fill tx_from for trades stored without it (older data). Resumable: only touches NULL rows. */
+export async function backfillTxSigners(ctx: IndexerCtx, concurrency = 6): Promise<number> {
+  const rows = await ctx.db.selectDistinct({ tx: s.curveTrades.tx }).from(s.curveTrades).where(isNull(s.curveTrades.txFrom));
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      while (i < rows.length) {
+        const { tx } = rows[i++]!;
+        const from = await ctx.book.id(await txSigner(ctx.logsRpc, txHex(tx)));
+        await ctx.db.update(s.curveTrades).set({ txFrom: from }).where(eq(s.curveTrades.tx, tx));
+      }
+    }),
+  );
+  return rows.length;
+}
+
+export async function countRows(db: SqlDb): Promise<Record<string, number>> {
+  const tables = ["addresses", "tokens", "graduations", "curve_trades", "transfers", "dex_swaps", "wallets", "funding_edges", "link_evidence", "entity_members", "token_metrics", "snapshots"];
+  const out: Record<string, number> = {};
+  for (const t of tables) out[t] = await scalar(db, sql.raw(`select count(*) from ${t}`));
+  return out;
 }

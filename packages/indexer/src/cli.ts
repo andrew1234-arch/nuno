@@ -1,4 +1,4 @@
-import { RpcClient, blockAtTimestamp, config, createDb, getBlockNumber, sleep } from "@nuno/shared";
+import { AddressBook, RpcClient, blockAtTimestamp, config, getBlockNumber, openLocal, sleep } from "@nuno/shared";
 import {
   CURVE_CURSOR,
   INDEXER_CURSOR,
@@ -15,23 +15,24 @@ import {
 // Blocks behind head we treat as final before indexing.
 const SAFE_LAG = 10;
 
+// usage: tsx src/cli.ts backfill|tail|signers   (writes the local SQLite file, SPEC §7.10)
 async function main() {
   const mode = process.argv[2];
   if (mode !== "backfill" && mode !== "tail" && mode !== "signers") throw new Error("usage: cli.ts backfill|tail|signers");
 
-  const { db, sql } = createDb();
-  const logsRpc = new RpcClient({ url: config.mainnetLogsRpcUrls, maxConcurrency: 8 });
-  const ctx = { db, logsRpc, logsRange: config.logsRange, log: console.log };
+  const { db, close } = openLocal(config.localDbPath);
+  const logsRpc = new RpcClient({ url: config.mainnetLogsRpcUrls, maxConcurrency: 8, cacheSize: 20_000 });
+  const ctx = { db, book: new AddressBook(db), logsRpc, logsRange: config.logsRange, log: console.log };
 
   if (mode === "signers") {
     console.log(`[indexer] resolved tx signers for ${await backfillTxSigners(ctx)} transactions`);
-    await sql.end();
+    close();
     return;
   }
 
   const head = (await getBlockNumber(logsRpc)) - SAFE_LAG;
   if (mode === "backfill") {
-    // Days may be fractional (e.g. BACKFILL_DAYS=1 for a Gate A run).
+    // Days may be fractional (e.g. BACKFILL_DAYS=1 for a size-projection run).
     const startTs = Math.floor(Date.now() / 1000 - config.backfillDays * 86400);
     const windowStart = await blockAtTimestamp(logsRpc, startTs, head);
     // Pass cursors make this resumable. Widening the window resets them so older blocks get indexed.
@@ -41,11 +42,11 @@ async function main() {
       await setCursor(db, TOKEN_CURSOR, windowStart - 1);
       await setCursor(db, WINDOW_CURSOR, windowStart);
     }
-    console.log(`[indexer] backfill ${windowStart}..${head} (${head - windowStart + 1} blocks)`);
+    console.log(`[indexer] backfill ${windowStart}..${head} (${head - windowStart + 1} blocks) into ${config.localDbPath}`);
     await backfill(ctx, windowStart, head);
     await backfillTxSigners(ctx);
     console.log("[indexer] counts", await countRows(db));
-    await sql.end();
+    close();
     return;
   }
 

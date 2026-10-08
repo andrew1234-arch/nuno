@@ -16,3 +16,6 @@ SPEC.md
 apps/web/next-env.d.ts
 CLAUDE.md.new
 SPEC.md.new
+
+# Local SQLite (SPEC §7.10)
+data/

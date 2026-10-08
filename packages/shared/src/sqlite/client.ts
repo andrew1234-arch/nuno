@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
+import type { SQL } from "drizzle-orm";
 import type { BaseSQLiteDatabase, SQLiteTable } from "drizzle-orm/sqlite-core";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema.js";
@@ -85,4 +86,18 @@ export function chunks<T>(xs: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
   return out;
+}
+
+/** First column of the first row of a raw query, on either driver (proxy returns arrays, D1 objects). */
+export async function scalar(db: SqlDb, query: SQL): Promise<number> {
+  const r: unknown = await db.get(query);
+  if (Array.isArray(r)) return Number(r[0] ?? 0);
+  if (r && typeof r === "object") return Number(Object.values(r)[0] ?? 0);
+  return 0;
+}
+
+/** Raw rows as objects keyed by column name, on either driver. */
+export async function rows<T extends Record<string, unknown>>(db: SqlDb, query: SQL, columns: Array<keyof T & string>): Promise<T[]> {
+  const rs: unknown[] = await db.all(query);
+  return rs.map((r) => (Array.isArray(r) ? (Object.fromEntries(columns.map((c, i) => [c, r[i]])) as T) : (r as T)));
 }

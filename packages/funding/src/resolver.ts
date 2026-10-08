@@ -1,19 +1,24 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Address, Hex } from "viem";
 import {
+  AddressBook,
+  insertIgnore,
   isContractCode,
-  schema,
+  rows,
+  sqliteSchema as s,
   toHex,
+  txBytes,
   type BlockTraceEntry,
-  type Db,
   type RpcBlock,
   type RpcClient,
+  type SqlDb,
 } from "@nuno/shared";
 import { firstTrueBlock } from "./search.js";
 import { directTransfersFromBlock, extractInboundTransfers, type InboundTransfer } from "./trace.js";
 
 export interface FundingCtx {
-  db: Db;
+  db: SqlDb;
+  book: AddressBook;
   /** Must serve archive state and debug_traceBlockByNumber (e.g. rpc1.monad.xyz). */
   rpc: RpcClient;
   log?: (msg: string) => void;
@@ -59,88 +64,82 @@ export async function resolveFirstFunding(rpc: RpcClient, wallet: Address, befor
   return { status: "resolved", block, blockTime: Number(body.timestamp), transfers, isContract: false };
 }
 
-/** Persist one wallet's funding result; returns the origin EOAs to resolve at the next hop. */
-async function store(db: Db, wallet: Address, f: WalletFunding): Promise<Address[]> {
+/** SPEC §7.11 rule 7: at most this many inbound funding edges are stored per wallet. */
+export const MAX_EDGES_PER_WALLET = 5;
+
+/** Persist one wallet's funding result; returns the origin EOAs (hex) to resolve at the next hop. */
+async function store(ctx: FundingCtx, wallet: Address, f: WalletFunding): Promise<Address[]> {
+  const { db, book } = ctx;
+  const walletId = await book.id(wallet);
+  const now = Date.now();
   if (f.status !== "resolved") {
-    await db
-      .insert(schema.wallets)
-      .values({ address: wallet, isContract: f.isContract, fundingStatus: "unfunded", resolvedAt: new Date() })
-      .onConflictDoUpdate({
-        target: schema.wallets.address,
-        set: { isContract: f.isContract, fundingStatus: "unfunded", resolvedAt: new Date() },
-      });
+    const row = { isContract: f.isContract ? 1 : 0, fundingStatus: s.FUNDING_STATUS.unfunded, resolvedAt: now };
+    await db.insert(s.wallets).values({ id: walletId, ...row }).onConflictDoUpdate({ target: s.wallets.id, set: row });
     return [];
   }
-  if (f.transfers.length) {
-    await db
-      .insert(schema.fundingEdges)
-      .values(
-        f.transfers.map((t) => ({
-          wallet,
-          funder: t.funder,
-          origin: t.origin,
-          kind: t.kind,
-          value: t.value.toString(),
-          block: f.block,
-          blockTime: f.blockTime,
-          txHash: t.txHash,
-          source: "rpc_archive_trace" as const,
-        })),
-      )
-      .onConflictDoNothing();
-  }
+  const transfers = f.transfers.slice(0, MAX_EDGES_PER_WALLET);
+  const ids = await book.ids(transfers.flatMap((t) => [t.funder, t.origin]));
+  await insertIgnore(
+    db,
+    s.fundingEdges,
+    transfers.map((t) => ({
+      wallet: walletId,
+      funder: ids.get(t.funder)!,
+      origin: ids.get(t.origin)!,
+      kind: s.FUNDING_KIND[t.kind],
+      value: t.value.toString(),
+      block: f.block,
+      blockTime: f.blockTime,
+      tx: txBytes(t.txHash),
+      source: s.FUNDING_SOURCE.rpc_archive_trace,
+    })),
+  );
   // A touched block with no value frame to the wallet (e.g. gas-sponsored/7702 first tx) is
-  // recorded as resolved with no edges, and the reason kept for the methodology's limitations.
-  const note = f.transfers.length ? null : "first-touch block has no inbound value frame";
-  await db
-    .insert(schema.wallets)
-    .values({ address: wallet, isContract: false, fundingStatus: "resolved", firstFundedBlock: f.block, fundingError: note, resolvedAt: new Date() })
-    .onConflictDoUpdate({
-      target: schema.wallets.address,
-      set: { isContract: false, fundingStatus: "resolved", firstFundedBlock: f.block, fundingError: note, resolvedAt: new Date() },
-    });
-  return [...new Set(f.transfers.map((t) => t.origin))].filter((o) => o !== wallet);
+  // recorded as resolved with no edges; METHODOLOGY lists it as a limitation.
+  const row = { isContract: 0, fundingStatus: s.FUNDING_STATUS.resolved, firstFundedBlock: f.block, resolvedAt: now };
+  await db.insert(s.wallets).values({ id: walletId, ...row }).onConflictDoUpdate({ target: s.wallets.id, set: row });
+  return [...new Set(transfers.map((t) => t.origin))].filter((o) => o !== wallet.toLowerCase());
 }
 
 type Hop = { addr: Address; before: number };
 
 // Concurrent workers often reach the same funder; share one lookup per address.
-const inflight = new Map<Address, Promise<Hop[]>>();
+const inflight = new Map<string, Promise<Hop[]>>();
 
 /** Resolve one address (DB cache first) and return its funders as the next hop. */
 function resolveOne(ctx: FundingCtx, addr: Address, before: number, hop: number): Promise<Hop[]> {
-  const existing = inflight.get(addr);
+  const key = addr.toLowerCase();
+  const existing = inflight.get(key);
   if (existing) return existing;
   const p = (async (): Promise<Hop[]> => {
-    const [c] = await ctx.db.select().from(schema.wallets).where(eq(schema.wallets.address, addr));
-    if (c && c.fundingStatus !== "pending" && c.fundingStatus !== "error") {
-      if (c.fundingStatus !== "resolved" || c.firstFundedBlock === null) return [];
-      const edges = await ctx.db
-        .select({ origin: schema.fundingEdges.origin })
-        .from(schema.fundingEdges)
-        .where(eq(schema.fundingEdges.wallet, addr));
+    const walletId = await ctx.book.id(addr);
+    const [c] = await ctx.db.select().from(s.wallets).where(eq(s.wallets.id, walletId));
+    if (c && c.fundingStatus !== s.FUNDING_STATUS.pending && c.fundingStatus !== s.FUNDING_STATUS.error) {
+      if (c.fundingStatus !== s.FUNDING_STATUS.resolved || c.firstFundedBlock === null) return [];
+      const edges = await ctx.db.select({ origin: s.fundingEdges.origin }).from(s.fundingEdges).where(eq(s.fundingEdges.wallet, walletId));
+      const hex = await ctx.book.hexes(edges.map((e) => e.origin));
       const block = c.firstFundedBlock;
-      return edges.filter((e) => e.origin !== addr).map((e) => ({ addr: e.origin as Address, before: block }));
+      return edges.filter((e) => e.origin !== walletId).map((e) => ({ addr: hex.get(e.origin)! as Address, before: block }));
     }
     try {
       const f = await resolveFirstFunding(ctx.rpc, addr, before);
-      const origins = await store(ctx.db, addr, f);
+      const origins = await store(ctx, addr, f);
       ctx.log?.(`[funding] hop ${hop} ${addr}: ${f.status}${f.status === "resolved" ? ` @${f.block} <- ${origins.join(",") || "(none)"}` : ""}`);
       return f.status === "resolved" ? origins.map((o) => ({ addr: o, before: f.block })) : [];
     } catch (err) {
-      const msg = (err as Error).message.slice(0, 500);
+      // No error text in the DB (SPEC §7.11 rule 11): count the attempt, log to stdout.
       await ctx.db
-        .insert(schema.wallets)
-        .values({ address: addr, fundingStatus: "error", fundingError: msg, fundingAttempts: 1 })
+        .insert(s.wallets)
+        .values({ id: walletId, fundingStatus: s.FUNDING_STATUS.error, fundingAttempts: 1 })
         .onConflictDoUpdate({
-          target: schema.wallets.address,
-          set: { fundingStatus: "error", fundingError: msg, fundingAttempts: sql`${schema.wallets.fundingAttempts} + 1` },
+          target: s.wallets.id,
+          set: { fundingStatus: s.FUNDING_STATUS.error, fundingAttempts: sql`${s.wallets.fundingAttempts} + 1` },
         });
-      ctx.log?.(`[funding] hop ${hop} ${addr}: ERROR ${msg}`);
+      ctx.log?.(`[funding] hop ${hop} ${addr}: ERROR ${(err as Error).message.slice(0, 300)}`);
       return [];
     }
-  })().finally(() => inflight.delete(addr));
-  inflight.set(addr, p);
+  })().finally(() => inflight.delete(key));
+  inflight.set(key, p);
   return p;
 }
 
@@ -163,26 +162,26 @@ export const MAX_FUNDING_ATTEMPTS = 3;
 /**
  * Buyers of tracked tokens with their first buy block, not yet resolved. A buy whose curve
  * `sender` is a known contract (a bot router) is attributed to the transaction signer.
+ * Never-tried wallets come first, so repeat failures cannot starve new buyers.
  */
-export async function pendingBuyers(db: Db, limit: number): Promise<Array<{ trader: Address; firstBuy: number }>> {
-  const rows = await db.execute<{ buyer: string; first_buy: string }>(sql`
-    with buys as (
-      select case when sw.is_contract and ct.tx_from is not null then ct.tx_from else ct.trader end as buyer, ct.block
-      from curve_trades ct left join wallets sw on sw.address = ct.trader
-      where ct.side = 'buy'
-    )
-    select b.buyer, min(b.block)::bigint as first_buy
-    from buys b left join wallets w on w.address = b.buyer
-    where (w.funding_status is null or w.funding_status in ('pending', 'error'))
-      and coalesce(w.funding_attempts, 0) < ${MAX_FUNDING_ATTEMPTS}
-    group by b.buyer, w.funding_attempts
-    -- Never-tried wallets first, so repeat failures cannot starve new buyers.
-    order by coalesce(w.funding_attempts, 0), min(b.block)
-    limit ${limit}`);
-  return [...rows].map((r) => ({ trader: r.buyer as Address, firstBuy: Number(r.first_buy) }));
-}
-
-export async function fundingEdgesFor(db: Db, wallets: Address[]) {
-  if (!wallets.length) return [];
-  return db.select().from(schema.fundingEdges).where(inArray(schema.fundingEdges.wallet, wallets));
+export async function pendingBuyers(ctx: Pick<FundingCtx, "db" | "book">, limit: number): Promise<Array<{ trader: Address; firstBuy: number }>> {
+  const rs = await rows<{ buyer: number; first_buy: number }>(
+    ctx.db,
+    sql`
+      with buys as (
+        select case when sw.is_contract = 1 and ct.tx_from is not null then ct.tx_from else ct.trader end as buyer, ct.block
+        from curve_trades ct left join wallets sw on sw.id = ct.trader
+        where ct.side = ${s.SIDE.buy}
+      )
+      select b.buyer as buyer, min(b.block) as first_buy
+      from buys b left join wallets w on w.id = b.buyer
+      where (w.funding_status is null or w.funding_status in (${s.FUNDING_STATUS.pending}, ${s.FUNDING_STATUS.error}))
+        and coalesce(w.funding_attempts, 0) < ${MAX_FUNDING_ATTEMPTS}
+      group by b.buyer
+      order by coalesce(max(w.funding_attempts), 0), min(b.block)
+      limit ${limit}`,
+    ["buyer", "first_buy"],
+  );
+  const hex = await ctx.book.hexes(rs.map((r) => Number(r.buyer)));
+  return rs.map((r) => ({ trader: hex.get(Number(r.buyer))! as Address, firstBuy: Number(r.first_buy) }));
 }

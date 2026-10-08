@@ -7,5 +7,5 @@ export * as schema from "./db/schema.js";
 export { createDb, getCursorBlock, type Db } from "./db/client.js";
 export * from "./feedAbi.js";
 export * as sqliteSchema from "./sqlite/schema.js";
-export { openLocal, migrate, insertIgnore, chunks, MAX_PARAMS, type SqlDb } from "./sqlite/client.js";
+export { openLocal, migrate, insertIgnore, chunks, scalar, rows, MAX_PARAMS, type SqlDb } from "./sqlite/client.js";
 export { AddressBook, txBytes, txHex } from "./sqlite/addresses.js";

@@ -1,17 +1,21 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-function loadDotEnv(): void {
-  // Walk up from cwd so pnpm --filter scripts (cwd = package dir) find the root .env.
+/** Repo root: the nearest ancestor of cwd with pnpm-workspace.yaml (pnpm --filter runs in package dirs). */
+function findRoot(): string {
   let dir = process.cwd();
-  for (let i = 0; i < 4; i++) {
-    const file = resolve(dir, ".env");
-    if (existsSync(file)) {
-      process.loadEnvFile(file);
-      return;
-    }
+  for (let i = 0; i < 5; i++) {
+    if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
     dir = resolve(dir, "..");
   }
+  return process.cwd();
+}
+
+export const ROOT_DIR = findRoot();
+
+function loadDotEnv(): void {
+  const file = resolve(ROOT_DIR, ".env");
+  if (existsSync(file)) process.loadEnvFile(file);
 }
 
 loadDotEnv();
@@ -48,6 +52,10 @@ export const config = {
   },
   get testnetRpcUrl(): string {
     return req("MONAD_TESTNET_RPC_URL");
+  },
+  /** Local SQLite file for backfill and full runs (SPEC §7.10). */
+  get localDbPath(): string {
+    return resolve(ROOT_DIR, process.env.LOCAL_DB_PATH || "./data/nuno.sqlite");
   },
   get databaseUrl(): string {
     return req("DATABASE_URL");
