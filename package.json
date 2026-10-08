@@ -1,0 +1,24 @@
+{
+  "name": "nuno",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "db:push": "pnpm --filter @nuno/shared db:push",
+    "index:backfill": "pnpm --filter @nuno/indexer backfill",
+    "index:tail": "pnpm --filter @nuno/indexer tail",
+    "funding:resolve": "pnpm --filter @nuno/funding resolve"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}
