@@ -124,6 +124,13 @@ The project docs now require **Cloudflare only** (Workers + Cron + D1) with a lo
 
 **Decision needed (user):** `MIN_BUYERS=20` (SPEC default) prunes 63 of 72 tokens after 24 h. nad.fun tokens have 2–8 buyers, so token pages would lose their trade detail, although storage is ~0.03% of target. Options: keep 20; lower to e.g. 3; or skip rule 5 while storage < target.
 
+### Later on 2026-10-09
+- Production cron tick now has an end-to-end test (index → fund → merge into the entity → recompute → cursors; idle tick is a no-op).
+- **DEX volume:** post-graduation Uniswap V3 swaps count toward raw/organic volume and wash detection, attributed to the tx signer (migration `0001` adds `dex_swaps.tx_from`). There were no graduations in the window, so current numbers are unchanged.
+- `docs/DEMO.md`: video script + pre-recording checklist.
+- 138 TS tests passing; typecheck and lint clean.
+- Wrangler is not logged in on this machine. `wrangler deploy --temporary` (throwaway preview account) exists, but it publishes publicly, so it was not used without the user's go-ahead.
+
 ### Next step
 Deploy as soon as Cloudflare credentials and testnet keys exist (`README` → Setup 2–3). Then the validation re-sample and the video. to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
 
