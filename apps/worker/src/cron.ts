@@ -23,16 +23,16 @@ export const HARD_STOP_FLAG = "storage:hard_stop";
 
 const log = (msg: string) => console.log(msg);
 
-function clients(cfg: Settings) {
+export function clients(cfg: Settings): { logsRpc: RpcClient; archiveRpc: RpcClient } {
   return {
     logsRpc: new RpcClient({ url: cfg.logsRpcUrls, maxConcurrency: 3, cacheSize: 2_000, timeoutMs: 20_000, retries: 3 }),
     archiveRpc: new RpcClient({ url: cfg.archiveRpcUrl, maxConcurrency: 3, cacheSize: 2_000, timeoutMs: 20_000, retries: 3 }),
   };
 }
 
-export async function tick(db: SqlDb, cfg: Settings): Promise<Record<string, unknown>> {
+export async function tick(db: SqlDb, cfg: Settings, rpcs = clients(cfg)): Promise<Record<string, unknown>> {
   const book = new AddressBook(db);
-  const { logsRpc, archiveRpc } = clients(cfg);
+  const { logsRpc, archiveRpc } = rpcs;
   const out: Record<string, unknown> = {};
 
   const hardStop = (await getCursor(db, HARD_STOP_FLAG)) === 1;
