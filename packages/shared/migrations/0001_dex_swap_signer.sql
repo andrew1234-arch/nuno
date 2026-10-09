@@ -1,0 +1,1 @@
+ALTER TABLE `dex_swaps` ADD `tx_from` integer;

@@ -118,8 +118,10 @@ export const dexSwaps = sqliteTable(
     block: blockCol("block").notNull(),
     pool: addr("pool").notNull(),
     token: addr("token").notNull(),
+    /** Swap `sender` is the router; the trader is the transaction signer. */
     sender: addr("sender").notNull(),
     recipient: addr("recipient").notNull(),
+    txFrom: addr("tx_from"),
     amount0: text("amount0").notNull(),
     amount1: text("amount1").notNull(),
   },

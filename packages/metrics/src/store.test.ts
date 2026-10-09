@@ -133,6 +133,28 @@ describe("store: full and incremental runs on SQLite", () => {
     close();
   });
 
+  it("counts post-graduation DEX swaps in volume, attributed to the signer, with wash detection", async () => {
+    const { db, close } = openLocal(":memory:");
+    const book = new AddressBook(db);
+    await seed(db, book, 1);
+    const id = (x: string) => book.id(x);
+    const ROUTER = a(0xd0);
+    const POOL = a(0x91);
+    // T1 (0x...71) < WMON (0x3bd3...), so T1 is token0: amount0 = token delta, amount1 = MON delta.
+    await db.insert(s.dexSwaps).values([
+      { tx: txBytes(tx(500)), logIndex: 0, block: 500, pool: await id(POOL), token: await id(T1), sender: await id(ROUTER), recipient: await id(ROUTER), txFrom: await id(X), amount0: "-200", amount1: "40" },
+      { tx: txBytes(tx(501)), logIndex: 0, block: 501, pool: await id(POOL), token: await id(T1), sender: await id(ROUTER), recipient: await id(ROUTER), txFrom: await id(X), amount0: "199", amount1: "-39" },
+    ]);
+    const r = await fullRun({ db, book, rpc: eoaRpc, infrastructure: new Set<string>() }, 1000);
+    const m = r.tokens.find((t) => t.metrics.token === T1)!.metrics;
+    // Curve: C1 100 + X 50 MON; DEX: X buys for 40 then sells for 39 MON.
+    expect(m.rawVolume).toBe(229n);
+    // X bought 400 (curve) + 200 (DEX) and sold 199: net 401 / gross 799, not full wash;
+    // the DEX round trip in one window is wash: 2 * min(40, 39) = 78.
+    expect(m.organicVolume).toBe(229n - 78n);
+    close();
+  });
+
   it("is idempotent: re-running incremental changes nothing", async () => {
     const { db, close } = openLocal(":memory:");
     const book = new AddressBook(db);

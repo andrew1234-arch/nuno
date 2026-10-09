@@ -28,7 +28,7 @@ import {
   type RpcClient,
   type SqlDb,
 } from "@nuno/shared";
-import { effectiveTrader } from "./attribution.js";
+import { effectiveTrader, swapAsTrade } from "./attribution.js";
 import { ZERO, computeMetrics, evidenceRoot, type TokenMetrics, type VolumeTrade } from "./metrics.js";
 
 /**
@@ -94,6 +94,8 @@ interface Loaded {
   tokens: TokenRow[];
   trades: TradeRow[];
   transfers: TransferRow[];
+  /** Post-graduation Uniswap V3 swaps (volume only). */
+  swaps: Array<typeof s.dexSwaps.$inferSelect>;
   funding: Array<typeof s.fundingEdges.$inferSelect>;
 }
 
@@ -306,7 +308,15 @@ async function computeAndStoreMetrics(
   const allParts = [...new Set([...parts.values()].flatMap((x) => [...x]))];
   const mem = await inChunks(allParts, (part) => ctx.db.select().from(s.entityMembers).where(inArray(s.entityMembers.wallet, part)));
   const entityOfId = new Map(mem.map((m) => [m.wallet, m.entity]));
-  const hex = await ctx.book.hexes([...allParts, ...mem.map((m) => m.entity), ...data.transfers.flatMap((t) => [t.from, t.to]), ...contracts, ...data.tokens.flatMap((t) => [t.id, t.creator])]);
+  const hex = await ctx.book.hexes([
+    ...allParts,
+    ...mem.map((m) => m.entity),
+    ...data.transfers.flatMap((t) => [t.from, t.to]),
+    ...data.swaps.flatMap((w) => [w.recipient, ...(w.txFrom ? [w.txFrom] : [])]),
+    ...contracts,
+    ...data.tokens.flatMap((t) => [t.id, t.creator]),
+  ]);
+  const wmon = NADFUN_MAINNET.WMON.toLowerCase();
   const h = (id: number) => hex.get(id)!.toLowerCase();
   const entityOf = new Map([...entityOfId].map(([w, e]) => [h(w), h(e)]));
   const contractHex = new Set([...contracts].map(h));
@@ -322,6 +332,11 @@ async function computeAndStoreMetrics(
           ? { wallet: h(t.trader), side: "buy", block: t.block, mon: BigInt(t.amountIn), tokens: BigInt(t.amountOut) }
           : { wallet: h(t.trader), side: "sell", block: t.block, mon: BigInt(t.amountOut), tokens: BigInt(t.amountIn) },
       );
+    // DEX swaps after graduation: attributed to the tx signer (the Swap sender is the router).
+    for (const w of data.swaps.filter((x) => x.token === tok.id)) {
+      const t = swapAsTrade({ amount0: BigInt(w.amount0), amount1: BigInt(w.amount1) }, h(tok.id), wmon);
+      if (t) trades.push({ wallet: h(w.txFrom ?? w.recipient), side: t.side, block: w.block, mon: t.mon, tokens: t.tokens });
+    }
     const metrics = computeMetrics({
       token: h(tok.id),
       creator: h(tok.creator),
@@ -358,6 +373,7 @@ async function loadAll(ctx: StoreCtx, sourceBlock: number): Promise<Loaded> {
     tokens: await db.select().from(s.tokens).where(and(lte(s.tokens.createBlock, sourceBlock), eq(s.tokens.pruned, 0))),
     trades: await db.select().from(s.curveTrades).where(lte(s.curveTrades.block, sourceBlock)),
     transfers: await db.select().from(s.transfers).where(lte(s.transfers.block, sourceBlock)),
+    swaps: await db.select().from(s.dexSwaps).where(lte(s.dexSwaps.block, sourceBlock)),
     funding: await db.select().from(s.fundingEdges),
   };
 }
@@ -442,6 +458,7 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
     tokens,
     trades: await inChunks(tokenIds, (part) => db.select().from(s.curveTrades).where(and(inArray(s.curveTrades.token, part), lte(s.curveTrades.block, sourceBlock)))),
     transfers: await inChunks(tokenIds, (part) => db.select().from(s.transfers).where(and(inArray(s.transfers.token, part), lte(s.transfers.block, sourceBlock)))),
+    swaps: await inChunks(tokenIds, (part) => db.select().from(s.dexSwaps).where(and(inArray(s.dexSwaps.token, part), lte(s.dexSwaps.block, sourceBlock)))),
     funding: await db.select().from(s.fundingEdges),
   };
   const excluded = await excludedIds(ctx, tokens);
@@ -527,6 +544,7 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
     data.trades.push(...more);
     attributed.push(...attribute(more, contracts));
     data.transfers.push(...moreTransfers);
+    data.swaps.push(...(await inChunks(missing, (part) => db.select().from(s.dexSwaps).where(and(inArray(s.dexSwaps.token, part), lte(s.dexSwaps.block, sourceBlock))))));
   }
   const results = await computeAndStoreMetrics(ctx, data, data.tokens.map((t) => t.id), attributed, excluded, contracts, sourceBlock, cfg);
   ctx.log?.(`[store] incremental: ${tokenIds.length} tokens touched, ${links.length} links, ${changed.size} membership changes, ${results.length} tokens recomputed`);

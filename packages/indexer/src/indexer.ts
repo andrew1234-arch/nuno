@@ -182,7 +182,10 @@ export async function indexTokenRange(ctx: IndexerCtx, from: number, to: number,
       const tok = sw && byPool.get(sw.pool);
       return sw && tok ? [{ m: logMeta(l), sw, tok }] : [];
     });
-    const ids = await book.ids(decoded.flatMap(({ sw }) => [sw.sender, sw.recipient]));
+    // The swap sender is the router: store the signer so DEX volume is attributed to the trader.
+    const signers = new Map<string, string>();
+    for (const h of new Set(decoded.map((d) => d.m.txHash))) signers.set(h, await txSigner(logsRpc, h));
+    const ids = await book.ids([...decoded.flatMap(({ sw }) => [sw.sender, sw.recipient]), ...signers.values()]);
     const rows = decoded.map(({ m, sw, tok }) => ({
       tx: txBytes(m.txHash),
       logIndex: m.logIndex,
@@ -191,6 +194,7 @@ export async function indexTokenRange(ctx: IndexerCtx, from: number, to: number,
       token: tok.id,
       sender: ids.get(sw.sender)!,
       recipient: ids.get(sw.recipient)!,
+      txFrom: ids.get(signers.get(m.txHash)!)!,
       amount0: sw.amount0.toString(),
       amount1: sw.amount1.toString(),
     }));
@@ -328,7 +332,13 @@ export async function backfillTxSigners(ctx: IndexerCtx, concurrency = 6): Promi
       }
     }),
   );
-  return rows.length;
+  // Swaps indexed before the tx_from column existed.
+  const swaps = await ctx.db.selectDistinct({ tx: s.dexSwaps.tx }).from(s.dexSwaps).where(isNull(s.dexSwaps.txFrom));
+  for (const { tx } of swaps) {
+    const from = await ctx.book.id(await txSigner(ctx.logsRpc, txHex(tx)));
+    await ctx.db.update(s.dexSwaps).set({ txFrom: from }).where(eq(s.dexSwaps.tx, tx));
+  }
+  return rows.length + swaps.length;
 }
 
 export async function countRows(db: SqlDb): Promise<Record<string, number>> {
