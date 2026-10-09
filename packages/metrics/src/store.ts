@@ -362,6 +362,24 @@ async function loadAll(ctx: StoreCtx, sourceBlock: number): Promise<Loaded> {
   };
 }
 
+/** The subset of `ids` that traded (attributed) or sent/received a tracked, unpruned token. */
+async function participantsAmong(ctx: StoreCtx, ids: number[]): Promise<number[]> {
+  const out = new Set<number>();
+  // The id list is bound 5 times: 19 ids x 5 = 95 parameters, under D1's 100 per query.
+  for (const part of chunks(ids, Math.floor((MAX_PARAMS - 1) / 5))) {
+    const list = sql.join(part.map((x) => sql`${x}`), sql`, `);
+    const rs = await ctx.db.all<unknown>(sql`
+      select ct.trader from curve_trades ct where ct.trader in (${list})
+      union select ct.tx_from from curve_trades ct join wallets sw on sw.id = ct.trader
+        where sw.is_contract = 1 and ct.tx_from in (${list})
+      union select tr."from" from transfers tr where tr."from" in (${list})
+      union select tr."to" from transfers tr where tr."to" in (${list})
+      union select t.creator from tokens t where t.creator in (${list})`);
+    for (const r of rs) out.add(Number(Array.isArray(r) ? r[0] : Object.values(r as Record<string, unknown>)[0]));
+  }
+  return [...out];
+}
+
 export interface RunSummary {
   sourceBlock: number;
   entities: number;
@@ -450,8 +468,12 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
     return out;
   };
   const seedAnc = new Set([...seed].flatMap((w) => [...ancestors(w)]));
-  const funded = [...new Set(data.funding.map((f) => f.wallet))].filter((w) => !contracts.has(w));
-  const neighbours = funded.filter((w) => [...ancestors(w)].some((a) => seedAnc.has(a)));
+  // Only token participants (traders/holders) can be cluster members, exactly as in the full run:
+  // funding ancestors that never traded or held a tracked token must not join entities.
+  const fundedSharing = [...new Set(data.funding.map((f) => f.wallet))].filter(
+    (w) => !contracts.has(w) && !seed.has(w) && [...ancestors(w)].some((a) => seedAnc.has(a)),
+  );
+  const neighbours = await participantsAmong(ctx, fundedSharing);
   const wallets = [...new Set([...seed, ...neighbours])].filter((w) => !contracts.has(w));
 
   const { input } = await toInput(ctx, { ...data, trades: attributed }, wallets, contracts);
@@ -475,11 +497,15 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
   const current = await inChunks(endpoints, (part) => db.select().from(s.entityMembers).where(inArray(s.entityMembers.wallet, part)));
   const entitiesTouched = [...new Set(current.map((m) => m.entity))];
   const existing = await inChunks(entitiesTouched, (part) => db.select().from(s.entityMembers).where(inArray(s.entityMembers.entity, part)));
-  const merged = await mergeEntities(ctx, accepted, new Map(existing.map((m) => [m.wallet, m.entity])));
-  await writeMembers(ctx, merged, false);
+  const before = new Map(existing.map((m) => [m.wallet, m.entity]));
+  const merged = await mergeEntities(ctx, accepted, before);
+  // Only wallets whose entity actually changed matter: re-generated evidence for pairs that were
+  // already merged must not trigger a recompute of every token the entity touches.
+  const changed = new Map([...merged].filter(([w, e]) => before.get(w) !== e));
+  if (changed.size) await writeMembers(ctx, changed, false);
 
-  // Tokens affected by merges are recomputed too.
-  const mergedWallets = [...merged.keys()];
+  // Tokens of wallets whose entity changed are recomputed too (their entity-level metrics moved).
+  const mergedWallets = [...changed.keys()];
   const extraTokens = await inChunks(mergedWallets, (part) =>
     db.selectDistinct({ t: s.curveTrades.token }).from(s.curveTrades).where(sql`${s.curveTrades.trader} in ${part} or ${s.curveTrades.txFrom} in ${part}`),
   );
@@ -503,7 +529,7 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
     data.transfers.push(...moreTransfers);
   }
   const results = await computeAndStoreMetrics(ctx, data, data.tokens.map((t) => t.id), attributed, excluded, contracts, sourceBlock, cfg);
-  ctx.log?.(`[store] incremental: ${tokenIds.length} tokens touched, ${links.length} links, ${accepted.size} accepted pairs, ${results.length} tokens recomputed`);
+  ctx.log?.(`[store] incremental: ${tokenIds.length} tokens touched, ${links.length} links, ${changed.size} membership changes, ${results.length} tokens recomputed`);
   return { sourceBlock, entities: new Set(merged.values()).size, tokens: results, reattributed: 0 };
 }
 

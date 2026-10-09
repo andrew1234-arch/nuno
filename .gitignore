@@ -21,3 +21,4 @@ SPEC.md.new
 data/
 .open-next/
 .wrangler/
+apps/web/lib/methodology.generated.ts

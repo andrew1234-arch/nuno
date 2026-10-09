@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import type { SqlDb } from "./client.js";
+import { MAX_PARAMS, type SqlDb } from "./client.js";
 import * as schema from "./schema.js";
 
 // Node-only: the local SQLite file used for backfill and full runs (SPEC §7.10).
@@ -46,6 +46,8 @@ export function openLocal(path: string): { db: SqlDb; raw: DatabaseSync; close: 
   migrate(raw);
   const db = drizzle(
     async (sql, ps, method) => {
+      // Emulate Cloudflare D1's limit so local runs and tests fail exactly where production would.
+      if (ps.length > MAX_PARAMS) throw new Error(`too many SQL variables: ${ps.length} > ${MAX_PARAMS} (D1 limit)`);
       const stmt = raw.prepare(sql);
       if (method === "run") {
         stmt.run(...params(ps));

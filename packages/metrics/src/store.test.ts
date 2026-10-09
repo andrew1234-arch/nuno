@@ -18,6 +18,8 @@ const T2 = a(0x72);
 const P1 = a(0x81); // curve pools
 const P2 = a(0x82);
 const ZERO = a(0);
+const G = a(0x60); // ancestor of the operator's funder
+const H = a(0x61); // unrelated non-participant also funded by G
 
 const eoaRpc = { call: async () => "0x" } as unknown as RpcClient;
 
@@ -28,6 +30,10 @@ async function seed(db: SqlDb, book: AddressBook, part: 1 | 2) {
     await db.insert(s.fundingEdges).values([
       { wallet: await id(C1), funder: await id(F), origin: await id(F), kind: 0, value: "15", block: 10, blockTime: 1_000, tx: txBytes(tx(10)), source: 0 },
       { wallet: await id(X), funder: await id(FX), origin: await id(FX), kind: 0, value: "1", block: 11, blockTime: 1_000, tx: txBytes(tx(11)), source: 0 },
+      // Hop-2 ancestors (never traded or held): F and an unrelated H share a funder G. They must
+      // never become cluster members (regression: incremental runs once clustered funding ancestors).
+      { wallet: await id(F), funder: await id(G), origin: await id(G), kind: 0, value: "9", block: 5, blockTime: 500, tx: txBytes(tx(5)), source: 0 },
+      { wallet: await id(H), funder: await id(G), origin: await id(G), kind: 0, value: "9", block: 6, blockTime: 510, tx: txBytes(tx(6)), source: 0 },
     ]);
     await db.insert(s.curveTrades).values([
       { tx: txBytes(tx(101)), logIndex: 0, block: 101, token: await id(T1), trader: await id(C1), txFrom: await id(C1), side: 0, amountIn: "100", amountOut: "1000" },
@@ -111,6 +117,20 @@ describe("store: full and incremental runs on SQLite", () => {
     expect(sb.metrics).toEqual(sa.metrics);
     A.close();
     B.close();
+  });
+
+  it("does not recompute an entity's other tokens when its membership did not change", async () => {
+    const { db, close } = openLocal(":memory:");
+    const book = new AddressBook(db);
+    await seed(db, book, 1);
+    await seed(db, book, 2);
+    const ctx = { db, book, rpc: eoaRpc, infrastructure: new Set<string>() };
+    await fullRun(ctx, 1000);
+    // C2 "newly funded" again (no new facts): nothing changes, and only C2's token (T2) is touched.
+    const r = await incrementalRun(ctx, 1000, 1000, [await book.id(C2)]);
+    const hex = await book.hexes(r.tokens.map((t) => t.token));
+    expect([...hex.values()]).toEqual([T2]);
+    close();
   });
 
   it("is idempotent: re-running incremental changes nothing", async () => {

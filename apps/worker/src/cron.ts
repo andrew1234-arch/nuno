@@ -1,3 +1,4 @@
+import { eq, gt } from "drizzle-orm";
 import { pendingBuyers, resolveFundingTree } from "@nuno/funding";
 import { INDEXER_CURSOR, WINDOW_CURSOR, getCursor, indexBlocks, prune, setCursor } from "@nuno/indexer";
 import { budgetLevel, incrementalRun, infrastructureSet } from "@nuno/metrics";
@@ -50,19 +51,20 @@ export async function tick(db: SqlDb, cfg: Settings): Promise<Record<string, unk
   } else out.hardStop = true;
 
   // 2. Funding for new buyers (bounded; never-tried first).
-  const newlyFunded: number[] = [];
-  for (const b of await pendingBuyers({ db, book }, MAX_FUNDING_PER_TICK)) {
-    await resolveFundingTree({ db, book, rpc: archiveRpc, log }, b.trader, b.firstBuy - 1, 3);
-    newlyFunded.push(await book.id(b.trader));
-  }
-  out.funded = newlyFunded.length;
+  const buyers = await pendingBuyers({ db, book }, MAX_FUNDING_PER_TICK);
+  for (const b of buyers) await resolveFundingTree({ db, book, rpc: archiveRpc, log }, b.trader, b.firstBuy - 1, 3);
+  out.funded = buyers.length;
 
-  // 3. Incremental entities + metrics for activity since the last metrics run.
-  const since = (await getCursor(db, METRICS_CURSOR)) ?? cursor;
+  // 3. Incremental entities + metrics since the last *completed* metrics run. "Newly funded" is read
+  // from the DB (resolved after that run), so a tick that failed after funding is picked up next time.
+  const [mc] = await db.select().from(s.cursors).where(eq(s.cursors.name, METRICS_CURSOR));
+  const since = mc?.block ?? cursor;
+  const lastRunAt = mc?.updatedAt ?? 0;
+  const newlyFunded = (await db.select({ id: s.wallets.id }).from(s.wallets).where(gt(s.wallets.resolvedAt, lastRunAt))).map((r) => r.id);
   if (head > since || newlyFunded.length) {
     const run = await incrementalRun({ db, book, rpc: archiveRpc, infrastructure: infrastructureSet(), log }, since, head, newlyFunded);
     await setCursor(db, METRICS_CURSOR, head);
-    out.metrics = { tokens: run.tokens.length };
+    out.metrics = { tokens: run.tokens.length, newlyFunded: newlyFunded.length };
   }
 
   // 4. Publish changed snapshots (the publisher's policy decides per token).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { AddressBook, txBytes, txHex } from "./addresses.js";
 import { insertIgnore } from "./client.js";
 import { openLocal } from "./local.js";
@@ -73,6 +73,15 @@ describe("AddressBook", () => {
     const many = Array.from({ length: 450 }, (_, i) => "0x" + i.toString(16).padStart(40, "0"));
     const ids = await new AddressBook(db).ids(many);
     expect(new Set(ids.values()).size).toBe(450);
+    close();
+  });
+});
+
+describe("D1 limit emulation", () => {
+  it("rejects statements with more than 100 bound parameters, like D1", async () => {
+    const { db, close } = openLocal(":memory:");
+    const ids = Array.from({ length: 101 }, (_, i) => i + 1);
+    await expect(db.select().from(cursors).where(inArray(cursors.updatedAt, ids))).rejects.toThrow(/too many SQL variables/);
     close();
   });
 });
