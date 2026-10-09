@@ -227,11 +227,30 @@ export const labels = sqliteTable("labels", {
   fetchedAt: integer("fetched_at").notNull(),
 });
 
-/** Storage budget tracking (SPEC §7.11). */
+/** Storage budget tracking, one row per pipeline run. */
 export const storageStats = sqliteTable("storage_stats", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   at: integer("at").notNull(),
   bytes: integer("bytes").notNull(),
   /** {"table": rowCount, ...} */
   rowCounts: text("row_counts").notNull(),
+  /** Nansen credits spent during this run (from X-Nansen-Credits-Used). */
+  nansenCreditsSpent: integer("nansen_credits_spent").notNull().default(0),
 });
+
+/**
+ * Permanent cache of Nansen responses (free plan: credits are scarce). One row per address and
+ * endpoint; a cached address is never queried again. `result` is a compact JSON summary, never
+ * the raw payload.
+ */
+export const nansenCache = sqliteTable(
+  "nansen_cache",
+  {
+    address: integer("address").notNull(),
+    endpoint: text("endpoint").notNull(),
+    result: text("result").notNull(),
+    creditsUsed: integer("credits_used").notNull(),
+    fetchedAt: integer("fetched_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.address, t.endpoint] })],
+);

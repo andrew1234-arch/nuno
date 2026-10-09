@@ -15,6 +15,13 @@
       "when": 1791570431213,
       "tag": "0001_dex_swap_signer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791572459638,
+      "tag": "0002_nansen_cache",
+      "breakpoints": true
     }
   ]
 }

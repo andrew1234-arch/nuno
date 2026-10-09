@@ -65,44 +65,25 @@ importers:
         version: 4.3.3
       wrangler:
         specifier: ^4.149.0
-        version: 4.149.0(@cloudflare/workers-types@4.20260702.1)(@types/node@22.20.5)
+        version: 4.149.0(@types/node@22.20.5)
 
-  apps/worker:
+  packages/api:
     dependencies:
       '@nuno/cluster':
         specifier: workspace:*
-        version: link:../../packages/cluster
-      '@nuno/funding':
-        specifier: workspace:*
-        version: link:../../packages/funding
-      '@nuno/indexer':
-        specifier: workspace:*
-        version: link:../../packages/indexer
+        version: link:../cluster
       '@nuno/metrics':
         specifier: workspace:*
-        version: link:../../packages/metrics
-      '@nuno/publisher':
-        specifier: workspace:*
-        version: link:../../packages/publisher
+        version: link:../metrics
       '@nuno/shared':
         specifier: workspace:*
-        version: link:../../packages/shared
+        version: link:../shared
       drizzle-orm:
         specifier: ^0.38.3
         version: 0.38.4(@cloudflare/workers-types@4.20260702.1)(@types/react@19.3.0)(postgres@3.4.9)(react@19.3.0)
-      hono:
-        specifier: ^4.6.14
-        version: 4.13.13
       viem:
         specifier: ^2.21.0
         version: 2.57.4(typescript@5.9.3)
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20250101.0
-        version: 4.20260702.1
-      wrangler:
-        specifier: ^4.0.0
-        version: 4.149.0(@cloudflare/workers-types@4.20260702.1)(@types/node@22.20.5)
 
   packages/cluster:
     dependencies:
@@ -142,6 +123,36 @@ importers:
       '@nuno/indexer':
         specifier: workspace:*
         version: link:../indexer
+      '@nuno/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: ^0.38.3
+        version: 0.38.4(@cloudflare/workers-types@4.20260702.1)(@types/react@19.3.0)(postgres@3.4.9)(react@19.3.0)
+      viem:
+        specifier: ^2.21.0
+        version: 2.57.4(typescript@5.9.3)
+
+  packages/pipeline:
+    dependencies:
+      '@nuno/api':
+        specifier: workspace:*
+        version: link:../api
+      '@nuno/cluster':
+        specifier: workspace:*
+        version: link:../cluster
+      '@nuno/funding':
+        specifier: workspace:*
+        version: link:../funding
+      '@nuno/indexer':
+        specifier: workspace:*
+        version: link:../indexer
+      '@nuno/metrics':
+        specifier: workspace:*
+        version: link:../metrics
+      '@nuno/publisher':
+        specifier: workspace:*
+        version: link:../publisher
       '@nuno/shared':
         specifier: workspace:*
         version: link:../shared
@@ -2756,10 +2767,6 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
-  hono@4.13.13:
-    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
-    engines: {node: '>=16.9.0'}
-
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
     engines: {node: '>= 0.8'}
@@ -4228,7 +4235,8 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20261006.1':
     optional: true
 
-  '@cloudflare/workers-types@4.20260702.1': {}
+  '@cloudflare/workers-types@4.20260702.1':
+    optional: true
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -4914,7 +4922,7 @@ snapshots:
       glob: 12.0.0
       next: 15.5.27(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       ts-tqdm: 0.8.6
-      wrangler: 4.149.0(@cloudflare/workers-types@4.20260702.1)(@types/node@22.20.5)
+      wrangler: 4.149.0(@types/node@22.20.5)
       yargs: 18.2.0
     transitivePeerDependencies:
       - encoding
@@ -5013,7 +5021,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
@@ -6149,8 +6157,6 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.13.13: {}
-
   http-errors@2.0.1:
     dependencies:
       depd: 2.0.0
@@ -6931,7 +6937,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20261006.1
       '@cloudflare/workerd-windows-64': 1.20261006.1
 
-  wrangler@4.149.0(@cloudflare/workers-types@4.20260702.1)(@types/node@22.20.5):
+  wrangler@4.149.0(@types/node@22.20.5):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.5.0
       '@cloudflare/unenv-preset': 2.16.2(unenv@2.0.0-rc.24)(workerd@1.20261006.1)
@@ -6942,7 +6948,6 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20261006.1
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20260702.1
       fsevents: 2.3.3
     transitivePeerDependencies:
       - '@types/node'

@@ -322,9 +322,14 @@ async function computeAndStoreMetrics(
   const contractHex = new Set([...contracts].map(h));
 
   const out: Array<{ token: number; symbol: string; metrics: TokenMetrics; entities: number }> = [];
+  // An entity active in many tokens is loaded once, not once per token.
+  const clusterCache = new Map<number, Cluster>();
+  const entityIdByHex = new Map([...new Set(mem.map((m) => m.entity))].map((e) => [h(e), e]));
   for (const tok of data.tokens.filter((t) => tokenIds.includes(t.id))) {
     const ents = [...new Set([...(parts.get(tok.id) ?? [])].map((p) => entityOfId.get(p)).filter((e): e is number => e !== undefined))];
-    const clusters = await clustersFor(ctx, ents, cfg);
+    const missingEnts = ents.filter((e) => !clusterCache.has(e));
+    for (const c of await clustersFor(ctx, missingEnts, cfg)) clusterCache.set(entityIdByHex.get(c.id)!, c);
+    const clusters = ents.map((e) => clusterCache.get(e)).filter((c): c is Cluster => c !== undefined);
     const trades: VolumeTrade[] = attributed
       .filter((t) => t.token === tok.id)
       .map((t) =>
@@ -376,6 +381,23 @@ async function loadAll(ctx: StoreCtx, sourceBlock: number): Promise<Loaded> {
     swaps: await db.select().from(s.dexSwaps).where(lte(s.dexSwaps.block, sourceBlock)),
     funding: await db.select().from(s.fundingEdges),
   };
+}
+
+/** Tokens a set of wallets traded (incl. bot-routed and DEX) or sent/received. */
+async function tokensTouchedBy(ctx: Pick<StoreCtx, "db">, ids: number[]): Promise<number[]> {
+  const out = new Set<number>();
+  // The id list is bound 5 times: 19 ids x 5 = 95 parameters, under the 100 limit.
+  for (const part of chunks([...new Set(ids)], Math.floor((MAX_PARAMS - 1) / 5))) {
+    const list = sql.join(part.map((x) => sql`${x}`), sql`, `);
+    const rs = await ctx.db.all<unknown>(sql`
+      select token from curve_trades where trader in (${list})
+      union select token from curve_trades where tx_from in (${list})
+      union select token from transfers where "from" in (${list})
+      union select token from transfers where "to" in (${list})
+      union select token from dex_swaps where tx_from in (${list})`);
+    for (const r of rs) out.add(Number(Array.isArray(r) ? r[0] : Object.values(r as Record<string, unknown>)[0]));
+  }
+  return [...out];
 }
 
 /** The subset of `ids` that traded (attributed) or sent/received a tracked, unpruned token. */
@@ -445,10 +467,7 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
   ]);
   // Tokens of newly funded wallets are affected too (their funding links can merge entities).
   if (newlyFunded.length) {
-    const viaTrades = await inChunks(newlyFunded, (part) =>
-      db.selectDistinct({ t: s.curveTrades.token }).from(s.curveTrades).where(sql`${s.curveTrades.trader} in ${part} or ${s.curveTrades.txFrom} in ${part}`),
-    );
-    for (const r of viaTrades) touchedTokens.add(r.t);
+    for (const t of await tokensTouchedBy(ctx, await participantsAmong(ctx, newlyFunded))) touchedTokens.add(t);
   }
   if (!touchedTokens.size) return { sourceBlock, entities: 0, tokens: [], reattributed: 0 };
 
@@ -472,14 +491,22 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
 
   // Neighbourhood: participants of affected tokens + newly funded wallets + every wallet sharing a
   // funding ancestor with them (so funding-based links to older wallets are found too).
-  const seed = new Set([...[...parts.values()].flatMap((x) => [...x]), ...newlyFunded]);
+  // Newly funded wallets seed the neighbourhood only if they are token participants: hop-2/3 funding
+  // ancestors that never traded or held must not become entity members (same rule as the full run).
+  const seed = new Set([...[...parts.values()].flatMap((x) => [...x]), ...(await participantsAmong(ctx, newlyFunded))]);
+  const infraIds = new Set<number>();
+  for (const a of ctx.infrastructure) {
+    const id = await ctx.book.find(a);
+    if (id !== undefined) infraIds.add(id);
+  }
   const originsOf = new Map<number, number[]>();
   for (const f of data.funding) originsOf.set(f.wallet, [...(originsOf.get(f.wallet) ?? []), f.origin]);
   const ancestors = (w: number) => {
     const out = new Set<number>();
     let frontier = [w];
     for (let hop = 0; hop < cfg.maxFundingHops && frontier.length; hop++) {
-      frontier = frontier.flatMap((x) => originsOf.get(x) ?? []).filter((o) => !out.has(o));
+      // Never walk through infrastructure: an exchange shares an "ancestor" with everyone it funded.
+      frontier = frontier.flatMap((x) => originsOf.get(x) ?? []).filter((o) => !out.has(o) && !infraIds.has(o));
       frontier.forEach((o) => out.add(o));
     }
     return out;
@@ -523,10 +550,8 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
 
   // Tokens of wallets whose entity changed are recomputed too (their entity-level metrics moved).
   const mergedWallets = [...changed.keys()];
-  const extraTokens = await inChunks(mergedWallets, (part) =>
-    db.selectDistinct({ t: s.curveTrades.token }).from(s.curveTrades).where(sql`${s.curveTrades.trader} in ${part} or ${s.curveTrades.txFrom} in ${part}`),
-  );
-  const missing = extraTokens.map((r) => r.t).filter((t) => !touchedTokens.has(t));
+  // Via trades, transfers and DEX swaps: a wallet holding through transfers is affected too.
+  const missing = (await tokensTouchedBy(ctx, mergedWallets)).filter((t) => !touchedTokens.has(t));
   if (missing.length) {
     const moreTokens = await inChunks(missing, (part) => db.select().from(s.tokens).where(and(inArray(s.tokens.id, part), eq(s.tokens.pruned, 0))));
     const more = await inChunks(missing, (part) => db.select().from(s.curveTrades).where(and(inArray(s.curveTrades.token, part), lte(s.curveTrades.block, sourceBlock))));
@@ -552,11 +577,11 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
 }
 
 /** Canonical evidence JSON for a token (served by the API so anyone can recompute evidenceRoot). */
-export async function evidenceJsonFor(ctx: Pick<StoreCtx, "db" | "book" | "cfg">, tokenId: number): Promise<string> {
+export async function evidenceJsonFor(ctx: Pick<StoreCtx, "db" | "book" | "cfg">, tokenId: number): Promise<string | null> {
   const cfg = ctx.cfg ?? DEFAULT_CLUSTER_CONFIG;
   const tokenHex = (await ctx.book.hex(tokenId))!.toLowerCase();
   const [tok] = await ctx.db.select().from(s.tokens).where(eq(s.tokens.id, tokenId));
-  if (!tok) return evidenceRoot(tokenHex, []).canonical;
+  if (!tok) return null; // not a tracked token: no evidence (never a root that looks valid)
   const parts = new Set<number>([tok.creator]);
   const trades = await ctx.db.select().from(s.curveTrades).where(eq(s.curveTrades.token, tokenId));
   const transfers = await ctx.db.select().from(s.transfers).where(eq(s.transfers.token, tokenId));

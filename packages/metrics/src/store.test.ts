@@ -87,7 +87,9 @@ describe("store: full and incremental runs on SQLite", () => {
     // The stored root matches the canonical JSON the API serves.
     expect(evidenceRoot(T1, []).root).not.toBe(m1.root);
     const json = await evidenceJsonFor(ctx, await book.id(T1));
-    expect(JSON.parse(json).clusters[0].members).toEqual([C1, C2]);
+    expect(JSON.parse(json!).clusters[0].members).toEqual([C1, C2]);
+    // Not a token: no evidence at all (never a valid-looking root for an untracked address).
+    expect(await evidenceJsonFor(ctx, await book.id(C1))).toBeNull();
     close();
   });
 

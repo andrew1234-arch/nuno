@@ -1,5 +1,6 @@
 import { createPublicClient, createWalletClient, defineChain, http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { asc, eq } from "drizzle-orm";
 import { bytesToHex, hexToBytes } from "viem";
 import { AddressBook, nunoFeedAbi, sqliteSchema as s, type SqlDb } from "@nuno/shared";
 import { shouldPublish, toSnapshot, type FeedSnapshot, type PublishPolicy, DEFAULT_PUBLISH_POLICY } from "./snapshot.js";
@@ -20,6 +21,8 @@ export interface PublisherCtx {
   privateKey: Hex;
   policy?: PublishPolicy;
   log?: (msg: string) => void;
+  /** Max snapshots sent per run (each waits for a receipt); the rest wait for the next run. */
+  maxPublishes?: number;
 }
 
 export interface PublishResult {
@@ -42,22 +45,38 @@ function clients(ctx: Pick<PublisherCtx, "rpcUrl" | "chainId" | "privateKey">) {
   const account = privateKeyToAccount(ctx.privateKey);
   return {
     account,
-    publicClient: createPublicClient({ chain, transport: http(ctx.rpcUrl) }),
-    walletClient: createWalletClient({ chain, account, transport: http(ctx.rpcUrl) }),
+    // Bounded like every other external call: timeout + retries with backoff (viem's http transport).
+    publicClient: createPublicClient({ chain, transport: http(ctx.rpcUrl, { timeout: 20_000, retryCount: 3, retryDelay: 500 }) }),
+    walletClient: createWalletClient({ chain, account, transport: http(ctx.rpcUrl, { timeout: 20_000, retryCount: 3, retryDelay: 500 }) }),
   };
 }
 
 /** Publish every token whose stored metrics differ meaningfully from its on-chain snapshot. */
 export async function publishAll(ctx: PublisherCtx): Promise<PublishResult[]> {
   const cl = clients(ctx);
-  const rows = await ctx.db.select().from(s.tokenMetrics);
+  // Pruned tokens are summaries only: their evidence can no longer be recomputed, so they are
+  // never republished. Stalest computations first, so a capped run makes progress across tokens.
+  const rows = await ctx.db
+    .select({ m: s.tokenMetrics })
+    .from(s.tokenMetrics)
+    .innerJoin(s.tokens, eq(s.tokens.id, s.tokenMetrics.token))
+    .where(eq(s.tokens.pruned, 0))
+    .orderBy(asc(s.tokenMetrics.computedAt))
+    .then((rs) => rs.map((r) => r.m));
+  let sent = 0;
   const hex = await ctx.book.hexes(rows.map((r) => r.token));
   const now = Math.floor(Date.now() / 1000);
   const results: PublishResult[] = [];
   for (const row of rows) {
     const token = hex.get(row.token)!;
+    if (ctx.maxPublishes !== undefined && sent >= ctx.maxPublishes) {
+      results.push({ token, reason: "deferred: per-run publish cap" });
+      continue;
+    }
     try {
-      results.push(await publishOne(ctx, token, row, now, cl));
+      const r = await publishOne(ctx, token, row, now, cl);
+      if (r.txHash) sent++;
+      results.push(r);
     } catch (err) {
       const error = (err as Error).message.split("\n")[0]!.slice(0, 300);
       ctx.log?.(`[publisher] ${token} FAILED: ${error}`);

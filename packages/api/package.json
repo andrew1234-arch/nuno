@@ -1,0 +1,14 @@
+{
+  "name": "@nuno/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@nuno/cluster": "workspace:*",
+    "@nuno/metrics": "workspace:*",
+    "@nuno/shared": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "viem": "^2.21.0"
+  }
+}

@@ -1,15 +1,17 @@
 {
-  "name": "@nuno/worker",
+  "name": "@nuno/pipeline",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": { ".": "./src/index.ts" },
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "migrate:local": "wrangler d1 migrations apply nuno --local",
-    "migrate:remote": "wrangler d1 migrations apply nuno --remote"
+    "tick": "tsx src/cli.ts tick",
+    "recluster": "tsx src/cli.ts recluster",
+    "export-static": "tsx src/cli.ts export",
+    "backfill": "tsx src/cli.ts backfill"
   },
   "dependencies": {
+    "@nuno/api": "workspace:*",
     "@nuno/cluster": "workspace:*",
     "@nuno/funding": "workspace:*",
     "@nuno/indexer": "workspace:*",
@@ -17,11 +19,6 @@
     "@nuno/publisher": "workspace:*",
     "@nuno/shared": "workspace:*",
     "drizzle-orm": "^0.38.3",
-    "hono": "^4.6.14",
     "viem": "^2.21.0"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250101.0",
-    "wrangler": "^4.0.0"
   }
 }

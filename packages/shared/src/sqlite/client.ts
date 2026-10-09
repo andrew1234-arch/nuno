@@ -1,13 +1,10 @@
-import type { SQL } from "drizzle-orm";
-import type { BaseSQLiteDatabase, SQLiteTable } from "drizzle-orm/sqlite-core";
+import { getTableColumns, type SQL } from "drizzle-orm";
+import type { SQLiteTable } from "drizzle-orm/sqlite-core";
+import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import type * as schema from "./schema.js";
 
-/**
- * Async SQLite database used by every package: the local node:sqlite file (via drizzle's proxy
- * driver, no native deps) and Cloudflare D1 (drizzle-orm/d1) share this type.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the result type differs per driver (proxy vs D1).
-export type SqlDb = BaseSQLiteDatabase<"async", any, typeof schema>;
+/** Async SQLite database used by every package: the local node:sqlite file via drizzle's proxy driver. */
+export type SqlDb = SqliteRemoteDatabase<typeof schema>;
 
 /** D1 / SQLite allow at most 100 bound parameters per statement (D1 limit, checked 2026-10-08). */
 export const MAX_PARAMS = 100;
@@ -15,7 +12,9 @@ export const MAX_PARAMS = 100;
 /** Insert rows in chunks that stay under MAX_PARAMS, ignoring rows that already exist. */
 export async function insertIgnore<T extends SQLiteTable>(db: SqlDb, table: T, rows: Array<T["$inferInsert"]>): Promise<void> {
   if (!rows.length) return;
-  const cols = Math.max(1, Object.keys(rows[0]!).length);
+  // Drizzle binds a parameter for every column (including ones with JS defaults), so size chunks
+  // by the table's column count, not by the keys present in the rows.
+  const cols = Math.max(1, Object.keys(getTableColumns(table)).length);
   const size = Math.max(1, Math.floor(MAX_PARAMS / cols));
   for (let i = 0; i < rows.length; i += size) {
     await db.insert(table).values(rows.slice(i, i + size)).onConflictDoNothing();

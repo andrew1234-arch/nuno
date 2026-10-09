@@ -82,6 +82,8 @@ describe.skipIf(!ANVIL)("NunoFeed on anvil", () => {
     const { db, close } = openLocal(":memory:");
     const book = new AddressBook(db);
     const token = "0x00000000000000000000000000000000000000bb";
+    // A pruned token is never republished; this one is live.
+    await db.insert(s.tokens).values({ id: await book.id(token), creator: await book.id("0x00000000000000000000000000000000000000c0"), curvePool: await book.id("0x00000000000000000000000000000000000000c1"), name: "T", symbol: "T", createBlock: 1, createTx: hexToBytes(`0x${"01".repeat(32)}`) });
     await db.insert(s.tokenMetrics).values({
       token: await book.id(token),
       sourceBlock: 111_700_000,

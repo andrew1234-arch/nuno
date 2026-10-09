@@ -172,6 +172,9 @@ export async function pendingBuyers(ctx: Pick<FundingCtx, "db" | "book">, limit:
         select case when sw.is_contract = 1 and ct.tx_from is not null then ct.tx_from else ct.trader end as buyer, ct.block
         from curve_trades ct left join wallets sw on sw.id = ct.trader
         where ct.side = ${s.SIDE.buy}
+        union all
+        -- Post-graduation DEX buyers: the swap signer (the Swap sender is a router).
+        select ds.tx_from as buyer, ds.block from dex_swaps ds where ds.tx_from is not null
       )
       select b.buyer as buyer, min(b.block) as first_buy
       from buys b left join wallets w on w.id = b.buyer

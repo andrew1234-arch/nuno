@@ -1,8 +1,11 @@
 import type { Addr, ClusterConfig, ClusterInput, Evidence, FundingEdge, Link } from "./types.js";
 
-// Large groups are linked as a time-ordered chain rather than all pairs, keeping work O(n);
-// connectivity is identical, only per-pair weight accumulation across edge types is reduced.
-const MAX_PAIRWISE_GROUP = 64;
+// Groups up to this size are linked pairwise. Larger groups (bundles beyond ~256 wallets) are
+// linked as a chain sorted by address, keeping work O(n). Sorting makes the same wallets form the
+// same neighbour pairs in every group, so sub-threshold signals (0.5 same-block, 0.8 common
+// source) still accumulate per pair across tokens for neighbours; non-neighbour pairs of very large
+// groups only connect through those neighbours (documented in METHODOLOGY).
+const MAX_PAIRWISE_GROUP = 256;
 
 function linkGroup(
   members: Array<{ wallet: Addr; ev: Evidence }>,
@@ -10,7 +13,7 @@ function linkGroup(
   weight: number,
 ): Link[] {
   const out: Link[] = [];
-  const uniq = [...new Map(members.map((m) => [m.wallet, m])).values()];
+  const uniq = [...new Map(members.map((m) => [m.wallet, m])).values()].sort((x, y) => x.wallet.localeCompare(y.wallet));
   if (uniq.length < 2) return out;
   if (uniq.length <= MAX_PAIRWISE_GROUP) {
     for (let i = 0; i < uniq.length; i++)

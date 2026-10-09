@@ -3,8 +3,6 @@ import { keccak256, stringToHex } from "viem";
 import { fullRun } from "@nuno/metrics/store";
 import { AddressBook, sqliteSchema as s, txBytes, type RpcClient } from "@nuno/shared";
 import { openLocal } from "@nuno/shared/node";
-import { createApp } from "./app.js";
-import type { EntityDto, TokenDto, WalletDto } from "./repo.js";
 import { SqlRepo } from "./repo.js";
 
 // Hand-built test fixtures (not real chain data): two launches by one operator, one bot-routed trade.
@@ -35,45 +33,46 @@ async function setup() {
   ]);
   await db.insert(s.cursors).values({ name: "indexer", block: 1000, updatedAt: 0 });
   await fullRun({ db, book, rpc, infrastructure: new Set() }, 1000);
-  return { app: createApp(new SqlRepo(db), { cacheTtlMs: 0 }), close };
+  return { repo: new SqlRepo(db), close };
 }
 
-describe("Worker API over SQLite (SqlRepo)", () => {
+describe("API read model over SQLite (SqlRepo)", () => {
   it("serves tokens with metrics and the operator entity with evidence", async () => {
-    const { app, close } = await setup();
-    const list = (await (await app.request("/tokens?sort=newest")).json()) as { tokens: TokenDto[] };
-    expect(list.tokens.map((t) => t.address)).toEqual([T2, T1]);
-    expect(list.tokens[1]!.creator).toBe(C1);
-    expect(list.tokens[1]!.metrics!.rawHolders).toBe(1);
+    const { repo, close } = await setup();
+    const tokens = (await repo.listTokens()).sort((x, y) => y.createBlock - x.createBlock);
+    expect(tokens.map((t) => t.address)).toEqual([T2, T1]);
+    expect(tokens[1]!.creator).toBe(C1);
+    expect(tokens[1]!.metrics!.rawHolders).toBe(1);
 
-    const cl = (await (await app.request(`/tokens/${T1}/clusters`)).json()) as { clusters: EntityDto[] };
-    expect(cl.clusters).toHaveLength(1);
-    expect(cl.clusters[0]!.members).toEqual([C1, C2]);
-    expect(cl.clusters[0]!.createdTokens).toEqual([T1, T2]);
-    expect(cl.clusters[0]!.links[0]!.evidence.map((e) => e.txHash).sort()).toEqual([tx(10), tx(12)]);
+    const clusters = await repo.entitiesForToken(T1);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0]!.members).toEqual([C1, C2]);
+    expect(clusters[0]!.createdTokens).toEqual([T1, T2]);
+    expect(clusters[0]!.links[0]!.evidence.map((e) => e.txHash).sort()).toEqual([tx(10), tx(12)]);
 
-    const ent = (await (await app.request(`/clusters/${C1}`)).json()) as EntityDto;
-    expect(ent.size).toBe(2);
-    expect((await app.request(`/clusters/${C2}`)).status).toBe(404); // ids are the smallest member
+    const ent = await repo.getEntity(C1);
+    expect(ent!.size).toBe(2);
+    expect(await repo.getEntity(C2)).toBeNull(); // ids are the smallest member
     close();
   });
 
   it("serves evidence whose keccak256 equals the stored evidenceRoot", async () => {
-    const { app, close } = await setup();
-    const tok = (await (await app.request(`/tokens/${T1}`)).json()) as TokenDto;
-    const ev = (await (await app.request(`/tokens/${T1}/evidence`)).json()) as { canonical: string };
-    expect(keccak256(stringToHex(ev.canonical))).toBe(tok.metrics!.evidenceRoot);
+    const { repo, close } = await setup();
+    const tok = await repo.getToken(T1);
+    const canonical = await repo.evidenceJson(T1);
+    expect(keccak256(stringToHex(canonical!))).toBe(tok!.metrics!.evidenceRoot);
+    expect(await repo.evidenceJson(C1)).toBeNull(); // not a token
     close();
   });
 
   it("attributes bot-routed trades to the signing wallet", async () => {
-    const { app, close } = await setup();
-    const w = (await (await app.request(`/wallets/${W}`)).json()) as WalletDto;
-    expect(w.trades).toEqual([{ token: T1, buys: 1, sells: 0 }]);
-    const bot = (await (await app.request(`/wallets/${BOT}`)).json()) as WalletDto;
-    expect(bot.isContract).toBe(true);
-    const f = (await (await app.request(`/wallets/${F}`)).json()) as WalletDto;
-    expect(f.funded.map((e) => e.wallet).sort()).toEqual([C1, C2]);
+    const { repo, close } = await setup();
+    const w = await repo.getWallet(W);
+    expect(w!.trades).toEqual([{ token: T1, buys: 1, sells: 0 }]);
+    const bot = await repo.getWallet(BOT);
+    expect(bot!.isContract).toBe(true);
+    const f = await repo.getWallet(F);
+    expect(f!.funded.map((e) => e.wallet).sort()).toEqual([C1, C2]);
     close();
   });
 });

@@ -1,6 +1,7 @@
 /**
- * Storage budget (SPEC §7.11). Thresholds come from env with the SPEC defaults; never raise them
- * without the user's explicit approval (CLAUDE.md rule 8).
+ * Storage budget for the SQLite file committed to the `data` branch (GitHub rejects files over
+ * 100 MB). Thresholds come from env with these defaults; never raise them without the user's
+ * explicit approval.
  */
 export interface Budget {
   targetBytes: number;
@@ -8,7 +9,7 @@ export interface Budget {
   hardStopBytes: number;
 }
 
-export const DEFAULT_BUDGET: Budget = { targetBytes: 1_500_000_000, alarmBytes: 2_500_000_000, hardStopBytes: 3_000_000_000 };
+export const DEFAULT_BUDGET: Budget = { targetBytes: 40_000_000, alarmBytes: 70_000_000, hardStopBytes: 90_000_000 };
 
 export type BudgetLevel = "ok" | "over_target" | "alarm" | "hard_stop";
 
@@ -25,7 +26,18 @@ export function projectBytes(bytes: number, measuredDays: number, targetDays: nu
   return Math.round((bytes / measuredDays) * targetDays);
 }
 
-/** Import gate: refuse to import a local DB over the target (SPEC §7.11). */
-export function importAllowed(bytes: number, b: Budget = DEFAULT_BUDGET): boolean {
-  return bytes <= b.targetBytes;
+/** Budget from env (STORAGE_TARGET_BYTES / STORAGE_ALARM_BYTES / STORAGE_HARD_STOP_BYTES) with defaults. */
+export function budgetFromEnv(env: Record<string, string | undefined>): Budget {
+  const n = (k: string, d: number) => {
+    const v = env[k]?.trim();
+    if (!v) return d;
+    const x = Number(v);
+    if (!Number.isFinite(x) || x <= 0) throw new Error(`${k} must be a positive number, got "${v}"`);
+    return x;
+  };
+  return {
+    targetBytes: n("STORAGE_TARGET_BYTES", DEFAULT_BUDGET.targetBytes),
+    alarmBytes: n("STORAGE_ALARM_BYTES", DEFAULT_BUDGET.alarmBytes),
+    hardStopBytes: n("STORAGE_HARD_STOP_BYTES", DEFAULT_BUDGET.hardStopBytes),
+  };
 }

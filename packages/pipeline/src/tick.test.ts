@@ -5,8 +5,8 @@ import { getCursor } from "@nuno/indexer";
 import { fullRun } from "@nuno/metrics/store";
 import { AddressBook, NADFUN_MAINNET, curveEventsAbi, erc20TransferAbi, sqliteSchema as s, txBytes, type RpcClient, type RpcLog } from "@nuno/shared";
 import { openLocal } from "@nuno/shared/node";
-import { METRICS_CURSOR, tick } from "./cron.js";
-import { settings, type Env } from "./env.js";
+import { DEFAULT_BUDGET } from "@nuno/metrics";
+import { METRICS_CURSOR, tick, type TickSettings } from "./tick.js";
 
 // Hand-built test fixtures (not real chain data): an operator (funder F, creators C1/C2) and a
 // new wallet N, funded by F, that buys the operator's token T2 during the tick.
@@ -19,19 +19,17 @@ const HEAD = 1_150; // chain head during the tick (SAFE_LAG 10 -> indexes to 1,1
 const BUY_BLOCK = 1_050;
 const N_FUNDED = 900;
 
-const env = {
-  MONAD_MAINNET_RPC_URL: "http://archive",
-  MONAD_MAINNET_LOGS_RPC_URLS: "http://logs",
-  MONAD_MAINNET_LOGS_RANGE: "100",
-  MONAD_TESTNET_RPC_URL: "http://testnet",
-  PUBLISH_CHAIN_ID: "10143",
-  NUNO_FEED_ADDRESS: "",
-  BACKFILL_DAYS: "7",
-  MIN_BUYERS: "20",
-  STORAGE_TARGET_BYTES: "1500000000",
-  STORAGE_ALARM_BYTES: "2500000000",
-  STORAGE_HARD_STOP_BYTES: "3000000000",
-} as unknown as Env;
+const cfg: TickSettings = {
+  logsRange: 100,
+  backfillDays: 7,
+  minBuyers: 20,
+  budget: DEFAULT_BUDGET,
+  maxBlocksPerRun: 2_000,
+  maxFundingPerRun: 5,
+  maxPublishPerRun: 10,
+  publisher: null,
+  nansen: {}, // no key: the pipeline must still run
+};
 
 const hex = (n: number | bigint) => `0x${n.toString(16)}` as Hex;
 const LOGS: RpcLog[] = [
@@ -105,10 +103,9 @@ async function seeded() {
   return { db, book, close };
 }
 
-describe("cron tick (production loop) on SQLite", () => {
+describe("pipeline tick (tick.yml / pnpm tick) on SQLite", () => {
   it("indexes new blocks, resolves the new buyer, merges it into the operator entity and updates metrics", async () => {
     const { db, book, close } = await seeded();
-    const cfg = settings(env);
     const out = await tick(db, cfg, { logsRpc: fake, archiveRpc: fake });
     expect(out.indexed).toMatchObject({ trades: 1, transfers: 1 });
     expect(out.funded).toBe(1);
@@ -131,13 +128,41 @@ describe("cron tick (production loop) on SQLite", () => {
 
   it("is a no-op when there is nothing new", async () => {
     const { db, close } = await seeded();
-    const cfg = settings(env);
     await tick(db, cfg, { logsRpc: fake, archiveRpc: fake });
     const before = await db.select().from(s.tokenMetrics);
     const out = await tick(db, cfg, { logsRpc: fake, archiveRpc: fake });
     expect(out.funded).toBe(0);
     expect(out.metrics).toBeUndefined();
     expect(await db.select().from(s.tokenMetrics)).toEqual(before);
+    close();
+  });
+});
+
+describe("tick regressions from code review", () => {
+  it("a missing metrics cursor does not turn every resolved wallet into 'newly funded'", async () => {
+    const { db, close } = await seeded();
+    await db.delete(s.cursors).where(eq(s.cursors.name, METRICS_CURSOR));
+    const out = await tick(db, cfg, { logsRpc: fake, archiveRpc: fake });
+    // Only wallets resolved during this run count as new: N and its funder F (looked up as hop 2).
+    // C1/C2, resolved by the backfill, do not (they would make this 4).
+    expect(out.metrics).toMatchObject({ newlyFunded: 2 });
+    close();
+  });
+
+  it("funding ancestors resolved as hops never become entity members", async () => {
+    const { db, book, close } = await seeded();
+    // F (operator funder) and an unrelated H were both first-funded by G within 24 h, and were
+    // resolved as hop-2 ancestors. They never traded or held a token.
+    const G = a(0x60);
+    const H = a(0x61);
+    for (const [w, t] of [[F, 500], [H, 510]] as const) {
+      await db.insert(s.fundingEdges).values({ wallet: await book.id(w), funder: await book.id(G), origin: await book.id(G), kind: 0, value: "9", block: 5, blockTime: t, tx: txBytes(tx(t)), source: 0 });
+      await db.insert(s.wallets).values({ id: await book.id(w), isContract: 0, fundingStatus: s.FUNDING_STATUS.resolved, firstFundedBlock: 5, resolvedAt: Date.now() + 1 });
+    }
+    await tick(db, cfg, { logsRpc: fake, archiveRpc: fake });
+    const members = new Set((await db.select().from(s.entityMembers)).map((m) => m.wallet));
+    expect(members.has(await book.id(F))).toBe(false);
+    expect(members.has(await book.id(H))).toBe(false);
     close();
   });
 });

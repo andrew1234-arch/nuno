@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { MAX_PARAMS, MONAD_SECONDS_PER_BLOCK, chunks, rows, sqliteSchema as s, txHex, type SqlDb } from "@nuno/shared";
 
 /**
@@ -70,7 +70,9 @@ export async function prune(db: SqlDb, o: PruneOptions): Promise<PruneResult> {
   }
   for (const sn of [...latest.values(), ...perDay.values()]) keep.add(txHex(sn.tx));
   const drop = snaps.filter((sn) => !keep.has(txHex(sn.tx)));
-  for (const sn of drop) await db.delete(s.snapshots).where(eq(s.snapshots.tx, sn.tx));
+  for (const part of chunks(drop, MAX_PARAMS - 1)) {
+    await db.delete(s.snapshots).where(inArray(s.snapshots.tx, part.map((sn) => sn.tx)));
+  }
   result.deletedSnapshots = drop.length;
   return result;
 }
