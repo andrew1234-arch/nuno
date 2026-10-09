@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./store": "./src/store.ts"
   },
   "dependencies": {
     "@nuno/cluster": "workspace:*",
@@ -17,6 +18,7 @@
     "run": "tsx src/cli.ts",
     "validation": "tsx src/validation.ts",
     "infra-scan": "tsx src/infra-scan.ts",
-    "storage-report": "tsx src/storage-report.ts"
+    "storage-report": "tsx src/storage-report.ts",
+    "d1-export": "tsx src/d1-export.ts"
   }
 }

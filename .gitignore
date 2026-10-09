@@ -19,3 +19,5 @@ SPEC.md.new
 
 # Local SQLite (SPEC §7.10)
 data/
+.open-next/
+.wrangler/

@@ -118,6 +118,13 @@ export const openApiSpec = {
         },
       },
     },
+    "/tokens/{address}/evidence": {
+      get: {
+        summary: "Canonical evidence JSON; keccak256(canonical) equals the token's evidenceRoot on NunoFeed",
+        parameters: [addrParam("address")],
+        responses: { "200": { description: "Evidence" }, "400": badRequest, "404": notFound },
+      },
+    },
     "/clusters/{id}": {
       get: {
         summary: "One entity (cluster): members and every link's evidence",

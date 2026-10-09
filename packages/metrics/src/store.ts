@@ -508,7 +508,7 @@ export async function incrementalRun(ctx: StoreCtx, sinceBlock: number, sourceBl
 }
 
 /** Canonical evidence JSON for a token (served by the API so anyone can recompute evidenceRoot). */
-export async function evidenceJsonFor(ctx: StoreCtx, tokenId: number): Promise<string> {
+export async function evidenceJsonFor(ctx: Pick<StoreCtx, "db" | "book" | "cfg">, tokenId: number): Promise<string> {
   const cfg = ctx.cfg ?? DEFAULT_CLUSTER_CONFIG;
   const tokenHex = (await ctx.book.hex(tokenId))!.toLowerCase();
   const [tok] = await ctx.db.select().from(s.tokens).where(eq(s.tokens.id, tokenId));

@@ -72,6 +72,9 @@ function fakeRepo(): Repo & { calls: number } {
     async getWallet() {
       return null;
     },
+    async evidenceJson(a: string) {
+      return a === A ? JSON.stringify({ token: A, clusters: [] }) : null;
+    },
   };
   return repo;
 }
@@ -126,7 +129,7 @@ describe("API routes", () => {
     const res = await createApp(fakeRepo()).request("/openapi.json");
     const spec = (await res.json()) as { openapi: string; paths: Record<string, unknown> };
     expect(spec.openapi).toBe("3.1.0");
-    expect(Object.keys(spec.paths)).toEqual(["/tokens", "/tokens/{address}", "/tokens/{address}/clusters", "/clusters/{id}", "/wallets/{address}"]);
+    expect(Object.keys(spec.paths)).toEqual(["/tokens", "/tokens/{address}", "/tokens/{address}/clusters", "/tokens/{address}/evidence", "/clusters/{id}", "/wallets/{address}"]);
   });
 
   it("caches GET responses within the TTL", async () => {

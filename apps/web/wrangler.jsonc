@@ -1,0 +1,13 @@
+{
+  // Nuno reference screener on Cloudflare Workers via OpenNext (SPEC §7.10).
+  "name": "nuno-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "vars": {
+    // The deployed API Worker (apps/worker). Set after `pnpm worker:deploy` prints its URL.
+    "NUNO_API_URL": "https://nuno.REPLACE_WITH_ACCOUNT_SUBDOMAIN.workers.dev",
+    "NUNO_PUBLIC_API_URL": "https://nuno.REPLACE_WITH_ACCOUNT_SUBDOMAIN.workers.dev"
+  }
+}

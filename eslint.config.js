@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 import globals from "globals";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/node_modules/**", "contracts/**", "apps/web/.next/**", "apps/web/next-env.d.ts"] },
+  { ignores: ["**/dist/**", "**/node_modules/**", "contracts/**", "apps/web/.next/**", "apps/web/next-env.d.ts", "**/.open-next/**", "**/.wrangler/**", "data/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { rules: { "@typescript-eslint/no-explicit-any": "error" } },

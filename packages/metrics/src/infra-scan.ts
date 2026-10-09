@@ -1,8 +1,8 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import type { Address, Hex } from "viem";
 import { AddressBook, RpcClient, sqliteSchema as s, toHex } from "@nuno/shared";
 import { config, openLocal } from "@nuno/shared/node";
-import { isExchangeLike, loadInfrastructure, INFRA_MIN_BALANCE_MON, INFRA_MIN_NONCE, type InfraEntry } from "./infrastructure.js";
+import { isExchangeLike, INFRA_MIN_BALANCE_MON, INFRA_MIN_NONCE, type InfraEntry } from "./infrastructure.js";
 
 // Profiles every funding origin on-chain and writes exchange-like ones to infrastructure.json.
 // Manual entries are kept. usage: tsx src/infra-scan.ts
@@ -31,7 +31,8 @@ async function main() {
     }),
   );
 
-  const manual = loadInfrastructure().filter((e) => e.source === "manual");
+  const current = JSON.parse(readFileSync(new URL("./infrastructure.json", import.meta.url), "utf8")) as InfraEntry[];
+  const manual = current.filter((e) => e.source === "manual");
   const manualSet = new Set(manual.map((e) => e.address.toLowerCase()));
   const all = [...manual, ...flagged.filter((e) => !manualSet.has(e.address))].sort((x, y) => x.address.localeCompare(y.address));
   writeFileSync(new URL("./infrastructure.json", import.meta.url), JSON.stringify(all, null, 2) + "\n");

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import data from "./infrastructure.json" with { type: "json" };
 
 /**
  * Addresses that must never act as linking funders or ancestors (exchanges, bridges, routers,
@@ -22,11 +22,11 @@ export function isExchangeLike(nonce: number, balanceMon: number): boolean {
   return nonce >= INFRA_MIN_NONCE || balanceMon >= INFRA_MIN_BALANCE_MON;
 }
 
+/** Bundled at build time (the Worker has no filesystem); re-run `pnpm infra:scan` and redeploy to update. */
 export function loadInfrastructure(): InfraEntry[] {
-  return JSON.parse(readFileSync(new URL("./infrastructure.json", import.meta.url), "utf8")) as InfraEntry[];
+  return data as InfraEntry[];
 }
 
-/** Current infrastructure set. Re-reads the file on every call so long-running processes pick up `infra:scan` output. */
 export function infrastructureSet(): Set<string> {
   return new Set(loadInfrastructure().map((e) => e.address.toLowerCase()));
 }

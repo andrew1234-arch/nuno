@@ -145,6 +145,17 @@ export function createApp(repo: Repo, opts: AppOptions = {}) {
     });
   });
 
+  app.get("/tokens/:address/evidence", (c) => {
+    const address = c.req.param("address").toLowerCase();
+    if (!ADDRESS.test(address)) return c.json({ error: "invalid address" }, 400);
+    return cached(c, async () => {
+      const json = await repo.evidenceJson(address);
+      if (json === null) return { body: { error: "token not tracked" }, status: 404 };
+      // Served as parsed JSON; keccak256 of the compact canonical string equals the on-chain evidenceRoot.
+      return { body: { canonical: json, evidence: JSON.parse(json) as unknown } };
+    });
+  });
+
   app.get("/clusters/:id", (c) => {
     const id = c.req.param("id").toLowerCase();
     if (!ADDRESS.test(id)) return c.json({ error: "invalid cluster id" }, 400);
