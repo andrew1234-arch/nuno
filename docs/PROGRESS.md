@@ -102,8 +102,30 @@ Most serious: the evidence root included `sourceBlock`, so every recompute would
 ### Platform pivot (from the updated CLAUDE.md/SPEC.md)
 The project docs now require **Cloudflare only** (Workers + Cron + D1) with a local SQLite backfill, an address dictionary and a storage budget. Current storage (Postgres) and runtime (Node API + worker) must be migrated; the engines carry over. Plan in `CLAUDE.md` → "Current state". The updated docs are in `CLAUDE.md.new`/`SPEC.md.new`, because the originals are root-owned and read-only to Claude.
 
+## 2026-10-09 (Thu): Cloudflare migration done, verified locally
+
+**Storage/runtime now match the project rules:** Drizzle SQLite schema (address dictionary, 32-byte hash blobs, TEXT amounts), local `node:sqlite` file for backfill and full runs, Cloudflare D1 in production. Postgres, the Node API and the Node worker are removed.
+
+**Measured (real mainnet data, SQLite):**
+| | |
+|---|---|
+| 1-day ingest | 184 KB → projection for 7 days 1.3 MB (gate: ≤ 1.5 GB) |
+| Full 7-day window (blocks 109,809,429–111,811,472) | **446 KB** locally, **475 KB** in D1 (`meta.size_after`) |
+| Rows | 72 tokens, 529 curve trades, 559 transfers, 322 addresses, 78 funding edges, 434 evidence rows |
+| Result | Same as before the migration: **1 entity (10 wallets) created all 72 tokens**; 99 trades re-attributed to their signers |
+
+**Verified locally on Cloudflare's runtime** (`wrangler dev` + local D1 imported with `pnpm d1:import:local`):
+- API: all endpoints; `keccak256(/tokens/:t/evidence) == evidenceRoot` holds.
+- Cron tick: tails 1,000 real blocks per run, resolves funding, incremental update (≈10–65 s wall). Storage check: 475 KB, level ok. Daily prune runs.
+- Web (OpenNext build) on the Workers runtime: screener, token, cluster and methodology pages render with Monadscan evidence links.
+- `wrangler deploy --dry-run`: Worker bundle 1.2 MB, no Node-only code.
+
+**Bugs found by running it (all fixed, with tests):** D1's 100-bound-parameter limit (local SQLite now enforces it too); incremental runs clustering funding ancestors that never traded (two exchange-like hot wallets became "members"); every operator token recomputed on each tick; a tick that failed after funding lost its "newly funded" list; `/methodology` read a file at runtime.
+
+**Decision needed (user):** `MIN_BUYERS=20` (SPEC default) prunes 63 of 72 tokens after 24 h. nad.fun tokens have 2–8 buyers, so token pages would lose their trade detail, although storage is ~0.03% of target. Options: keep 20; lower to e.g. 3; or skip rule 5 while storage < target.
+
 ### Next step
-Migration to SQLite/D1/Workers. Then deploy contracts to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
+Deploy as soon as Cloudflare credentials and testnet keys exist (`README` → Setup 2–3). Then the validation re-sample and the video. to testnet and publish real snapshots (needs keys); Nansen labels; hand-review the validation sheet; run `pnpm index:tail` continuously for the live deploy; host API + web.
 
 ### Deployed addresses / tx hashes
-None yet.
+None yet (no keys / Cloudflare account linked).
