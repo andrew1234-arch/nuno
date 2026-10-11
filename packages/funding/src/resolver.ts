@@ -50,11 +50,10 @@ async function inboundAt(rpc: RpcClient, wallet: Address, block: number): Promis
 }
 
 async function touched(rpc: RpcClient, addr: Address, block: number): Promise<boolean> {
-  const [bal, nonce] = await Promise.all([
-    rpc.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true }),
-    rpc.call<Hex>("eth_getTransactionCount", [addr, toHex(block)], { cache: true }),
-  ]);
-  return BigInt(bal) > 0n || BigInt(nonce) > 0n;
+  // Balance first; the nonce only matters when the balance is zero. Public archive RPCs are
+  // rate-limited per IP, so skipping the second call on funded probes is a direct speed-up.
+  if (BigInt(await rpc.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true })) > 0n) return true;
+  return BigInt(await rpc.call<Hex>("eth_getTransactionCount", [addr, toHex(block)], { cache: true })) > 0n;
 }
 
 /**
