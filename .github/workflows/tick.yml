@@ -1,0 +1,79 @@
+# Every 15 minutes: restore the DB from the `data` branch, run one bounded pipeline tick
+# (index → funding → cluster/metrics → testnet snapshots → Nansen hub checks), save the DB,
+# export the static API, build the static site and deploy it to GitHub Pages. $0 hosting.
+name: tick
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      MONAD_MAINNET_RPC_URL: ${{ vars.MONAD_MAINNET_RPC_URL || 'https://rpc1.monad.xyz' }}
+      MONAD_MAINNET_LOGS_RPC_URLS: ${{ vars.MONAD_MAINNET_LOGS_RPC_URLS || 'https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz' }}
+      MONAD_MAINNET_LOGS_RANGE: ${{ vars.MONAD_MAINNET_LOGS_RANGE || '100' }}
+      MONAD_TESTNET_RPC_URL: ${{ vars.MONAD_TESTNET_RPC_URL || 'https://testnet-rpc.monad.xyz' }}
+      NUNO_FEED_ADDRESS: ${{ vars.NUNO_FEED_ADDRESS }}
+      PUBLISHER_PRIVATE_KEY: ${{ secrets.PUBLISHER_PRIVATE_KEY }}
+      NANSEN_API_KEY: ${{ secrets.NANSEN_API_KEY }}
+      MIN_BUYERS: ${{ vars.MIN_BUYERS || '20' }}
+      BACKFILL_DAYS: ${{ vars.BACKFILL_DAYS || '7' }}
+      CONTRAST_LABEL: ${{ vars.CONTRAST_LABEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore DB
+        run: scripts/data-pull.sh
+      - name: Tick
+        id: tick
+        run: |
+          if [ ! -f data/nuno.sqlite ]; then echo "No DB on the data branch: run the backfill locally and scripts/data-push.sh first"; exit 1; fi
+          pnpm tick
+      - name: Save DB
+        if: steps.tick.outputs.commit == 'true'
+        run: scripts/data-push.sh tick
+      - name: Export static API
+        run: |
+          pnpm export:static
+          if [ -f data/contrast.sqlite ]; then
+            LOCAL_DB_PATH=./data/contrast.sqlite EXPORT_DIR=.contrast-export EXPORT_LABEL="$CONTRAST_LABEL" pnpm export:static
+            mv .contrast-export/api site/api/contrast
+          fi
+      - name: Build site
+        env:
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: |
+          pnpm web:build
+          cp -r site/api apps/web/out/api
+          touch apps/web/out/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/out
+
+  deploy:
+    needs: tick
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
