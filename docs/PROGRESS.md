@@ -196,3 +196,4 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - OrganicGate `0xec3b8718154f5a060bc9D29A11b23583999BBbd8`, tx `0x94e1f7928d3551ab31674ca946f81e910d454b0c9675cab3b0c9ac2a61b155ce`
   - No snapshots published yet: waiting for the 7-day V1+V2 backfill.
 - The first 7-day backfill run crashed on a transient null `eth_getTransactionByHash` from one round-robin node. `txSigner` now retries. Resumed.
+- Second crash: `rpc3.monad.xyz` returns `null` for older txs (recent history only). The local `.env` still points log reads at rpc3 alone (`MONAD_MAINNET_LOGS_RPC_URL`, range 1000). The backfill now runs with `MONAD_MAINNET_LOGS_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz` and `MONAD_MAINNET_LOGS_RANGE=100`, the same as Actions. `.env` should be changed to match.
