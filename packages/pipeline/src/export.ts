@@ -26,7 +26,18 @@ export interface ExportResult {
   bytes: number;
 }
 
-export async function exportStatic(db: SqlDb, outDir: string, opts: { dbSizeBytes: number; backfillDays: number; label?: string }): Promise<ExportResult> {
+/** Data freshness at export time; omitted when the RPC is unreachable (the export never needs it). */
+export interface Freshness {
+  /** ISO time of the last indexed block. */
+  sourceTime: string;
+  chainHead: number;
+}
+
+export async function exportStatic(
+  db: SqlDb,
+  outDir: string,
+  opts: { dbSizeBytes: number; backfillDays: number; label?: string; freshness?: (sourceBlock: number) => Promise<Freshness | null> },
+): Promise<ExportResult> {
   const book = new AddressBook(db);
   const repo = new SqlRepo(db, book);
   const nansen = new Nansen(db, book, {}); // cache reads only: no key, never calls the API
@@ -51,9 +62,11 @@ export async function exportStatic(db: SqlDb, outDir: string, opts: { dbSizeByte
   const entityIds = (await db.selectDistinct({ e: s.entityMembers.entity }).from(s.entityMembers)).map((r) => r.e);
   const sourceBlock = (await getCursor(db, INDEXER_CURSOR)) ?? 0;
   const windowStart = (await getCursor(db, WINDOW_CURSOR)) ?? sourceBlock;
+  const fresh = opts.freshness ? await opts.freshness(sourceBlock) : null;
   write("meta.json", {
     ...(opts.label ? { label: opts.label } : {}),
     sourceBlock,
+    ...(fresh ? { sourceTime: fresh.sourceTime, chainHead: fresh.chainHead, behindBlocks: Math.max(0, fresh.chainHead - sourceBlock) } : {}),
     generatedAt: new Date().toISOString(),
     dbSizeBytes: opts.dbSizeBytes,
     window: {

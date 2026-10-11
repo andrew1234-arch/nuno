@@ -66,6 +66,10 @@ export interface Cluster {
 
 export interface Meta {
   sourceBlock: number;
+  /** Time of the last indexed block and how far the chain head was ahead at export (absent offline). */
+  sourceTime?: string;
+  chainHead?: number;
+  behindBlocks?: number;
   generatedAt: string;
   window: { startBlock: number; endBlock: number; days: number; coveredDays: number; startTime?: string; endTime?: string };
   counts: Record<string, number>;

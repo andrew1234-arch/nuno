@@ -7,17 +7,27 @@ import { SortableTable } from "./sortable";
 const n = (v: number) => v.toLocaleString("en-US");
 const monNum = (wei: string) => Number(BigInt(wei) / 10n ** 16n) / 100;
 
+/** Data freshness badge: when the last indexed block was produced, and how far behind the chain it was at export. */
+function Freshness({ meta, tokens }: { meta: NonNullable<ReturnType<typeof api.meta>>; tokens: number }) {
+  // ~0.302 s per block (measured); more than 30 minutes behind is shown as stale.
+  const behindMin = meta.behindBlocks === undefined ? null : Math.round((meta.behindBlocks * 0.302) / 60);
+  const stale = behindMin !== null && behindMin > 30;
+  const asOf = meta.sourceTime ? `${meta.sourceTime.slice(0, 16).replace("T", " ")} UTC` : `block ${n(meta.window.endBlock)}`;
+  return (
+    <span className="pill inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-[var(--panel)] px-3 py-1 text-xs text-[var(--muted)]">
+      <span className={`h-2 w-2 rounded-full ${stale ? "bg-[var(--bad)]" : "bg-[var(--good)]"}`} aria-hidden="true" />
+      {n(tokens)} nad.fun tokens · data as of {asOf}
+      {behindMin !== null && behindMin > 1 ? <span className={stale ? "text-[var(--bad)]" : ""}>· {behindMin < 120 ? `${behindMin} min` : `${Math.round(behindMin / 60)} h`} behind chain at export</span> : null}
+    </span>
+  );
+}
+
 function Hero({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.meta> }) {
   return (
     <section className="relative overflow-hidden px-4 pb-10 pt-16 text-center">
       <div className="dots pointer-events-none absolute inset-0" aria-hidden="true" />
       <div className="relative mx-auto max-w-3xl">
-        {meta ? (
-          <span className="pill inline-flex items-center gap-2 bg-[var(--panel)] px-3 py-1 text-xs text-[var(--muted)]">
-            <span className="h-2 w-2 rounded-full bg-[var(--good)]" aria-hidden="true" />
-            {n(tokens.length)} nad.fun tokens · mainnet blocks {n(meta.window.startBlock)}–{n(meta.window.endBlock)}
-          </span>
-        ) : null}
+        {meta ? <Freshness meta={meta} tokens={tokens.length} /> : null}
         <h1 className="headline mt-6 text-5xl sm:text-7xl">
           See Who Really <span className="fade">Holds</span>
           <br />

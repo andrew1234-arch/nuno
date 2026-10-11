@@ -15,7 +15,7 @@ import {
   setCursor,
 } from "@nuno/indexer";
 import { fullRun } from "@nuno/metrics";
-import { AddressBook, RpcClient, blockAtTimestamp, getBlockNumber, toHex } from "@nuno/shared";
+import { AddressBook, RpcClient, blockAtTimestamp, getBlockNumber, getBlockTimestamp, toHex } from "@nuno/shared";
 import { ROOT_DIR, config, openLocal } from "@nuno/shared/node";
 import { exportStatic } from "./export.js";
 import { infrastructure } from "./infra.js";
@@ -151,7 +151,22 @@ async function main() {
     } else if (cmd === "export") {
       checkpointWal();
       const outDir = resolve(ROOT_DIR, process.env.EXPORT_DIR || "site");
-      const r = await exportStatic(db, outDir, { dbSizeBytes: await dbBytes(db, config.localDbPath), backfillDays: cfg.backfillDays, label: process.env.EXPORT_LABEL || undefined });
+      const freshness = async (sourceBlock: number) => {
+        try {
+          const rpc = new RpcClient({ url: config.mainnetLogsRpcUrls, retries: 2, timeoutMs: 15_000 });
+          return { sourceTime: new Date((await getBlockTimestamp(rpc, sourceBlock)) * 1000).toISOString(), chainHead: await getBlockNumber(rpc) };
+        } catch (err) {
+          console.log(`[export] freshness unavailable: ${(err as Error).message.slice(0, 120)}`);
+          return null;
+        }
+      };
+      const r = await exportStatic(db, outDir, {
+        dbSizeBytes: await dbBytes(db, config.localDbPath),
+        backfillDays: cfg.backfillDays,
+        label: process.env.EXPORT_LABEL || undefined,
+        // The contrast dataset is a fixed historical week: freshness does not apply.
+        freshness: process.env.EXPORT_LABEL ? undefined : freshness,
+      });
       console.log(`[export] ${r.files} files, ${r.bytes.toLocaleString("en-US")} bytes -> ${outDir}/api`);
     } else {
       throw new Error("usage: cli.ts backfill|tick|recluster|export");
