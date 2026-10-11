@@ -220,3 +220,7 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
 - **TODO after funding completes:** the backfill's passes ran before this change, so V2 graduations and their pair swaps are missing from the DB.
   - Reset `indexer:curve` and `indexer:tokens` to `indexer:window_start − 1` and re-run the backfill (both passes, idempotent; ~1 h), then `pnpm recluster`.
   - Don't run it concurrently with the funding backfill (one SQLite writer).
+- **Go-live freshness (side-agent note, verified).** The tick indexes ≤ 4,000 blocks per 15-min run while Monad makes ~2,980, so it gains only ~1,000 blocks per run. A 1-day gap (~286k blocks) would take ~3 days to close.
+  - Plan: run the graduation re-index immediately before pushing the DB, so the backfill ends at the chain head.
+  - Then time one real tick at `TICK_MAX_BLOCKS=8000` (after funding, so it does not compete for RPC limits) and raise the Actions default if it fits the 14-min timeout.
+  - Site and `meta.json` now show "data as of" (last indexed block time) and how far behind the head the data was at export.
