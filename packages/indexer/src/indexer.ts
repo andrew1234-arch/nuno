@@ -55,9 +55,13 @@ async function getLogs(rpc: RpcClient, filter: { address?: string | string[]; to
 
 /** Transaction signer (tx.from), lowercase. Cached per tx; null results are never cached. */
 export async function txSigner(rpc: RpcClient, txHash: string): Promise<string> {
-  const tx = await rpc.call<{ from: string } | null>("eth_getTransactionByHash", [txHash], { cache: true });
-  if (!tx) throw new Error(`transaction ${txHash} not found`);
-  return tx.from.toLowerCase();
+  // A lagging node in the round-robin can briefly return null for a tx that exists; retry before failing.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const tx = await rpc.call<{ from: string } | null>("eth_getTransactionByHash", [txHash], { cache: true });
+    if (tx) return tx.from.toLowerCase();
+    await new Promise((r) => setTimeout(r, 1_000 * (attempt + 1)));
+  }
+  throw new Error(`transaction ${txHash} not found`);
 }
 
 /** Curve events (creates, trades, graduations) of both nad.fun curves (V1 and V2) for one log-range-sized chunk. Idempotent. */
