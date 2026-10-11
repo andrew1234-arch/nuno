@@ -207,3 +207,7 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   Estimated 1.5–2.5 h at ~17 s/wallet with 6 workers.
 - **After it finishes:** `pnpm export:static`, check the site, draft the new headline for user approval (the Oct 2–9 V1-only wording in `apps/web/lib/finding.ts` is invalid), publish the first snapshots to NunoFeed (`NUNO_FEED_ADDRESS` must be in `.env`), then run `pnpm web:build` (not yet run after the redesign).
 - **Web redesign** (`635ed6f`): cream/rust theme from the user's template, landing page built from exported data only. Dev server checked on desktop and at ~520 px; the static build is still unverified.
+- **Funding speed (2026-10-11, night).** Many V2 buyers sit at the end of fresh wallet chains: buyer ← funder ← funder, each funded seconds apart, so nothing is cached and each level cost a full ~27-step binary search over all of history.
+  - Fixes: archive calls round-robin over rpc1 + monadinfra (`MONAD_MAINNET_ARCHIVE_RPC_URLS`), and the search gallops back from the spend block first (search.ts; same result, equivalence-tested).
+  - Measured: ~10 → ~17 funding lookups/min at 12 in flight (~7.5 buyers/min, ~2.4 lookups per buyer). At 24 in flight it was slower (~11/min) and hit HTTP 429, so 12 stays.
+  - Remaining ~1,750 buyers ≈ 4 h. Resume command: the one above plus `MONAD_MAINNET_ARCHIVE_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com ARCHIVE_RPC_CONCURRENCY=12 FUNDING_CONCURRENCY=12`.
