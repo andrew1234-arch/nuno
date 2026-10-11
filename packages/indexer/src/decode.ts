@@ -1,5 +1,5 @@
 import { decodeAbiParameters, decodeEventLog, type Address, type Hex } from "viem";
-import { TOPICS, curveEventsAbi, curveV2CreateDataTypes, curveV2EventsAbi, erc20TransferAbi, uniswapV3SwapAbi, type RpcLog } from "@nuno/shared";
+import { TOPICS, curveEventsAbi, curveV2CreateDataTypes, curveV2EventsAbi, erc20TransferAbi, uniswapV2SwapAbi, uniswapV3SwapAbi, type RpcLog } from "@nuno/shared";
 
 export type CurveRecord =
   | {
@@ -31,7 +31,7 @@ const lc = (a: Address): Address => a.toLowerCase() as Address;
 
 const topicAddress = (t: Hex | undefined): Address | null => (t && t.length === 66 ? (`0x${t.slice(26)}` as Address) : null);
 
-/** nad.fun V2 curve: create (layout-decoded, no public signature), buy, sell. */
+/** nad.fun V2 curve: create (layout-decoded, no public signature), buy, sell, graduate. */
 function decodeCurveV2Log(l: RpcLog): CurveRecord {
   const t0 = l.topics[0]?.toLowerCase();
   if (t0 === TOPICS.V2Create) {
@@ -46,6 +46,7 @@ function decodeCurveV2Log(l: RpcLog): CurveRecord {
   }
   try {
     const ev = decodeEventLog({ abi: curveV2EventsAbi, data: l.data, topics: l.topics as [Hex, ...Hex[]] });
+    if (ev.eventName === "Graduate") return { kind: "graduate", token: lc(ev.args.token), pool: lc(ev.args.pool) };
     return {
       kind: "trade",
       side: ev.eventName === "Buy" ? "buy" : "sell",
@@ -61,7 +62,7 @@ function decodeCurveV2Log(l: RpcLog): CurveRecord {
 
 export function decodeCurveLog(l: RpcLog): CurveRecord {
   const t0 = l.topics[0]?.toLowerCase();
-  if (t0 === TOPICS.V2Create || t0 === TOPICS.V2Buy || t0 === TOPICS.V2Sell) return decodeCurveV2Log(l);
+  if (t0 === TOPICS.V2Create || t0 === TOPICS.V2Buy || t0 === TOPICS.V2Sell || t0 === TOPICS.V2Graduate) return decodeCurveV2Log(l);
   let ev;
   try {
     ev = decodeEventLog({ abi: curveEventsAbi, data: l.data, topics: l.topics as [Hex, ...Hex[]] });
@@ -105,17 +106,29 @@ export function decodeTransferLog(l: RpcLog): { token: Address; from: Address; t
   }
 }
 
+/**
+ * Swap on a graduated pool, normalized to signed pool deltas (positive = pool received), the Uniswap
+ * V3 convention. V1 tokens graduate to Uniswap V3 pools; V2-curve tokens to Uniswap V2-style pairs,
+ * whose Swap reports in/out amounts: amount0 = amount0In − amount0Out.
+ */
 export function decodeSwapLog(
   l: RpcLog,
 ): { pool: Address; sender: Address; recipient: Address; amount0: bigint; amount1: bigint } | null {
+  const topics = l.topics as [Hex, ...Hex[]];
   try {
-    const ev = decodeEventLog({ abi: uniswapV3SwapAbi, data: l.data, topics: l.topics as [Hex, ...Hex[]] });
+    const ev = decodeEventLog({ abi: uniswapV3SwapAbi, data: l.data, topics });
+    return { pool: lc(l.address), sender: lc(ev.args.sender), recipient: lc(ev.args.recipient), amount0: ev.args.amount0, amount1: ev.args.amount1 };
+  } catch {
+    // not a V3 swap
+  }
+  try {
+    const ev = decodeEventLog({ abi: uniswapV2SwapAbi, data: l.data, topics });
     return {
       pool: lc(l.address),
       sender: lc(ev.args.sender),
-      recipient: lc(ev.args.recipient),
-      amount0: ev.args.amount0,
-      amount1: ev.args.amount1,
+      recipient: lc(ev.args.to),
+      amount0: ev.args.amount0In - ev.args.amount0Out,
+      amount1: ev.args.amount1In - ev.args.amount1Out,
     };
   } catch {
     return null;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TOPICS, type RpcLog } from "@nuno/shared";
-import { decodeCurveLog } from "./decode.js";
+import { decodeCurveLog, decodeSwapLog } from "./decode.js";
 
 const V2 = "0x9f3832732923252a21044f21ee6bd87f09514ae4";
 const pad = (a: string) => `0x000000000000000000000000${a.slice(2)}` as const;
@@ -49,5 +49,33 @@ describe("decodeCurveLog: nad.fun V2", () => {
   it("ignores the V2 Sync event and malformed creates", () => {
     expect(decodeCurveLog(log(["0x27efe2fec96cb0ff68b9206e3dca402a919bb7172e2f2d12d49b633df3eabc4f", pad(V2)], "0x"))).toEqual({ kind: "ignored" });
     expect(decodeCurveLog(log([TOPICS.V2Create, pad(V2)], "0x"))).toEqual({ kind: "ignored" });
+  });
+});
+
+// Fixtures: Moncat (0x7d1c…7777) graduation, tx 0x0e4e7c25… block 110,980,938, and the first swap on
+// its pair, tx 0x7715002b… block 110,980,940 (real mainnet logs, captured 2026-10-11).
+describe("V2 graduation and Uniswap V2-style pair swaps", () => {
+  it("decodes Graduate(token, pool) from the V2 curve", () => {
+    const r = decodeCurveLog(log([TOPICS.V2Graduate, pad("0x7d1ca08c16a46837b02a25112d188b6df1d17777"), pad("0xbd1bebc1ca6ce1955ed5ec466b89da58051d8f4e")], "0x"));
+    expect(r).toEqual({ kind: "graduate", token: "0x7d1ca08c16a46837b02a25112d188b6df1d17777", pool: "0xbd1bebc1ca6ce1955ed5ec466b89da58051d8f4e" });
+  });
+
+  it("normalizes a V2 pair Swap to signed pool deltas (WMON in, token out = buy)", () => {
+    const sw = decodeSwapLog({
+      ...log(
+        [
+          "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
+          pad("0x251886ada13aa3fb2b02bb101fd9a263cca7ede4"),
+          pad("0xb6abdad170f18b43ac3eb77489a3e9762778fa15"),
+        ],
+        "0x00000000000000000000000000000000000000000000002aa1011944a934b77a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008b4d1a1afb96b3e7d907",
+      ),
+      address: "0xbd1bebc1ca6ce1955ed5ec466b89da58051d8f4e",
+    } as RpcLog);
+    expect(sw).not.toBeNull();
+    expect(sw!.pool).toBe("0xbd1bebc1ca6ce1955ed5ec466b89da58051d8f4e");
+    expect(sw!.recipient).toBe("0xb6abdad170f18b43ac3eb77489a3e9762778fa15");
+    expect(sw!.amount0).toBe(0x2aa1011944a934b77an); // WMON (token0) into the pool
+    expect(sw!.amount1).toBe(-0x8b4d1a1afb96b3e7d907n); // Moncat out of the pool
   });
 });

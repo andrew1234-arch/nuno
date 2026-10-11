@@ -109,6 +109,17 @@ export const uniswapV3SwapAbi = [
  */
 export const curveV2EventsAbi = [
   {
+    // Graduation: topic0 matches keccak("Graduate(address,address)"); topics (token, pool) checked on
+    // Moncat's graduation (tx 0x0e4e7c25…, block 110,980,938). The pool is a Uniswap V2-style pair.
+    type: "event",
+    name: "Graduate",
+    inputs: [
+      { name: "token", type: "address", indexed: true },
+      { name: "pool", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
     type: "event",
     name: "Buy",
     inputs: [
@@ -147,6 +158,26 @@ export const curveV2CreateDataTypes = [
   { name: "u2", type: "uint256" },
 ] as const;
 
+/**
+ * Uniswap V2-style pair Swap: V2-curve tokens graduate to such a pair (pool `0xbd1b…` for Moncat emits
+ * Sync/Mint/Swap with these exact keccak hashes; token0 < token1 as in Uniswap V2).
+ */
+export const uniswapV2SwapAbi = [
+  {
+    type: "event",
+    name: "Swap",
+    inputs: [
+      { name: "sender", type: "address", indexed: true },
+      { name: "amount0In", type: "uint256", indexed: false },
+      { name: "amount1In", type: "uint256", indexed: false },
+      { name: "amount0Out", type: "uint256", indexed: false },
+      { name: "amount1Out", type: "uint256", indexed: false },
+      { name: "to", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+] as const;
+
 export const TOPICS = {
   CurveCreate: "0xd37e3f4f651fe74251701614dbeac478f5a0d29068e87bbe44e5026d166abca9",
   CurveBuy: "0x00a7ba871905cb955432583640b5c9fc6bdd27d36884ab2b5420839224638862",
@@ -156,4 +187,5 @@ export const TOPICS = {
   V2Create: "0xac11ceed5187dce8e72afc92116e2aebbbd4fb263cb4021374a5df1b90c89936",
   V2Buy: "0x89f5adc174562e07c9c9b1cae7109bbecb21cf9d1b2847e550042b8653c54a0e",
   V2Sell: "0xa082022e93cfcd9f1da5f9236718053910f7e840da080c789c7845698dc032ff",
+  V2Graduate: "0xc0682ac2d5a530c92664a8717db0ab335b5c5cbdfdc740185679e170244633e0",
 } as const;

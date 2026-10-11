@@ -73,7 +73,7 @@ export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number)
     logsRpc,
     {
       address: [NADFUN_MAINNET.CURVE, NADFUN_CURVE_V2],
-      topics: [[TOPICS.CurveCreate, TOPICS.CurveBuy, TOPICS.CurveSell, TOPICS.CurveGraduate, TOPICS.V2Create, TOPICS.V2Buy, TOPICS.V2Sell]],
+      topics: [[TOPICS.CurveCreate, TOPICS.CurveBuy, TOPICS.CurveSell, TOPICS.CurveGraduate, TOPICS.V2Create, TOPICS.V2Buy, TOPICS.V2Sell, TOPICS.V2Graduate]],
     },
     from,
     to,
