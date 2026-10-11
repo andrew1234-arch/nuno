@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -b && pnpm --filter @nuno/web exec tsc --noEmit",
+    "typecheck": "tsc -b && pnpm --filter @nuno/web typecheck",
     "lint": "eslint .",
     "deploy:contracts": "cd contracts && set -a && . ../.env && set +a && forge script script/Deploy.s.sol --rpc-url $MONAD_TESTNET_RPC_URL --broadcast",
     "contracts:test": "cd contracts && forge test",
