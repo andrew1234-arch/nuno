@@ -78,10 +78,15 @@ async function main() {
       if (done) {
         const buyers = await pendingBuyers({ db, book }, 1_000_000);
         console.log(`[backfill] resolving funding for ${buyers.length} buyers`);
-        for (const b of buyers) {
-          if (shouldStop()) break;
-          await resolveFundingTree({ db, book, rpc: archiveRpc, log: console.log }, b.trader, b.firstBuy - 1, 3);
-        }
+        // Parallel workers (the resolver shares in-flight lookups, so common funders are resolved once).
+        let next = 0;
+        const worker = async () => {
+          while (next < buyers.length && !shouldStop()) {
+            const b = buyers[next++]!;
+            await resolveFundingTree({ db, book, rpc: archiveRpc, log: console.log }, b.trader, b.firstBuy - 1, 3);
+          }
+        };
+        await Promise.all(Array.from({ length: Number(process.env.FUNDING_CONCURRENCY || 6) }, worker));
       }
       const complete = done && !shouldStop() && (await pendingBuyers({ db, book }, 1)).length === 0;
       if (complete) {
