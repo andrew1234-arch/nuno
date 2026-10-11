@@ -39,6 +39,18 @@ export const config = {
   get mainnetRpcUrl(): string {
     return req("MONAD_MAINNET_RPC_URL");
   },
+  /**
+   * Archive-state RPCs for funding resolution (comma-separated, round-robin). Defaults to MONAD_MAINNET_RPC_URL.
+   * Only list endpoints with full history: rpc1.monad.xyz and rpc-mainnet.monadinfra.com (measured 2026-10-08).
+   */
+  get mainnetArchiveRpcUrls(): string[] {
+    const raw = process.env.MONAD_MAINNET_ARCHIVE_RPC_URLS || req("MONAD_MAINNET_RPC_URL");
+    return raw.split(",").map((u) => u.trim()).filter(Boolean);
+  },
+  /** Max in-flight archive calls in total (across all archive URLs). */
+  get archiveRpcConcurrency(): number {
+    return num("ARCHIVE_RPC_CONCURRENCY", 6, { positive: true });
+  },
   /** Comma-separated list; eth_getLogs calls round-robin across them. */
   get mainnetLogsRpcUrls(): string[] {
     // MONAD_MAINNET_LOGS_RPC_URL (single URL) is the older name; still honoured.

@@ -37,7 +37,7 @@ function output(key: string, value: string) {
 function rpcs() {
   return {
     logsRpc: new RpcClient({ url: config.mainnetLogsRpcUrls, maxConcurrency: 6, cacheSize: 20_000 }),
-    archiveRpc: new RpcClient({ url: config.mainnetRpcUrl, maxConcurrency: 6, timeoutMs: 60_000, cacheSize: 20_000 }),
+    archiveRpc: new RpcClient({ url: config.mainnetArchiveRpcUrls, maxConcurrency: config.archiveRpcConcurrency, timeoutMs: 60_000, cacheSize: 20_000 }),
   };
 }
 
