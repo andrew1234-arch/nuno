@@ -23,7 +23,8 @@ export const CURVE_CURSOR = "indexer:curve";
 export const TOKEN_CURSOR = "indexer:tokens";
 /** First block of the backfill window currently covered. */
 export const WINDOW_CURSOR = "indexer:window_start";
-const ADDRESS_BATCH = 50;
+// All three public RPCs accept 700 addresses per eth_getLogs filter at the same latency as 50 (measured 2026-10-11).
+const ADDRESS_BATCH = 500;
 
 export interface IndexerCtx {
   db: SqlDb;
