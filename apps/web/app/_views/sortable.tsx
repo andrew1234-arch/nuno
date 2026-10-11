@@ -7,11 +7,11 @@ import { mon, pct, short } from "@/lib/format";
 
 // Sorting runs in the browser: the site is a static export, so there is no server to sort by query string.
 const SORTS: Array<[string, string, (t: Token) => number | bigint]> = [
-  ["holder_gap", "Holder inflation", (t) => (t.metrics ? t.metrics.rawHolders - t.metrics.realHolders : -1)],
-  ["cluster_supply", "Cluster supply", (t) => t.metrics?.clusterSupplyBps ?? -1],
-  ["creator_supply", "Creator-linked supply", (t) => t.metrics?.creatorLinkedSupplyBps ?? -1],
-  ["wash", "Wash share", (t) => (t.metrics && t.metrics.rawVolume !== "0" ? 10_000 - t.metrics.organicVolumeBps : -1)],
-  ["raw_volume", "Raw volume", (t) => (t.metrics ? BigInt(t.metrics.rawVolume) : -1n)],
+  ["holder_gap", "Most fake holders", (t) => (t.metrics ? t.metrics.rawHolders - t.metrics.realHolders : -1)],
+  ["cluster_supply", "Most owned by groups", (t) => t.metrics?.clusterSupplyBps ?? -1],
+  ["creator_supply", "Most owned by creator's side", (t) => t.metrics?.creatorLinkedSupplyBps ?? -1],
+  ["wash", "Most fake trading", (t) => (t.metrics && t.metrics.rawVolume !== "0" ? 10_000 - t.metrics.organicVolumeBps : -1)],
+  ["raw_volume", "Most traded", (t) => (t.metrics ? BigInt(t.metrics.rawVolume) : -1n)],
   ["newest", "Newest", (t) => t.createBlock],
 ];
 
@@ -41,7 +41,7 @@ function Row({ t, base }: { t: Token; base: string }) {
           </td>
         </>
       ) : (
-        <td colSpan={6} className="text-right text-[var(--muted)]">{t.pruned ? "pruned (below MIN_BUYERS)" : "not computed yet"}</td>
+        <td colSpan={6} className="text-right text-[var(--muted)]">{t.pruned ? "too few buyers to analyse" : "not ready yet"}</td>
       )}
     </tr>
   );
@@ -73,12 +73,12 @@ export function SortableTable({ tokens, base, limit }: { tokens: Token[]; base: 
           <thead className="text-xs uppercase text-[var(--muted)]">
             <tr>
               <th className="py-2 text-left">Token</th>
-              <th className="pr-3 text-right">Holders raw → real</th>
-              <th className="pr-3 text-right">Cluster supply</th>
-              <th className="pr-3 text-right">Creator-linked</th>
-              <th className="pr-3 text-right">Top-10 entities</th>
-              <th className="pr-3 text-right">Volume MON raw → organic</th>
-              <th className="text-right">Organic</th>
+              <th className="pr-3 text-right" title="Wallets holding the token → real owners once one person's wallets count as one">Holders shown → real</th>
+              <th className="pr-3 text-right" title="Share of the token held by groups of wallets that belong to one owner">Held by groups</th>
+              <th className="pr-3 text-right" title="Share held by the creator and every wallet linked to them">Creator&apos;s side</th>
+              <th className="pr-3 text-right" title="Share held by the 10 biggest owners, counting each group as one">Top 10 owners</th>
+              <th className="pr-3 text-right" title="All trading → trading that wasn't an owner trading with themselves">Trading (MON) shown → real</th>
+              <th className="text-right" title="Share of the trading that looks genuine">Real trading</th>
             </tr>
           </thead>
           <tbody>

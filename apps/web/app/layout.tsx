@@ -9,8 +9,8 @@ import "./globals.css";
 const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Nuno: the real numbers behind every nad.fun launch",
-  description: "Cluster-adjusted holders, concentration and organic volume for nad.fun tokens on Monad, with on-chain evidence.",
+  title: "Nuno: how many people really own this token?",
+  description: "Nuno finds wallets that belong to the same person behind nad.fun tokens on Monad and shows the real number of owners and real trading, with public proof.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -18,10 +18,10 @@ const REPO = "https://github.com/andrew1234-arch/nuno";
 
 function Nav() {
   const links: Array<[string, string]> = [
-    ["/", "Screener"],
+    ["/#screener", "Tokens"],
     ["/#how", "How it works"],
-    ["/methodology/", "Methodology"],
-    ["/#faq", "FAQ"],
+    ["/#faq", "Questions"],
+    ["/methodology/", "Detailed method"],
   ];
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur">
@@ -31,18 +31,18 @@ function Nav() {
           nuno.
         </Link>
         <div className="hidden items-center gap-1 rounded-full bg-[var(--panel)] p-1 text-sm md:flex">
-          {links.map(([href, label], i) => (
+          {links.map(([href, label]) => (
             <Link
               key={href}
               href={href}
-              className={`pill px-4 py-1.5 ${i === 0 ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:text-[var(--accent)]"}`}
+              className="pill px-4 py-1.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--accent)]"
             >
               {label}
             </Link>
           ))}
         </div>
         <a href={`${BASE}/api/tokens.json`} className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)]">
-          Static API
+          Get the data
         </a>
       </nav>
     </header>
@@ -60,11 +60,12 @@ function Footer() {
               <Logo className="h-7 w-10" /> nuno.
             </div>
             <p className="mt-5 max-w-xs text-lg leading-snug">
-              Count entities, not wallets: the real holders, concentration and volume behind nad.fun launches.
+              Shows how many real people are behind a nad.fun token, not just how many wallets.
             </p>
           </div>
           <div className="text-sm">
-            <p className="text-[var(--accent-soft)]">On-chain feed (Monad testnet)</p>
+            <p className="text-[var(--accent-soft)]">On the Monad test network</p>
+            <p className="mt-3">Nuno writes its numbers to a contract that other apps can read:</p>
             {dep ? (
               <ul className="mt-3 space-y-2">
                 <li>
@@ -79,17 +80,17 @@ function Footer() {
             ) : (
               <p className="mt-3">Not deployed yet.</p>
             )}
-            <p className="mt-6 text-[var(--accent-soft)]">Data</p>
-            <p className="mt-3">Reads Monad mainnet (chain 143), read-only.</p>
+            <p className="mt-6 text-[var(--accent-soft)]">Where the data comes from</p>
+            <p className="mt-3">The public Monad blockchain. Nuno only reads it; nothing private is used.</p>
           </div>
           <div className="text-sm">
             <p className="text-[var(--accent-soft)]">Read it yourself</p>
             <ul className="mt-3 divide-y divide-[var(--line)]">
               {[
-                [`${BASE}/api/tokens.json`, "All tokens (JSON)"],
-                [`${BASE}/api/meta.json`, "Window and counts (JSON)"],
-                [`${BASE}/methodology/`, "Methodology"],
-                [REPO, "Source code"],
+                [`${BASE}/api/tokens.json`, "Download all token numbers"],
+                [`${BASE}/api/meta.json`, "Download the summary"],
+                [`${BASE}/methodology/`, "Read the detailed method"],
+                [REPO, "See the source code"],
               ].map(([href, label]) => (
                 <li key={href}>
                   <a href={href} className="flex items-center justify-between py-2.5 hover:underline">
@@ -104,7 +105,7 @@ function Footer() {
           nuno
         </div>
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] py-5 text-xs">
-          <span>Clusters are probabilistic. Every link shows its evidence.</span>
+          <span>Groups are a careful best guess, not a certainty. Every link shows its proof.</span>
           <span>MIT licensed · Monad Metropolis 2026</span>
         </div>
       </div>

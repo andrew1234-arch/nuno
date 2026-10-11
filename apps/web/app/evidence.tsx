@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Cluster } from "@/lib/api";
-import { EDGE_LABELS, addrUrl, short, txUrl } from "@/lib/format";
+import { EDGE_LABELS, addrUrl, short, strength, txUrl } from "@/lib/format";
 
 /** Every accepted link with every piece of evidence, each linked to the explorer. */
 /** `base` prefixes internal links ("" for the live window, "/contrast" for the historical dataset). */
@@ -18,17 +18,17 @@ export function EvidenceTable({ cluster, limit = 200, base = "" }: { cluster: Cl
       <table className="w-full text-xs">
         <thead className="text-[var(--muted)]">
           <tr>
-            <th className="py-1 text-left">Edge</th>
+            <th className="py-1 text-left">Why they're linked</th>
             <th className="text-left">Wallets</th>
-            <th className="text-left">Evidence tx</th>
+            <th className="text-left">Proof (transaction)</th>
             <th className="text-right">Block</th>
-            <th className="text-left pl-3">Detail</th>
+            <th className="text-left pl-3">Note</th>
           </tr>
         </thead>
         <tbody>
           {unique.slice(0, limit).map((r, i) => (
             <tr key={i} className="border-t border-[var(--line)]">
-              <td className="py-1 pr-2">{EDGE_LABELS[r.type] ?? r.type} <span className="text-[var(--muted)]">({r.weight})</span></td>
+              <td className="py-1 pr-2">{EDGE_LABELS[r.type] ?? r.type} <span className="text-[var(--muted)]">({strength(r.weight)})</span></td>
               <td className="mono pr-2">
                 <a href={addrUrl(r.a)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">{short(r.a)}</a>
                 {" ↔ "}
@@ -47,7 +47,7 @@ export function EvidenceTable({ cluster, limit = 200, base = "" }: { cluster: Cl
           ))}
         </tbody>
       </table>
-      {unique.length > limit ? <p className="mt-2 text-xs text-[var(--muted)]">Showing {limit} of {unique.length} evidence rows. Full list: <Link className="text-[var(--accent)]" href={`${base}/cluster/${cluster.id}/`}>cluster page</Link>.</p> : null}
+      {unique.length > limit ? <p className="mt-2 text-xs text-[var(--muted)]">Showing {limit} of {unique.length} pieces of evidence. See them all on the <Link className="text-[var(--accent)]" href={`${base}/cluster/${cluster.id}/`}>group page</Link>.</p> : null}
     </div>
   );
 }

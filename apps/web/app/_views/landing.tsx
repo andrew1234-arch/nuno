@@ -16,8 +16,8 @@ function Freshness({ meta, tokens }: { meta: NonNullable<ReturnType<typeof api.m
   return (
     <span className="pill inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-[var(--panel)] px-3 py-1 text-xs text-[var(--muted)]">
       <span className={`h-2 w-2 rounded-full ${stale ? "bg-[var(--bad)]" : "bg-[var(--good)]"}`} aria-hidden="true" />
-      {n(tokens)} nad.fun tokens · data as of {asOf}
-      {behindMin !== null && behindMin > 1 ? <span className={stale ? "text-[var(--bad)]" : ""}>· {behindMin < 120 ? `${behindMin} min` : `${Math.round(behindMin / 60)} h`} behind chain at export</span> : null}
+      {n(tokens)} nad.fun tokens checked · data as of {asOf}
+      {behindMin !== null && behindMin > 1 ? <span className={stale ? "text-[var(--bad)]" : ""}>· {behindMin < 120 ? `${behindMin} min` : `${Math.round(behindMin / 60)} h`} behind the live chain</span> : null}
     </span>
   );
 }
@@ -29,17 +29,17 @@ function Hero({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.m
       <div className="relative mx-auto max-w-3xl">
         {meta ? <Freshness meta={meta} tokens={tokens.length} /> : null}
         <h1 className="headline mt-6 text-5xl sm:text-7xl">
-          See Who Really <span className="fade">Holds</span>
+          How Many People <span className="fade">Really</span>
           <br />
-          Every <span className="fade">nad.fun Launch</span>
+          Own <span className="fade">This Token?</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-xl text-[var(--muted)]">
-          Wallet farms fake holders and volume. Nuno groups wallets run by the same operator into entities, from on-chain funding, transfer and trading
-          evidence, and recomputes every token per entity.
+        <p className="mx-auto mt-5 max-w-xl text-lg text-[var(--muted)]">
+          On nad.fun, one person can spread their money over dozens of wallets to make a new token look popular. Nuno finds the wallets that belong to the
+          same person and shows you the real numbers.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
-          <a href="#screener" className="pill bg-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-ink)] hover:opacity-90">Open the screener</a>
-          <Link href="/methodology/" className="pill border border-[var(--accent)] px-6 py-3 font-medium text-[var(--accent)] hover:bg-[var(--panel)]">Read the methodology</Link>
+          <a href="#screener" className="pill bg-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-ink)] hover:opacity-90">See the tokens</a>
+          <a href="#how" className="pill border border-[var(--accent)] px-6 py-3 font-medium text-[var(--accent)] hover:bg-[var(--panel)]">How it works</a>
         </div>
       </div>
     </section>
@@ -57,21 +57,21 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
     <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-14 md:grid-cols-3">
       {gap ? (
         <Link href={`/token/${gap.address}/`} className="card block p-5 text-left shadow-sm transition hover:-translate-y-0.5">
-          <p className="text-sm text-[var(--muted)]">Largest holder gap</p>
+          <p className="text-sm text-[var(--muted)]">Biggest gap between looks and reality</p>
           <p className="mt-3 text-4xl font-medium tracking-tight">
             {gap.metrics!.rawHolders} <span className="text-[var(--soft)]">→</span> {gap.metrics!.realHolders}
           </p>
-          <p className="mt-1 text-sm text-[var(--muted)]">holders, raw → real</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">holders shown → real owners</p>
           <p className="mt-4 text-sm font-medium text-[var(--accent)]">${gap.symbol} <span className="mono text-xs text-[var(--muted)]">{short(gap.address)}</span></p>
         </Link>
       ) : null}
       {byVol.length ? (
         <div className="card p-5 text-left shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--muted)]">Volume, raw vs organic</p>
+            <p className="text-sm text-[var(--muted)]">Trading: shown vs real</p>
             <span className="flex gap-3 text-[10px] text-[var(--muted)]">
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent-soft)]" />raw</span>
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent)]" />organic</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent-soft)]" />shown</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent)]" />real</span>
             </span>
           </div>
           <div className="mt-4 flex h-28 items-end justify-between gap-2">
@@ -79,7 +79,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
               const raw = monNum(t.metrics!.rawVolume);
               const org = monNum(t.metrics!.organicVolume);
               return (
-                <Link key={t.address} href={`/token/${t.address}/`} className="flex h-full flex-1 flex-col items-center justify-end" title={`${t.symbol}: ${mon(t.metrics!.rawVolume)} MON raw, ${mon(t.metrics!.organicVolume)} MON organic`}>
+                <Link key={t.address} href={`/token/${t.address}/`} className="flex h-full flex-1 flex-col items-center justify-end" title={`${t.symbol}: ${mon(t.metrics!.rawVolume)} MON traded, of which ${mon(t.metrics!.organicVolume)} MON looks real`}>
                   <div className="relative w-full max-w-7 overflow-hidden rounded-full bg-[var(--accent-soft)]" style={{ height: `${Math.max(8, (raw / maxVol) * 100)}%` }}>
                     <div className="absolute bottom-0 w-full rounded-full bg-[var(--accent)]" style={{ height: `${raw ? (org / raw) * 100 : 0}%` }} />
                   </div>
@@ -92,9 +92,11 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
       ) : null}
       {largest ? (
         <Link href={`/cluster/${largest.id}/`} className="card block p-5 text-left shadow-sm transition hover:-translate-y-0.5">
-          <p className="text-sm text-[var(--muted)]">Largest entity</p>
-          <p className="mt-3 text-4xl font-medium tracking-tight">{largest.size} <span className="text-lg text-[var(--muted)]">wallets</span></p>
-          <p className="mt-1 text-sm text-[var(--muted)]">created {n(largest.createdTokens.length)} of {n(tokens.length)} tracked tokens</p>
+          <p className="text-sm text-[var(--muted)]">Biggest group found</p>
+          <p className="mt-3 text-4xl font-medium tracking-tight">{largest.size} <span className="text-lg text-[var(--muted)]">wallets, one owner</span></p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {largest.createdTokens.length ? `launched ${n(largest.createdTokens.length)} of the ${n(tokens.length)} tokens checked` : "trading across the tokens checked"}
+          </p>
           <div className="mt-4 flex -space-x-2" aria-hidden="true">
             {largest.members.slice(0, 10).map((m, i) => (
               <span key={m} className="h-6 w-6 rounded-full border-2 border-[var(--surface)]" style={{ background: `color-mix(in srgb, var(--accent) ${100 - i * 7}%, var(--surface))` }} />
@@ -114,10 +116,11 @@ function FindingBand() {
         <div>
           <p className="text-3xl font-medium leading-tight tracking-tight sm:text-4xl">{FINDING_TEXT}</p>
           <p className="mt-6 max-w-3xl text-sm text-[var(--accent-soft)]">
-            Seeder <a className="mono text-[var(--accent-ink)] hover:underline" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a> received{" "}
-            {n(SEEDER_DEPOSIT.mon)} MON in{" "}
-            <a className="mono text-[var(--accent-ink)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">{short(SEEDER_DEPOSIT.tx)}</a>, then sent 14,995 MON to each
-            creator wallet:
+            How we know: one wallet,{" "}
+            <a className="mono text-[var(--accent-ink)] hover:underline" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a>, received{" "}
+            {n(SEEDER_DEPOSIT.mon)} MON (
+            <a className="mono text-[var(--accent-ink)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">proof</a>), then sent 14,995 MON to each of
+            the launching wallets. Every payment below is public; click one to see it on the Monad explorer.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {PAYOUTS.map((p) => (
@@ -134,9 +137,15 @@ function FindingBand() {
 
 function How({ tokens }: { tokens: Token[] }) {
   const steps: Array<[string, string]> = [
-    ["Index", "Every nad.fun launch, curve trade, transfer and post-graduation swap, read from Monad mainnet."],
-    ["Trace funding", "Who sent each buyer its MON, up to 3 hops back, from archive state and block traces."],
-    ["Cluster & recompute", "Wallets linked by weighted evidence become one entity; holders, concentration and volume are recounted per entity."],
+    ["Watch every launch", "Nuno follows every new token on nad.fun, and every buy, sell and transfer of it, straight from the public Monad blockchain."],
+    [
+      "Follow the money",
+      "For each buyer, it looks at where their money came from. Fresh wallets topped up by the same source at the same time, or that buy and sell at the exact same moment, are usually run by one person.",
+    ],
+    [
+      "Count people, not wallets",
+      "Wallets that belong together become one group. Holders and trading are then recounted, so 50 wallets owned by one person count as one owner, and buying from yourself doesn't count as real trading.",
+    ],
   ];
   const top = tokens.filter((t) => t.metrics && t.metrics.rawHolders > 0).sort((a, b) => b.metrics!.rawHolders - a.metrics!.rawHolders).slice(0, 5);
   const max = top.length ? top[0]!.metrics!.rawHolders : 1;
@@ -145,11 +154,15 @@ function How({ tokens }: { tokens: Token[] }) {
       <div className="card mx-auto max-w-6xl px-6 py-14 sm:px-12">
         <div className="grid gap-8 md:grid-cols-2">
           <h2 className="headline text-4xl sm:text-5xl">
-            Count Entities, <span className="fade">Not Wallets</span>
+            Count People, <span className="fade">Not Wallets</span>
           </h2>
-          <p className="self-end text-[var(--muted)] md:text-right">
-            Raw holder counts and volume are easy to fake with a wallet farm. Every link Nuno draws between two wallets keeps the transactions that justify it.
-          </p>
+          <div className="self-end space-y-3 text-[var(--muted)] md:text-right">
+            <p>
+              <b className="text-[var(--text)]">Why it matters.</b> A token that shows 200 holders and lots of trading looks like a hit, so people buy in. If 150 of
+              those wallets belong to the creator, the token is far riskier than it looks. Price trackers, launchpads and trading bots all read those numbers.
+            </p>
+            <p>Nuno gives them honest ones, and shows its proof for every claim.</p>
+          </div>
         </div>
         <div className="mt-12 grid gap-10 md:grid-cols-[1fr_1.1fr]">
           <ol className="space-y-6">
@@ -166,7 +179,7 @@ function How({ tokens }: { tokens: Token[] }) {
           {top.length ? (
             <div className="rounded-2xl bg-[var(--panel)] p-6">
               <div className="flex items-center justify-between">
-                <p className="font-medium">Holders, raw vs real</p>
+                <p className="font-medium">Holders shown vs real owners</p>
                 <span className="pill bg-[var(--accent)] px-3 py-1 text-xs text-[var(--accent-ink)]">top {top.length} by holders</span>
               </div>
               <div className="mt-6 space-y-4">
@@ -201,10 +214,10 @@ function Icon({ d }: { d: string }) {
 
 function Stats({ counts }: { counts: Record<string, number> }) {
   const items: Array<[string, string, number | undefined, string]> = [
-    ["Tokens", "M2 3h12v2H2zm0 4h12v2H2zm0 4h8v2H2z", counts.tokens, "nad.fun launches in the indexed window"],
-    ["Wallets in entities", "M5 4a2 2 0 110 4 2 2 0 010-4zm6 0a2 2 0 110 4 2 2 0 010-4zM1 13c0-2 2-3 4-3s4 1 4 3zm6 0c0-2 2-3 4-3s4 1 4 3z", counts.walletsInEntities, `grouped into ${n(counts.entities ?? 0)} multi-wallet ${counts.entities === 1 ? "entity" : "entities"}`],
-    ["Curve trades", "M2 12l4-4 3 3 5-6v2l-5 6-3-3-4 4z", counts.curveTrades, "buys and sells, attributed to the signing wallet"],
-    ["Funding links", "M3 8a5 5 0 0110 0h-2a3 3 0 00-6 0zm4 0h2v5H7z", counts.fundingEdges, "inbound MON transfers traced on archive state"],
+    ["Tokens checked", "M2 3h12v2H2zm0 4h12v2H2zm0 4h8v2H2z", counts.tokens, "every nad.fun launch in the last week"],
+    ["Wallets in groups", "M5 4a2 2 0 110 4 2 2 0 010-4zm6 0a2 2 0 110 4 2 2 0 010-4zM1 13c0-2 2-3 4-3s4 1 4 3zm6 0c0-2 2-3 4-3s4 1 4 3z", counts.walletsInEntities, `that belong to just ${n(counts.entities ?? 0)} ${counts.entities === 1 ? "owner" : "owners"}`],
+    ["Trades checked", "M2 12l4-4 3 3 5-6v2l-5 6-3-3-4 4z", counts.curveTrades, "every buy and sell on nad.fun"],
+    ["Money trails traced", "M3 8a5 5 0 0110 0h-2a3 3 0 00-6 0zm4 0h2v5H7z", counts.fundingEdges, "payments that show who funded whom"],
   ];
   return (
     <section className="band-plain px-4 py-16">
@@ -228,9 +241,15 @@ function Screener({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof a
     <section id="screener" className="scroll-mt-16 px-2 py-6 sm:px-4">
       <div className="card mx-auto max-w-6xl px-5 py-12 sm:px-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 className="headline text-4xl sm:text-5xl">
-            The <span className="fade">Screener</span>
-          </h2>
+          <div>
+            <h2 className="headline text-4xl sm:text-5xl">
+              Every <span className="fade">Token</span>
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm text-[var(--muted)]">
+              Each row shows what a token looks like (grey) next to what Nuno found (bold). A big gap means many of its &quot;holders&quot; or much of its
+              trading come from the same people. Click a token to see who is behind it and the proof.
+            </p>
+          </div>
           {meta ? (
             <p className="mono text-xs text-[var(--muted)]">
               {meta.window.startTime && meta.window.endTime ? `${meta.window.startTime.slice(0, 10)} → ${meta.window.endTime.slice(0, 10)} · ` : ""}
@@ -251,24 +270,28 @@ function Screener({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof a
 
 const FAQ: Array<[string, string]> = [
   [
-    "What is an entity?",
-    "A group of wallets that are very likely controlled by the same operator. Wallets are linked by weighted evidence: the same funder within 24 hours, a shared funding source, funding by the token's creator, direct token transfers, or trading in the same block. A pair is merged once its evidence adds up to 1.0, so one weak signal never merges wallets on its own.",
+    "What problem does Nuno solve?",
+    "New tokens are judged by how many people hold them and how much they are traded. Both numbers are easy to fake: one person can spread money over many wallets and trade with themselves. Nuno works out which wallets belong to the same person, so the numbers you see reflect real people.",
   ],
   [
-    "How is organic volume calculated?",
-    "Volume is grouped per entity. An entity that bought and sold and ended with a near-zero net position counts as wash-like; so do round trips within ~18-minute windows. Entities that only bought or only sold are directional and always count as organic.",
+    "How can you tell two wallets belong to the same person?",
+    "By following the money and the timing. Wallets that were filled up by the same source within a short time, that send the token to each other, or that buy and sell at the exact same moment are almost always run together. One weak hint is never enough on its own: Nuno needs strong evidence, or several hints that point the same way.",
   ],
   [
-    "Where does the data come from?",
-    "Monad mainnet only, read-only: nad.fun's curve events (both its documented V1 curve and its V2 curve), ERC-20 transfers, Uniswap V3 swaps after graduation, and funding history from archive state and block traces.",
+    "What does \"real trading\" mean?",
+    "Trading where the buyer and seller are different people. If the same owner buys with one wallet and sells with another, or buys and sells back and forth, that trading makes a token look busy without anyone new taking part, so Nuno doesn't count it.",
   ],
   [
-    "Can apps and contracts use these numbers?",
-    "Yes. The same data is published as a static JSON API, and snapshots go to the NunoFeed contract on Monad testnet. OrganicGate is an example contract that reverts when a token's cluster-held supply is too high or the data is stale.",
+    "Can I check the proof myself?",
+    "Yes. Every link between two wallets comes with the public transaction that shows it. Click any of them to open it on the Monad block explorer. Nothing here relies on private data.",
   ],
   [
-    "How accurate is it?",
-    "There is no labelled ground truth for nad.fun. Clusters are probabilistic, and every link shows the transactions behind it so you can check it on a Monad explorer. Accuracy is only claimed for the hand-reviewed sample in the repository's validation document.",
+    "Is it always right?",
+    "No tool is. Some shared services, like exchanges, send money to many unrelated people; Nuno recognises busy services like these and ignores them as links, but it can still make mistakes. That is why every link shows its proof, and why the results are called likely, not certain.",
+  ],
+  [
+    "Who is it for?",
+    "Anyone deciding whether a new token is what it seems: traders, token trackers, launchpads and trading bots. Apps can download the numbers for free, and smart contracts can read them directly from the Monad network.",
   ],
 ];
 
@@ -277,9 +300,9 @@ function Faq() {
     <section id="faq" className="band scroll-mt-16 px-4 py-20">
       <div className="mx-auto max-w-3xl text-center">
         <h2 className="headline text-4xl sm:text-5xl">
-          Questions Worth <span className="fade">Asking.</span>
+          Questions, <span className="fade">Answered.</span>
         </h2>
-        <p className="mt-3 text-sm text-[var(--accent-soft)]">Before trusting a holder count</p>
+        <p className="mt-3 text-sm text-[var(--accent-soft)]">In plain words</p>
       </div>
       <div className="card mx-auto mt-10 max-w-3xl px-6 py-4 text-[var(--text)] sm:px-10">
         {FAQ.map(([q, a], i) => (

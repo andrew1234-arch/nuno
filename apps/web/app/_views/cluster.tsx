@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api, type Dataset } from "@/lib/api";
-import { addrUrl, short } from "@/lib/format";
+import { EDGE_REASON, addrUrl, short } from "@/lib/format";
 import { ClusterGraph } from "../graph";
 import { EvidenceTable } from "../evidence";
 import { baseFor } from "./screener";
@@ -22,16 +22,16 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
           </p>
         ) : null}
         <h1 className="text-2xl font-bold">
-          Entity <span className="mono">{short(c.id)}</span>
+          Group <span className="mono">{short(c.id)}</span>
         </h1>
         <p className="text-sm text-[var(--muted)]">
-          {c.size} wallets, {c.links.length} accepted links ({types.join(", ").replaceAll("_", " ")}). Resolved at mainnet block {c.sourceBlock.toLocaleString("en-US")}.
+          {c.size} wallets that very likely belong to one owner. They are linked because they {types.map((t) => EDGE_REASON[t] ?? t).join(", ")}. Checked up to Monad block {c.sourceBlock.toLocaleString("en-US")}.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-[minmax(0,22rem)_1fr]">
         <ClusterGraph cluster={c} />
         <div>
-          <h2 className="font-semibold">Wallets</h2>
+          <h2 className="font-semibold">The wallets</h2>
           <ul className="mono mt-2 grid grid-cols-2 gap-x-4 text-xs">
             {c.members.map((m) => (
               <li key={m}>
@@ -42,7 +42,7 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
           </ul>
           {c.createdTokens.length ? (
             <>
-              <h2 className="mt-4 font-semibold">Tracked tokens created by this entity ({c.createdTokens.length})</h2>
+              <h2 className="mt-4 font-semibold">Tokens this group launched ({c.createdTokens.length})</h2>
               <div className="mono mt-2 flex flex-wrap gap-2 text-xs">
                 {c.createdTokens.map((t) => (
                   <Link key={t} href={`${base}/token/${t}/`} className="rounded border border-[var(--line)] px-2 py-0.5 hover:border-[var(--accent)]">
@@ -55,7 +55,8 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
         </div>
       </div>
       <section>
-        <h2 className="font-semibold">Evidence</h2>
+        <h2 className="font-semibold">Why we think these wallets belong together</h2>
+        <p className="text-sm text-[var(--muted)]">Every line is one piece of proof. Click a transaction to see it yourself on the Monad explorer.</p>
         <EvidenceTable cluster={c} limit={2000} base={base} />
       </section>
     </div>

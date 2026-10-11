@@ -1,5 +1,5 @@
 import type { Cluster } from "@/lib/api";
-import { short } from "@/lib/format";
+import { EDGE_SHORT, short } from "@/lib/format";
 
 const EDGE_COLORS: Record<string, string> = {
   same_direct_funder: "#8a4d31",
@@ -52,10 +52,11 @@ export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlig
         {Object.entries(EDGE_COLORS).map(([t, c]) => (
           <span key={t} className="flex items-center gap-1">
             <span className="inline-block h-0.5 w-3" style={{ background: c }} />
-            {t.replaceAll("_", " ")}
+            {EDGE_SHORT[t] ?? t}
           </span>
         ))}
         {cluster.members.length > MAX ? <span>showing {MAX} of {cluster.members.length} wallets</span> : null}
+        <span>· each dot is a wallet, each line a reason they're linked</span>
       </figcaption>
     </figure>
   );
