@@ -41,9 +41,9 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
           {token.name} <span className="text-[var(--muted)]">${token.symbol}</span>
         </h1>
         <div className="mono mt-1 flex flex-wrap gap-x-4 text-xs text-[var(--muted)]">
-          <a href={addrUrl(token.address)} target="_blank" rel="noreferrer" className="hover:text-white">token {token.address}</a>
-          <a href={addrUrl(token.creator)} target="_blank" rel="noreferrer" className="hover:text-white">creator {short(token.creator)}</a>
-          <a href={txUrl(token.createTx)} target="_blank" rel="noreferrer" className="hover:text-white">created at block {token.createBlock.toLocaleString("en-US")}</a>
+          <a href={addrUrl(token.address)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">token {token.address}</a>
+          <a href={addrUrl(token.creator)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">creator {short(token.creator)}</a>
+          <a href={txUrl(token.createTx)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">created at block {token.createBlock.toLocaleString("en-US")}</a>
           {token.graduatedPool ? <span>graduated → {short(token.graduatedPool)}</span> : <span>on bonding curve</span>}
         </div>
       </div>

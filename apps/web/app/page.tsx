@@ -1,5 +1,5 @@
-import { ScreenerView } from "./_views/screener";
+import { Landing } from "./_views/landing";
 
-export default function Screener() {
-  return <ScreenerView dataset="live" />;
+export default function Home() {
+  return <Landing />;
 }

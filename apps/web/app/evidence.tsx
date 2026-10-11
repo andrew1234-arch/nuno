@@ -39,9 +39,9 @@ export function EvidenceTable({ cluster, limit = 200, base = "" }: { cluster: Cl
               </td>
               <td className="mono text-right tabular-nums">{r.block.toLocaleString("en-US")}</td>
               <td className="mono pl-3 text-[var(--muted)]">
-                {r.detail ? <a href={addrUrl(r.detail)} target="_blank" rel="noreferrer" className="hover:text-white">via {short(r.detail)}</a> : null}
-                {r.detail && cluster.labels?.[r.detail] ? <span className="ml-1 rounded bg-[var(--line)] px-1 text-white" title="Nansen label">{cluster.labels[r.detail]!.label}</span> : null}
-                {r.token ? <> {" "}<Link href={`${base}/token/${r.token}/`} className="hover:text-white">token {short(r.token)}</Link></> : null}
+                {r.detail ? <a href={addrUrl(r.detail)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">via {short(r.detail)}</a> : null}
+                {r.detail && cluster.labels?.[r.detail] ? <span className="ml-1 rounded bg-[var(--panel)] px-1 text-[var(--accent)]" title="Nansen label">{cluster.labels[r.detail]!.label}</span> : null}
+                {r.token ? <> {" "}<Link href={`${base}/token/${r.token}/`} className="hover:text-[var(--accent)]">token {short(r.token)}</Link></> : null}
               </td>
             </tr>
           ))}

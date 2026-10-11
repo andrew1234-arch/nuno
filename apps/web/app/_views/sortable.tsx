@@ -47,8 +47,9 @@ function Row({ t, base }: { t: Token; base: string }) {
   );
 }
 
-export function SortableTable({ tokens, base }: { tokens: Token[]; base: string }) {
+export function SortableTable({ tokens, base, limit }: { tokens: Token[]; base: string; limit?: number }) {
   const [sort, setSort] = useState("holder_gap");
+  const [all, setAll] = useState(false);
   const key = SORTS.find(([k]) => k === sort)![2];
   const sorted = [...tokens].sort((a, b) => {
     const x = key(a), y = key(b);
@@ -61,7 +62,7 @@ export function SortableTable({ tokens, base }: { tokens: Token[]; base: string 
           <button
             key={k}
             onClick={() => setSort(k)}
-            className={`rounded-full border px-3 py-1 ${k === sort ? "border-[var(--accent)] text-white" : "border-[var(--line)] text-[var(--muted)] hover:text-white"}`}
+            className={`rounded-full border px-3.5 py-1.5 ${k === sort ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent)]"}`}
           >
             {label}
           </button>
@@ -81,12 +82,19 @@ export function SortableTable({ tokens, base }: { tokens: Token[]; base: string 
             </tr>
           </thead>
           <tbody>
-            {sorted.map((t) => (
+            {(all || !limit ? sorted : sorted.slice(0, limit)).map((t) => (
               <Row key={t.address} t={t} base={base} />
             ))}
           </tbody>
         </table>
         {tokens.length === 0 ? <p className="mt-6 text-[var(--muted)]">No tokens in this dataset.</p> : null}
+        {limit && !all && sorted.length > limit ? (
+          <div className="mt-6 text-center">
+            <button onClick={() => setAll(true)} className="pill border border-[var(--accent)] px-6 py-2.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--panel)]">
+              Show all {sorted.length} tokens
+            </button>
+          </div>
+        ) : null}
       </div>
     </>
   );

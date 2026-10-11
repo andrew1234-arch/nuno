@@ -1,5 +1,6 @@
 import { PLACEHOLDER } from "@/lib/api";
 import { TokenView, tokenParams } from "../../_views/token";
+import { Sheet } from "../../sheet";
 
 export const dynamicParams = false;
 
@@ -9,5 +10,5 @@ export function generateStaticParams() {
 }
 
 export default async function TokenPage({ params }: { params: Promise<{ address: string }> }) {
-  return <TokenView address={(await params).address} dataset="live" />;
+  return <Sheet><TokenView address={(await params).address} dataset="live" /></Sheet>;
 }

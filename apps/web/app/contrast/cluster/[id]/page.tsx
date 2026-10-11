@@ -1,5 +1,6 @@
 import { PLACEHOLDER } from "@/lib/api";
 import { ClusterView, clusterParams } from "../../../_views/cluster";
+import { Sheet } from "../../../sheet";
 
 export const dynamicParams = false;
 
@@ -9,5 +10,5 @@ export function generateStaticParams() {
 }
 
 export default async function ClusterPage({ params }: { params: Promise<{ id: string }> }) {
-  return <ClusterView id={(await params).id} dataset="contrast" />;
+  return <Sheet><ClusterView id={(await params).id} dataset="contrast" /></Sheet>;
 }

@@ -2,12 +2,12 @@ import type { Cluster } from "@/lib/api";
 import { short } from "@/lib/format";
 
 const EDGE_COLORS: Record<string, string> = {
-  same_direct_funder: "#8b5cf6",
-  common_funding_source: "#6366f1",
-  creator_funded: "#f97066",
-  token_transfer: "#34d399",
-  same_block_early_buy: "#fbbf24",
-  same_block_sell: "#f59e0b",
+  same_direct_funder: "#8a4d31",
+  common_funding_source: "#b0785a",
+  creator_funded: "#c2412d",
+  token_transfer: "#3f7d58",
+  same_block_early_buy: "#d4a373",
+  same_block_sell: "#a39184",
 };
 
 /** Static circular layout of an entity's wallets and accepted links (server-rendered SVG). */
@@ -38,9 +38,9 @@ export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlig
           const isHl = m === highlight;
           return (
             <g key={m}>
-              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} fill={isHl ? "#f97066" : "#e8e8f0"} />
+              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} fill={isHl ? "#c2412d" : "#2b2420"} />
               {members.length <= 16 ? (
-                <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={8} fill="#8b8ba0" className="mono">
+                <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={8} fill="#8a7c73" className="mono">
                   {short(m)}
                 </text>
               ) : null}

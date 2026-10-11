@@ -1,36 +1,93 @@
 @import "tailwindcss";
 
+/* Warm light theme: cream surfaces, rust-brown bands, two-tone grey headlines. */
 :root {
-  --bg: #0b0b10;
-  --panel: #14141c;
-  --line: #262633;
-  --text: #e8e8f0;
-  --muted: #8b8ba0;
-  --accent: #8b5cf6;
-  --bad: #f97066;
-  --good: #34d399;
+  --bg: #f3ece7;
+  --surface: #fcf8f5;
+  --panel: #f4ebe5;
+  --line: #e6d9d0;
+  --text: #2b2420;
+  --muted: #8a7c73;
+  --soft: #b9aaa0;
+  --accent: #8a4d31;
+  --accent-ink: #fcf8f5;
+  --accent-soft: #c9a594;
+  --bad: #c2412d;
+  --good: #3f7d58;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
 }
 
-.prose-nuno h1 { font-size: 1.75rem; font-weight: 700; margin: 1.5rem 0 1rem; }
-.prose-nuno h2 { font-size: 1.25rem; font-weight: 600; margin: 2rem 0 0.75rem; border-bottom: 1px solid var(--line); padding-bottom: 0.25rem; }
-.prose-nuno p, .prose-nuno li { line-height: 1.65; color: #d0d0dc; }
+/* Two-tone headline: dark first words, faded tail. */
+.headline { font-weight: 500; letter-spacing: -0.035em; line-height: 1.05; color: var(--text); }
+.headline .fade { color: var(--soft); }
+.band .headline { color: var(--accent-ink); }
+.band .headline .fade { color: var(--accent-soft); }
+
+/* Rust-brown section with a dotted texture on both sides. */
+.band {
+  background-color: var(--accent);
+  color: var(--accent-ink);
+  background-image:
+    radial-gradient(circle, rgba(252, 248, 245, 0.35) 1px, transparent 1.4px),
+    radial-gradient(circle, rgba(252, 248, 245, 0.35) 1px, transparent 1.4px);
+  background-size: 14px 14px, 14px 14px;
+  background-position: 0 0, 100% 0;
+  background-repeat: repeat-y;
+}
+.band-plain { background: var(--accent); color: var(--accent-ink); }
+
+/* Dotted halo behind light hero sections. */
+.dots {
+  background-image: radial-gradient(circle, rgba(138, 77, 49, 0.28) 1px, transparent 1.4px);
+  background-size: 12px 12px;
+  mask-image: radial-gradient(ellipse at center, transparent 35%, black 75%);
+}
+
+.card { background: var(--surface); border-radius: 18px; }
+.pill { border-radius: 999px; }
+
+/* Footer tab notch, like a folder tab cut into the cream sheet. */
+.notch { position: relative; }
+.notch::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  transform: translateX(-50%);
+  width: min(78%, 900px);
+  height: 40px;
+  background: var(--accent);
+  border-radius: 0 0 24px 24px;
+}
+
+details.faq summary { list-style: none; cursor: pointer; }
+details.faq summary::-webkit-details-marker { display: none; }
+details.faq .icon::before { content: "+"; }
+details.faq[open] .icon { background: var(--accent); color: var(--accent-ink); }
+details.faq[open] .icon::before { content: "−"; }
+
+.prose-nuno h1 { font-size: 2.25rem; font-weight: 500; letter-spacing: -0.03em; margin: 1.5rem 0 1rem; }
+.prose-nuno h2 { font-size: 1.35rem; font-weight: 500; margin: 2rem 0 0.75rem; border-bottom: 1px solid var(--line); padding-bottom: 0.35rem; }
+.prose-nuno h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.prose-nuno p, .prose-nuno li { line-height: 1.7; color: #4a3f39; }
 .prose-nuno p { margin: 0.75rem 0; }
 .prose-nuno ul, .prose-nuno ol { margin: 0.5rem 0 0.5rem 1.5rem; list-style: disc; }
 .prose-nuno ol { list-style: decimal; }
 .prose-nuno code { font-family: ui-monospace, monospace; background: var(--panel); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; }
-.prose-nuno pre { background: var(--panel); padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; }
+.prose-nuno pre { background: var(--panel); padding: 1rem; border-radius: 12px; overflow-x: auto; margin: 1rem 0; }
 .prose-nuno pre code { background: none; padding: 0; }
 .prose-nuno table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; display: block; overflow-x: auto; }
-.prose-nuno th, .prose-nuno td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
-.prose-nuno th { background: var(--panel); }
-.prose-nuno a { color: var(--accent); }
+.prose-nuno th, .prose-nuno td { border: 1px solid var(--line); padding: 0.45rem 0.65rem; text-align: left; vertical-align: top; }
+.prose-nuno th { background: var(--panel); font-weight: 600; }
+.prose-nuno a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
