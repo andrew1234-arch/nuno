@@ -180,3 +180,14 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
 - The May 1 → Oct 11 per-day table computed from V1 `CurveCreate` only shows V1 dark from May 19 to Aug 24; nad.fun's API lists 77 June / 184 July tokens for the 10 group wallets, all on V2. The table is V1-only and incomplete.
 - Funding: up to 5 inbound edges per wallet shipped (`a42ded2`); the 300,000 MON deposit into `0xb245…` (block 66,370,945) is now stored. Re-cluster on current data: still 1 entity of 10 wallets.
 - Local DB note: 63 of 73 tokens were already pruned (`MIN_BUYERS=20`, from an Oct 9 run); only 191 trades remain.
+
+### V2 indexing (2026-10-11, evening)
+- **`MIN_BUYERS` defaults to 0** (prune rule 5 off; user decision). nad.fun tokens have 2–8 buyers and the low-buyer tokens hold the operator evidence. `MIN_BUYERS` now accepts 0. `SPEC.md.new` updated; `.env.example` (Claude cannot edit) should say `MIN_BUYERS=0`.
+- **V2 curve indexed** (`155819a`): `0x9f38…4ae4`, address and router `0x8986…6f91` in `packages/shared/src/chain.ts`. Live-log checks:
+  - `Buy`/`Sell` topics are (token, sender), the reverse of V1. Data is (amountIn, amountOut).
+  - The create event `0xac11ceed…` is decoded by layout. Topics are (creator, token, pool). Data is (address quote = WMON, string name, string symbol, string uri, 3 × uint256 not interpreted), 480 bytes. Creator = nad.fun API creator = tx signer for token `0x0293…7777` ("Uniswap Mascot"/"swappy").
+  - Real-log fixtures in `packages/indexer/src/decode.test.ts`.
+- **No V2 graduation event found.** Two days of V2 logs (blocks 111,970,000–112,540,000) contain only create (95), Buy (4,084), Sell (3,357) and Sync (7,441). V2 post-graduation DEX swaps are not counted yet (`docs/METHODOLOGY.md` §7).
+- **Storage projection (gate, rule 8).** A 1-day V1+V2 ingest (blocks 112,256,706–112,542,905) gave 61 tokens, 4,373 curve trades, 5,185 transfers, 818 addresses and **1.9 MB** of events. Projected 7-day window ≈ 13 MB of events, ~15–20 MB with funding/metrics. That is under the 40 MB target, so no pruning is needed.
+- Funding in the local backfill now runs in parallel (`FUNDING_CONCURRENCY`, default 6; `9d80c4d`). Sequential resolution measured ~17 s/wallet incl. the deposit search.
+- Local DBs: `data/nuno.v1-only.sqlite` = old V1-only DB (63 tokens pruned). `data/nuno.day1.sqlite` = 1-day projection run. `data/nuno.sqlite` = 7-day V1+V2 backfill, seeded from the day-1 run (in progress).
