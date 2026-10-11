@@ -229,3 +229,7 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - Result: First Funder `0xf89d…aa40` "High Activity", tx `0x8efaee1f74b4a1e87a7b0c2addb37cc9e4da89536a9d5fae82407894da8e7695`. This is identical to our stored first-funding edge (block 61,808,158, 10 MON), an independent confirmation of the resolver.
   - The call ran against a DB copy (`data/nuno.nansen-test.sqlite`) because the backfill holds the main DB. **TODO:** run it once on the main DB after the backfill (1 credit), so the cached row and label ship in the export.
   - Budget: the tick spends ≤ 5 credits/run with a reserve of 3. The ~99 trial credits cover the first ~19 runs of hub checks, then the free plan's ~10/day.
+- **Infrastructure list is stale for V2** (side-agent note). `infrastructure.json` was built on Oct 8 from ~46 V1 funding origins. `0xfc08…` is already on it (29,073 txs, 2.1M MON), but V2's ~2,000 buyers bring unscanned funders.
+  - After funding: `pnpm infra:scan` → re-index → recluster.
+  - Then sanity-check the entity size distribution, the largest entity's linking funders (incl. busy wallets just under the 5,000-tx / 1M-MON thresholds) and a Monadscan spot check, before any headline draft.
+  - Any threshold change goes to the user first.
