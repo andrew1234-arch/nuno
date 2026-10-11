@@ -10,7 +10,7 @@ const SORTS: Array<[string, string, (t: Token) => number | bigint]> = [
   ["holder_gap", "Most fake holders", (t) => (t.metrics ? t.metrics.rawHolders - t.metrics.realHolders : -1)],
   ["cluster_supply", "Most owned by groups", (t) => t.metrics?.clusterSupplyBps ?? -1],
   ["creator_supply", "Most owned by creator's side", (t) => t.metrics?.creatorLinkedSupplyBps ?? -1],
-  ["wash", "Most fake trading", (t) => (t.metrics && t.metrics.rawVolume !== "0" ? 10_000 - t.metrics.organicVolumeBps : -1)],
+  ["wash", "Most in-and-out trading", (t) => (t.metrics && t.metrics.rawVolume !== "0" ? 10_000 - t.metrics.organicVolumeBps : -1)],
   ["raw_volume", "Most traded", (t) => (t.metrics ? BigInt(t.metrics.rawVolume) : -1n)],
   ["newest", "Newest", (t) => t.createBlock],
 ];
@@ -36,7 +36,7 @@ function Row({ t, base }: { t: Token; base: string }) {
           <td className="pr-3 text-right tabular-nums">
             {mon(m.rawVolume)} <span className="text-[var(--muted)]">→</span> <b>{mon(m.organicVolume)}</b>
           </td>
-          <td className={`text-right tabular-nums ${m.rawVolume !== "0" && m.organicVolumeBps < 5000 ? "text-[var(--bad)]" : ""}`}>
+          <td className="text-right tabular-nums">
             {m.rawVolume === "0" ? "–" : pct(m.organicVolumeBps)}
           </td>
         </>
@@ -77,8 +77,8 @@ export function SortableTable({ tokens, base, limit }: { tokens: Token[]; base: 
               <th className="pr-3 text-right" title="Share of the token held by groups of wallets that belong to one owner">Held by groups</th>
               <th className="pr-3 text-right" title="Share held by the creator and every wallet linked to them">Creator&apos;s side</th>
               <th className="pr-3 text-right" title="Share held by the 10 biggest owners, counting each group as one">Top 10 owners</th>
-              <th className="pr-3 text-right" title="All trading → trading that wasn't an owner trading with themselves">Trading (MON) shown → real</th>
-              <th className="text-right" title="Share of the trading that looks genuine">Real trading</th>
+              <th className="pr-3 text-right" title="All trading → trading by owners who kept their tokens">Trading (MON) all → by holders</th>
+              <th className="text-right" title="Share of trading done by owners who kept their tokens. Quick in-and-out trading, by bots or ordinary traders, is left out.">By holders</th>
             </tr>
           </thead>
           <tbody>

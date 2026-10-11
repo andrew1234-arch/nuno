@@ -10,7 +10,7 @@ const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display:
 
 export const metadata: Metadata = {
   title: "Nuno: how many people really own this token?",
-  description: "Nuno finds wallets that belong to the same person behind nad.fun tokens on Monad and shows the real number of owners and real trading, with public proof.",
+  description: "Nuno finds wallets that belong to the same person behind nad.fun tokens on Monad and shows the real number of owners, with public proof.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";

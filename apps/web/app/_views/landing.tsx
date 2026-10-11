@@ -68,10 +68,10 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
       {byVol.length ? (
         <div className="card p-5 text-left shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--muted)]">Trading: shown vs real</p>
+            <p className="text-sm text-[var(--muted)]">Trading: all vs by holders</p>
             <span className="flex gap-3 text-[10px] text-[var(--muted)]">
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent-soft)]" />shown</span>
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent)]" />real</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent-soft)]" />all</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent)]" />by holders</span>
             </span>
           </div>
           <div className="mt-4 flex h-28 items-end justify-between gap-2">
@@ -79,7 +79,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
               const raw = monNum(t.metrics!.rawVolume);
               const org = monNum(t.metrics!.organicVolume);
               return (
-                <Link key={t.address} href={`/token/${t.address}/`} className="flex h-full flex-1 flex-col items-center justify-end" title={`${t.symbol}: ${mon(t.metrics!.rawVolume)} MON traded, of which ${mon(t.metrics!.organicVolume)} MON looks real`}>
+                <Link key={t.address} href={`/token/${t.address}/`} className="flex h-full flex-1 flex-col items-center justify-end" title={`${t.symbol}: ${mon(t.metrics!.rawVolume)} MON traded, of which ${mon(t.metrics!.organicVolume)} MON by owners who kept their tokens`}>
                   <div className="relative w-full max-w-7 overflow-hidden rounded-full bg-[var(--accent-soft)]" style={{ height: `${Math.max(8, (raw / maxVol) * 100)}%` }}>
                     <div className="absolute bottom-0 w-full rounded-full bg-[var(--accent)]" style={{ height: `${raw ? (org / raw) * 100 : 0}%` }} />
                   </div>
@@ -144,7 +144,7 @@ function How({ tokens }: { tokens: Token[] }) {
     ],
     [
       "Count people, not wallets",
-      "Wallets that belong together become one group. Holders and trading are then recounted, so 50 wallets owned by one person count as one owner, and buying from yourself doesn't count as real trading.",
+      "Wallets that belong together become one group. Holders are then recounted, so 50 wallets owned by one person count as one owner. Trading is split into trading by people who kept their tokens and quick in-and-out trading.",
     ],
   ];
   const top = tokens.filter((t) => t.metrics && t.metrics.rawHolders > 0).sort((a, b) => b.metrics!.rawHolders - a.metrics!.rawHolders).slice(0, 5);
@@ -246,8 +246,8 @@ function Screener({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof a
               Every <span className="fade">Token</span>
             </h2>
             <p className="mt-3 max-w-2xl text-sm text-[var(--muted)]">
-              Each row shows what a token looks like (grey) next to what Nuno found (bold). A big gap means many of its &quot;holders&quot; or much of its
-              trading come from the same people. Click a token to see who is behind it and the proof.
+              Each row shows what a token looks like (grey) next to what Nuno found (bold). A big gap in holders means many of its &quot;holders&quot; are
+              the same people. Click a token to see who is behind it and the proof.
             </p>
           </div>
           {meta ? (
@@ -278,8 +278,8 @@ const FAQ: Array<[string, string]> = [
     "By following the money and the timing. Wallets that were filled up by the same source within a short time, that send the token to each other, or that buy and sell at the exact same moment are almost always run together. One weak hint is never enough on its own: Nuno needs strong evidence, or several hints that point the same way.",
   ],
   [
-    "What does \"real trading\" mean?",
-    "Trading where the buyer and seller are different people. If the same owner buys with one wallet and sells with another, or buys and sells back and forth, that trading makes a token look busy without anyone new taking part, so Nuno doesn't count it.",
+    "What does \"trading by holders\" mean?",
+    "It is the trading done by owners who kept their tokens. When an owner buys and later sells almost everything, or trades in and out within minutes, that trading is counted separately. This catches bots that trade with themselves to look busy, but also ordinary traders who flip a token for profit, so a low number means \"lots of in-and-out trading\", not necessarily cheating.",
   ],
   [
     "Can I check the proof myself?",

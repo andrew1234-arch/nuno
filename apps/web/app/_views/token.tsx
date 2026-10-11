@@ -54,8 +54,12 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
           <Stat label="Owned by wallet groups" real={pct(m.clusterSupplyBps)} note="share of the token held by groups of wallets that belong to one owner" />
           <Stat label="Owned by the creator's side" real={pct(m.creatorLinkedSupplyBps)} note="held by the creator and every wallet linked to them" />
           <Stat label="Top 10 owners hold" real={pct(m.effectiveTop10Bps)} note="counting each group as one owner" />
-          <Stat label="Trading volume (MON)" raw={mon(m.rawVolume)} real={mon(m.organicVolume)} note="all trading → trading that wasn't an owner trading with themselves" />
-          <Stat label="Real trading" real={m.rawVolume === "0" ? "–" : pct(m.organicVolumeBps)} note="share of the trading that looks genuine" />
+          <Stat label="Trading volume (MON)" raw={mon(m.rawVolume)} real={mon(m.organicVolume)} note="all trading → trading by owners who kept their tokens" />
+          <Stat
+            label="Trading by holders"
+            real={m.rawVolume === "0" ? "–" : pct(m.organicVolumeBps)}
+            note="share of trading by owners who kept their tokens; quick in-and-out trading, by bots or ordinary traders, is left out"
+          />
         </section>
       ) : (
         <p className="text-[var(--muted)]">{token.pruned ? "Too few buyers to analyse this token in detail." : "Numbers for this token are not ready yet."}</p>
