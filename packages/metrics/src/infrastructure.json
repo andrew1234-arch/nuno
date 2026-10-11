@@ -1,11 +1,27 @@
 [
   {
-    "address": "0x04d9634df20aa66b23f114d37c45fa6c6ab76d56",
+    "address": "0x069885f2a6bdd702943497904fe72a40242634b2",
     "source": "heuristic",
-    "reason": "exchange-like: 48,290 txs sent",
-    "nonce": 48290,
-    "balanceMon": 10347,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 21,555 txs sent",
+    "nonce": 21555,
+    "balanceMon": 13,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0x0d0707963952f2fba59dd06f2b425ace40b492fe",
+    "source": "heuristic",
+    "reason": "exchange-like: 32,863 txs sent, 55,574,978 MON balance",
+    "nonce": 32863,
+    "balanceMon": 55574978,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0x15da7556d5ed888306839bed06f868aeaedcb0d7",
+    "source": "heuristic",
+    "reason": "exchange-like: 31,991,563 MON balance",
+    "nonce": 119,
+    "balanceMon": 31991563,
+    "checkedBlock": 112432634
   },
   {
     "address": "0x1ab4973a48dc892cd9971ece8e01dcc7688f8f23",
@@ -13,23 +29,55 @@
     "reason": "exchange-like: 24,556 txs sent",
     "nonce": 24556,
     "balanceMon": 0,
-    "checkedBlock": 111725730
+    "checkedBlock": 112432634
   },
   {
     "address": "0x33d2f2aef31ac8490435304aecd96128f60197e1",
     "source": "heuristic",
-    "reason": "exchange-like: 20,694 txs sent, 1,554,013 MON balance",
-    "nonce": 20694,
-    "balanceMon": 1554013,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 20,721 txs sent, 2,864,697 MON balance",
+    "nonce": 20721,
+    "balanceMon": 2864697,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0x4cad1efbfd5f0848e0c3c14fab23f92b2fa81f17",
+    "source": "heuristic",
+    "reason": "exchange-like: 21,601,270 MON balance",
+    "nonce": 10,
+    "balanceMon": 21601270,
+    "checkedBlock": 112432634
   },
   {
     "address": "0x555ce236c0220695b68341bc48c68d52210cc35b",
     "source": "heuristic",
-    "reason": "exchange-like: 13,022 txs sent",
-    "nonce": 13022,
-    "balanceMon": 9292,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 13,041 txs sent",
+    "nonce": 13041,
+    "balanceMon": 9288,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0x55ac14aad096721d373ad3690cd2dc7df33f23d4",
+    "source": "heuristic",
+    "reason": "exchange-like: 6,713 txs sent",
+    "nonce": 6713,
+    "balanceMon": 0,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0x65f40ed440ee6972c5101f9f9c5094899621b4b6",
+    "source": "heuristic",
+    "reason": "exchange-like: 13,156 txs sent, 2,363,126 MON balance",
+    "nonce": 13156,
+    "balanceMon": 2363126,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0x74eba0adbf03e3d04e8d9ebb355a1eb6c5d23399",
+    "source": "heuristic",
+    "reason": "exchange-like: 14,111 txs sent, 49,856,838 MON balance",
+    "nonce": 14111,
+    "balanceMon": 49856838,
+    "checkedBlock": 112432634
   },
   {
     "address": "0x8c826f795466e39acbff1bb4eeeb759609377ba1",
@@ -37,15 +85,15 @@
     "reason": "exchange-like: 45,434 txs sent",
     "nonce": 45434,
     "balanceMon": 0,
-    "checkedBlock": 111725730
+    "checkedBlock": 112432634
   },
   {
     "address": "0x93228d328c9c74c2bfe9f97638bbb5ef322f2bd5",
     "source": "heuristic",
-    "reason": "exchange-like: 42,717,843 MON balance",
-    "nonce": 587,
-    "balanceMon": 42717843,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 44,353,540 MON balance",
+    "nonce": 596,
+    "balanceMon": 44353540,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xa9346f21b3c67034d1dbf2749c81c453d06e9c49",
@@ -53,78 +101,118 @@
     "reason": "exchange-like: 7,594 txs sent",
     "nonce": 7594,
     "balanceMon": 2,
-    "checkedBlock": 111725730
+    "checkedBlock": 112432634
   },
   {
     "address": "0xabde1869a90a47c6367b95f1f4e3082eb14c9d76",
     "source": "heuristic",
-    "reason": "exchange-like: 13,116 txs sent, 10,259,495 MON balance",
-    "nonce": 13116,
-    "balanceMon": 10259495,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 13,141 txs sent, 9,586,080 MON balance",
+    "nonce": 13141,
+    "balanceMon": 9586080,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0xb12854e17a5a047b64cc8e4c883eaa43dac2d978",
+    "source": "heuristic",
+    "reason": "exchange-like: 13,227 txs sent, 83,978,375 MON balance",
+    "nonce": 13227,
+    "balanceMon": 83978375,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0xb42f812a44c22cc6b861478900401ee759ebead6",
+    "source": "heuristic",
+    "reason": "exchange-like: 455,151 txs sent",
+    "nonce": 455151,
+    "balanceMon": 416878,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0xbabe777e1a43053c273bd8a4e45d0cb6c20f8fc6",
+    "source": "heuristic",
+    "reason": "exchange-like: 110,816 txs sent",
+    "nonce": 110816,
+    "balanceMon": 9,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xc066ac5d385419b1a8c43a0e146fa439837a8b8c",
     "source": "heuristic",
-    "reason": "exchange-like: 449,825 txs sent",
-    "nonce": 449825,
-    "balanceMon": 415539,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 455,175 txs sent",
+    "nonce": 455175,
+    "balanceMon": 415223,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xc3f965dc99e88c098ac550920283daa38c8dc0fc",
     "source": "heuristic",
-    "reason": "exchange-like: 5,921 txs sent",
-    "nonce": 5921,
-    "balanceMon": 68490,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 5,948 txs sent",
+    "nonce": 5948,
+    "balanceMon": 72277,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xdb2ac3b16f3877b478ad0bfb3d265d9c9be3f254",
     "source": "heuristic",
-    "reason": "exchange-like: 11,560 txs sent, 6,847,711 MON balance",
-    "nonce": 11560,
-    "balanceMon": 6847711,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 11,620 txs sent, 4,906,262 MON balance",
+    "nonce": 11620,
+    "balanceMon": 4906262,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xe01d58ed6c2803fbb28ee8d27d40f84a8d1c568e",
     "source": "heuristic",
-    "reason": "exchange-like: 21,888 txs sent, 34,148,447 MON balance",
-    "nonce": 21888,
-    "balanceMon": 34148447,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 21,965 txs sent, 34,268,799 MON balance",
+    "nonce": 21965,
+    "balanceMon": 34268799,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0xe3478b0bb1a5084567c319096437924948be1964",
+    "source": "heuristic",
+    "reason": "exchange-like: 9,145,911 MON balance",
+    "nonce": 7,
+    "balanceMon": 9145911,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xed9ab5bc05a0152b9dc2f7902e8369af7bc18771",
     "source": "heuristic",
-    "reason": "exchange-like: 3,450,135 MON balance",
-    "nonce": 423,
-    "balanceMon": 3450135,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 3,137,788 MON balance",
+    "nonce": 550,
+    "balanceMon": 3137788,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
     "source": "heuristic",
-    "reason": "exchange-like: 578,704 txs sent, 8,391,730 MON balance",
-    "nonce": 578704,
-    "balanceMon": 8391730,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 585,277 txs sent, 8,428,998 MON balance",
+    "nonce": 585277,
+    "balanceMon": 8428998,
+    "checkedBlock": 112432634
+  },
+  {
+    "address": "0xf8191d98ae98d2f7abdfb63a9b0b812b93c873aa",
+    "source": "heuristic",
+    "reason": "exchange-like: 199,904,892 MON balance",
+    "nonce": 1669,
+    "balanceMon": 199904892,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xf89d7b9c864f589bbf53a82105107622b35eaa40",
     "source": "heuristic",
-    "reason": "exchange-like: 73,554 txs sent, 378,069,331 MON balance",
-    "nonce": 73554,
-    "balanceMon": 378069331,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 73,855 txs sent, 341,038,187 MON balance",
+    "nonce": 73855,
+    "balanceMon": 341038187,
+    "checkedBlock": 112432634
   },
   {
     "address": "0xfc08db693d20f8f5de32ac93816fa0ec2d6a221d",
     "source": "heuristic",
-    "reason": "exchange-like: 28,915 txs sent, 2,279,083 MON balance",
-    "nonce": 28915,
-    "balanceMon": 2279083,
-    "checkedBlock": 111725730
+    "reason": "exchange-like: 29,057 txs sent, 2,430,920 MON balance",
+    "nonce": 29057,
+    "balanceMon": 2430920,
+    "checkedBlock": 112432634
   }
 ]

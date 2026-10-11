@@ -33,6 +33,22 @@ async function isContract(rpc: RpcClient, addr: Address, block: number): Promise
   return isContractCode(await rpc.call<Hex>("eth_getCode", [addr, toHex(block)], { cache: true }));
 }
 
+async function balanceAt(rpc: RpcClient, addr: Address, block: number): Promise<bigint> {
+  return BigInt(await rpc.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true }));
+}
+
+/** Value transfers into `wallet` in `block`: top-level txs first, callTracer frames otherwise. */
+async function inboundAt(rpc: RpcClient, wallet: Address, block: number): Promise<{ blockTime: number; transfers: InboundTransfer[] }> {
+  // Block bodies and traces can be MBs: never cached (long-running processes would grow unbounded).
+  const body = await rpc.call<RpcBlock>("eth_getBlockByNumber", [toHex(block), true]);
+  let transfers = directTransfersFromBlock(body, wallet);
+  if (transfers.length === 0) {
+    const traces = await rpc.call<BlockTraceEntry[]>("debug_traceBlockByNumber", [toHex(block), { tracer: "callTracer" }]);
+    transfers = extractInboundTransfers(traces, wallet);
+  }
+  return { blockTime: Number(body.timestamp), transfers };
+}
+
 async function touched(rpc: RpcClient, addr: Address, block: number): Promise<boolean> {
   const [bal, nonce] = await Promise.all([
     rpc.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true }),
@@ -51,24 +67,61 @@ export async function resolveFirstFunding(rpc: RpcClient, wallet: Address, befor
   const block = await firstTrueBlock(0, beforeBlock, (b) => touched(rpc, wallet, b));
   if (block === null) return { status: "unfunded", isContract: false };
 
-  // Block bodies and traces can be MBs: never cached (long-running processes would grow unbounded).
-  const body = await rpc.call<RpcBlock>("eth_getBlockByNumber", [toHex(block), true]);
-  let transfers = directTransfersFromBlock(body, wallet);
-  if (transfers.length === 0) {
-    const traces = await rpc.call<BlockTraceEntry[]>(
-      "debug_traceBlockByNumber",
-      [toHex(block), { tracer: "callTracer" }],
-    );
-    transfers = extractInboundTransfers(traces, wallet);
-  }
-  return { status: "resolved", block, blockTime: Number(body.timestamp), transfers, isContract: false };
+  const { blockTime, transfers } = await inboundAt(rpc, wallet, block);
+  return { status: "resolved", block, blockTime, transfers, isContract: false };
 }
 
 /** SPEC §7.11 rule 7: at most this many inbound funding edges are stored per wallet. */
 export const MAX_EDGES_PER_WALLET = 5;
 
+/** A later deposit is searched for only when the balance rose by at least this much (1 MON). */
+export const MIN_DEPOSIT_WEI = 10n ** 18n;
+
+export interface Deposit {
+  block: number;
+  blockTime: number;
+  transfers: InboundTransfer[];
+}
+
+/**
+ * Later deposits into `wallet` between its first funding (`firstBlock`) and `beforeBlock` (exclusive),
+ * so a large top-up after a small first funding is captured (e.g. 10 MON first, 300,000 MON later).
+ *
+ * No public RPC serves trace_filter and native transfers emit no logs, so deposits are located from
+ * archive balances: with balance(lo) < t <= balance(hi), a binary search finds a block where the
+ * balance crossed t upwards, and a balance only rises through an inbound value transfer. Taking t as
+ * the midpoint halves the remaining gap each step, so the search ends after a few deposits. It finds
+ * deposits that raised the net balance; deposits spent before `beforeBlock` can be missed (METHODOLOGY).
+ */
+export async function resolveLaterDeposits(rpc: RpcClient, wallet: Address, firstBlock: number, beforeBlock: number, max: number): Promise<Deposit[]> {
+  const out: Deposit[] = [];
+  const hi = beforeBlock - 1;
+  if (max <= 0 || hi <= firstBlock) return out;
+  const top = await balanceAt(rpc, wallet, hi);
+  let lo = firstBlock;
+  for (let step = 0; step < max * 3 && out.length < max; step++) {
+    const low = await balanceAt(rpc, wallet, lo);
+    if (top - low < MIN_DEPOSIT_WEI) break;
+    const t = low + (top - low) / 2n;
+    let a = lo;
+    let c = hi;
+    while (c - a > 1) {
+      const m = Math.floor((a + c) / 2);
+      if ((await balanceAt(rpc, wallet, m)) >= t) c = m;
+      else a = m;
+    }
+    const { blockTime, transfers } = await inboundAt(rpc, wallet, c);
+    if (transfers.length) out.push({ block: c, blockTime, transfers });
+    lo = c;
+  }
+  return out;
+}
+
+/** Marks a wallet whose later deposits were searched (cursors row; no schema change). */
+const depositsMarker = (walletId: number) => `funding:deposits:${walletId}`;
+
 /** Persist one wallet's funding result; returns the origin EOAs (hex) to resolve at the next hop. */
-async function store(ctx: FundingCtx, wallet: Address, f: WalletFunding): Promise<Address[]> {
+async function store(ctx: FundingCtx, wallet: Address, f: WalletFunding, deposits: Deposit[] = []): Promise<Hop[]> {
   const { db, book } = ctx;
   const walletId = await book.id(wallet);
   const now = Date.now();
@@ -77,28 +130,36 @@ async function store(ctx: FundingCtx, wallet: Address, f: WalletFunding): Promis
     await db.insert(s.wallets).values({ id: walletId, ...row }).onConflictDoUpdate({ target: s.wallets.id, set: row });
     return [];
   }
-  const transfers = f.transfers.slice(0, MAX_EDGES_PER_WALLET);
-  const ids = await book.ids(transfers.flatMap((t) => [t.funder, t.origin]));
+  const hops = await storeEdges(ctx, walletId, wallet, [{ block: f.block, blockTime: f.blockTime, transfers: f.transfers }, ...deposits]);
+  // A touched block with no value frame to the wallet (e.g. gas-sponsored/7702 first tx) is
+  // recorded as resolved with no edges; METHODOLOGY lists it as a limitation.
+  const row = { isContract: 0, fundingStatus: s.FUNDING_STATUS.resolved, firstFundedBlock: f.block, resolvedAt: now };
+  await db.insert(s.wallets).values({ id: walletId, ...row }).onConflictDoUpdate({ target: s.wallets.id, set: row });
+  return hops;
+}
+
+/** Insert up to `cap` edges (first funding first); returns their origins as next hops. */
+async function storeEdges(ctx: FundingCtx, walletId: number, wallet: Address, groups: Deposit[], cap = MAX_EDGES_PER_WALLET): Promise<Hop[]> {
+  const edges = groups.flatMap((g) => g.transfers.map((t) => ({ ...t, block: g.block, blockTime: g.blockTime }))).slice(0, Math.max(0, cap));
+  if (!edges.length) return [];
+  const ids = await ctx.book.ids(edges.flatMap((t) => [t.funder, t.origin]));
   await insertIgnore(
-    db,
+    ctx.db,
     s.fundingEdges,
-    transfers.map((t) => ({
+    edges.map((t) => ({
       wallet: walletId,
       funder: ids.get(t.funder)!,
       origin: ids.get(t.origin)!,
       kind: s.FUNDING_KIND[t.kind],
       value: t.value.toString(),
-      block: f.block,
-      blockTime: f.blockTime,
+      block: t.block,
+      blockTime: t.blockTime,
       tx: txBytes(t.txHash),
       source: s.FUNDING_SOURCE.rpc_archive_trace,
     })),
   );
-  // A touched block with no value frame to the wallet (e.g. gas-sponsored/7702 first tx) is
-  // recorded as resolved with no edges; METHODOLOGY lists it as a limitation.
-  const row = { isContract: 0, fundingStatus: s.FUNDING_STATUS.resolved, firstFundedBlock: f.block, resolvedAt: now };
-  await db.insert(s.wallets).values({ id: walletId, ...row }).onConflictDoUpdate({ target: s.wallets.id, set: row });
-  return [...new Set(transfers.map((t) => t.origin))].filter((o) => o !== wallet.toLowerCase());
+  const self = wallet.toLowerCase();
+  return edges.filter((t) => t.origin !== self).map((t) => ({ addr: t.origin, before: t.block }));
 }
 
 type Hop = { addr: Address; before: number };
@@ -116,16 +177,24 @@ function resolveOne(ctx: FundingCtx, addr: Address, before: number, hop: number)
     const [c] = await ctx.db.select().from(s.wallets).where(eq(s.wallets.id, walletId));
     if (c && c.fundingStatus !== s.FUNDING_STATUS.pending && c.fundingStatus !== s.FUNDING_STATUS.error) {
       if (c.fundingStatus !== s.FUNDING_STATUS.resolved || c.firstFundedBlock === null) return [];
-      const edges = await ctx.db.select({ origin: s.fundingEdges.origin }).from(s.fundingEdges).where(eq(s.fundingEdges.wallet, walletId));
+      // Wallets resolved before later deposits were searched get that search once.
+      const [marked] = await ctx.db.select().from(s.cursors).where(eq(s.cursors.name, depositsMarker(walletId)));
+      if (!marked) await addLaterDeposits(ctx, walletId, addr, c.firstFundedBlock, before, hop);
+      const edges = await ctx.db
+        .select({ origin: s.fundingEdges.origin, block: s.fundingEdges.block })
+        .from(s.fundingEdges)
+        .where(eq(s.fundingEdges.wallet, walletId));
       const hex = await ctx.book.hexes(edges.map((e) => e.origin));
-      const block = c.firstFundedBlock;
-      return edges.filter((e) => e.origin !== walletId).map((e) => ({ addr: hex.get(e.origin)! as Address, before: block }));
+      return edges.filter((e) => e.origin !== walletId).map((e) => ({ addr: hex.get(e.origin)! as Address, before: e.block }));
     }
     try {
       const f = await resolveFirstFunding(ctx.rpc, addr, before);
-      const origins = await store(ctx, addr, f);
-      ctx.log?.(`[funding] hop ${hop} ${addr}: ${f.status}${f.status === "resolved" ? ` @${f.block} <- ${origins.join(",") || "(none)"}` : ""}`);
-      return f.status === "resolved" ? origins.map((o) => ({ addr: o, before: f.block })) : [];
+      const deposits =
+        f.status === "resolved" ? await resolveLaterDeposits(ctx.rpc, addr, f.block, before, MAX_EDGES_PER_WALLET - Math.min(f.transfers.length, MAX_EDGES_PER_WALLET)) : [];
+      const hops = await store(ctx, addr, f, deposits);
+      if (f.status === "resolved") await markDeposits(ctx, walletId, before);
+      ctx.log?.(`[funding] hop ${hop} ${addr}: ${f.status}${f.status === "resolved" ? ` @${f.block}${deposits.length ? ` +${deposits.length} later` : ""} <- ${[...new Set(hops.map((h) => h.addr))].join(",") || "(none)"}` : ""}`);
+      return hops;
     } catch (err) {
       // No error text in the DB (SPEC §7.11 rule 11): count the attempt, log to stdout.
       await ctx.db
@@ -143,8 +212,22 @@ function resolveOne(ctx: FundingCtx, addr: Address, before: number, hop: number)
   return p;
 }
 
+async function markDeposits(ctx: FundingCtx, walletId: number, before: number) {
+  const row = { name: depositsMarker(walletId), block: before, updatedAt: Date.now() };
+  await ctx.db.insert(s.cursors).values(row).onConflictDoUpdate({ target: s.cursors.name, set: { block: row.block, updatedAt: row.updatedAt } });
+}
+
+async function addLaterDeposits(ctx: FundingCtx, walletId: number, addr: Address, firstBlock: number, before: number, hop: number) {
+  const [row] = await ctx.db.select({ n: sql<number>`count(*)` }).from(s.fundingEdges).where(eq(s.fundingEdges.wallet, walletId));
+  const room = MAX_EDGES_PER_WALLET - Number(row?.n ?? 0);
+  const deposits = await resolveLaterDeposits(ctx.rpc, addr, firstBlock, before, room);
+  await storeEdges(ctx, walletId, addr, deposits, room);
+  await markDeposits(ctx, walletId, before);
+  if (deposits.length) ctx.log?.(`[funding] hop ${hop} ${addr}: +${deposits.length} later deposit(s) @${deposits.map((d) => d.block).join(",")}`);
+}
+
 /**
- * Resolve first funding for `wallet`, then its funders' first funding, up to `maxHops`.
+ * Resolve funding for `wallet` (first funding + later deposits, ≤5 edges), then its funders', up to `maxHops`.
  * Cached: wallets already resolved/unfunded in the DB are not re-queried.
  */
 export async function resolveFundingTree(ctx: FundingCtx, wallet: Address, beforeBlock: number, maxHops = 3) {
@@ -164,7 +247,16 @@ export const MAX_FUNDING_ATTEMPTS = 3;
  * `sender` is a known contract (a bot router) is attributed to the transaction signer.
  * Never-tried wallets come first, so repeat failures cannot starve new buyers.
  */
-export async function pendingBuyers(ctx: Pick<FundingCtx, "db" | "book">, limit: number): Promise<Array<{ trader: Address; firstBuy: number }>> {
+export async function pendingBuyers(
+  ctx: Pick<FundingCtx, "db" | "book">,
+  limit: number,
+  opts: { all?: boolean } = {},
+): Promise<Array<{ trader: Address; firstBuy: number }>> {
+  // `all`: every buyer, resolved ones too (their cached path runs the one-time later-deposit search).
+  const pending = opts.all
+    ? sql`1 = 1`
+    : sql`(w.funding_status is null or w.funding_status in (${s.FUNDING_STATUS.pending}, ${s.FUNDING_STATUS.error}))
+        and coalesce(w.funding_attempts, 0) < ${MAX_FUNDING_ATTEMPTS}`;
   const rs = await rows<{ buyer: number; first_buy: number }>(
     ctx.db,
     sql`
@@ -178,8 +270,7 @@ export async function pendingBuyers(ctx: Pick<FundingCtx, "db" | "book">, limit:
       )
       select b.buyer as buyer, min(b.block) as first_buy
       from buys b left join wallets w on w.id = b.buyer
-      where (w.funding_status is null or w.funding_status in (${s.FUNDING_STATUS.pending}, ${s.FUNDING_STATUS.error}))
-        and coalesce(w.funding_attempts, 0) < ${MAX_FUNDING_ATTEMPTS}
+      where ${pending}
       group by b.buyer
       order by coalesce(max(w.funding_attempts), 0), min(b.block)
       limit ${limit}`,

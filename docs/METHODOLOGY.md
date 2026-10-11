@@ -30,8 +30,9 @@ For each wallet that bought a tracked token:
 
 1. **Find the first-funded block.** For an externally owned account, `touched(b) = balance(b) > 0 or nonce(b) > 0` can only flip from false to true. Once funded, a wallet can only spend by sending a transaction, which raises its nonce. Nuno binary-searches archive state for the first block where `touched` is true, searching strictly before the wallet's first buy. That takes about 27 steps over Monad's full history.
 2. **Find the sender.** In that block, a top-level transaction with value to the wallet gives the sender directly. Otherwise Nuno traces the block with `callTracer` and takes every successful value-carrying frame (`CALL`, `CREATE`, `CREATE2`, `SELFDESTRUCT`) whose target is the wallet. Frames under a reverted frame are ignored.
-3. **Record evidence.** Nuno stores the `funder` (the frame that sent value, possibly a disperse contract), the `origin` (the transaction signer, i.e. the entity that controls the funds), value, block, timestamp and tx hash.
-4. **Repeat on the origin**, up to 3 hops back.
+3. **Find later deposits.** A small first funding is often followed by the real money (e.g. 10 MON first, 300,000 MON later). Between the first-funded block and the wallet's first buy (or, for an ancestor, the block where it funded its child), Nuno looks for deposits that raised the balance. If `balance(lo) < t <= balance(hi)`, a binary search finds a block where the balance crossed `t` upwards, and a balance can only rise through an inbound value transfer, so that block contains a deposit; its sender is found as in step 2. With `t` at the midpoint, each deposit found halves the remaining gap. Only rises of at least 1 MON are searched. Together with the first funding, **at most 5 inbound funding edges are stored per wallet**.
+4. **Record evidence.** For every edge Nuno stores the `funder` (the frame that sent value, possibly a disperse contract), the `origin` (the transaction signer, i.e. the entity that controls the funds), value, block, timestamp and tx hash.
+5. **Repeat on every origin**, up to 3 hops back.
 
 The **origin** is used for linking, so bundlers that fan out through a disperse contract are still linked to their operator.
 
@@ -41,7 +42,7 @@ Entity resolution runs **globally across every tracked token at once**. That way
 
 | Edge | Weight | Rule |
 |---|---|---|
-| `same_direct_funder` | 1.0 | Both wallets' first funding came from the same non-infrastructure origin, within 24 h of each other |
+| `same_direct_funder` | 1.0 | Both wallets were funded (first funding or a later deposit) by the same non-infrastructure origin, within 24 h of each other |
 | `common_funding_source` | 0.8 | The wallets share any non-infrastructure ancestor within 3 funding hops. Counted once per pair, however many ancestors they share (several shared ancestors on one chain are one signal) |
 | `creator_funded` | 1.0 | A token's creator is among the wallet's funding ancestors (≤ 3 hops); links wallet and creator |
 | `token_transfer` | 1.0 | One wallet sent a tracked token directly to the other (neither is a contract) |
@@ -109,7 +110,7 @@ Because entities span wallets, one wallet buying while a sibling wallet sells is
 
 ## 7. Limitations and known false-positive cases
 
-- **First funding only.** Only a wallet's *first* inbound MON is resolved, not every transfer before its first buy. A wallet first funded by a friend and later topped up by an operator is linked to the friend.
+- **Not every inbound transfer.** Nuno stores the first funding plus deposits that raised the net balance, at most 5 per wallet. A deposit that was spent again before the wallet's first buy (so the balance never rose past it) can be missed, and so can small deposits under 1 MON.
 - **Native MON only.** Funding via WMON or other ERC-20s is not yet followed.
 - **EIP-7702 accounts.** A delegated EOA can move funds without raising its nonce, which breaks the monotonicity assumption in section 2. Such wallets may resolve to a later block, or to a block with no inbound value; the latter is stored as "no inbound value frame".
 - **Round-trip traders count as wash.** Rule (a) in section 4 classifies any entity that ends the window with a near-zero net position as wash-like. That includes a sniper that buys at launch and later sells everything at a profit, not only volume bots. On the 7-day sample, attributing bot-contract sells to their signers dropped volume-weighted organic volume from about 20% to about 1%, mostly because of one such sniper (`0x022e…`). "Organic" here means "volume from entities that kept a position", which is stricter than "not wash-traded".
