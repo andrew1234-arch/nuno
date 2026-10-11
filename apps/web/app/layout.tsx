@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <Link href="/" className="text-sm text-[var(--muted)] hover:text-white">Screener</Link>
             <Link href="/methodology" className="text-sm text-[var(--muted)] hover:text-white">Methodology</Link>
-            <a href={`${process.env.NUNO_PUBLIC_API_URL ?? "http://localhost:8787"}/openapi.json`} className="text-sm text-[var(--muted)] hover:text-white">API</a>
+            <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/meta.json`} className="text-sm text-[var(--muted)] hover:text-white">Static API</a>
           </nav>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>

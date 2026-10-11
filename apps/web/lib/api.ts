@@ -1,4 +1,12 @@
-const API = process.env.NUNO_API_URL ?? "http://localhost:8787";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+
+// Build-time data access: the site is a static export, so pages read the JSON written by
+// `pnpm export:static` (site/api/...). The same files are published as the public static API.
+const DATA_DIR = resolve(process.cwd(), process.env.NUNO_DATA_DIR ?? "../../site/api");
+
+/** "live" is the rolling window (default view); "contrast" is a fixed historical week. */
+export type Dataset = "live" | "contrast";
 
 export interface Metrics {
   sourceBlock: number;
@@ -24,6 +32,7 @@ export interface Token {
   createTx: string;
   graduatedPool: string | null;
   metrics: Metrics | null;
+  pruned?: boolean;
 }
 
 export interface Snapshot {
@@ -52,18 +61,37 @@ export interface Cluster {
   createdTokens: string[];
   sourceBlock: number;
   links: Array<{ a: string; b: string; type: string; weight: number; evidence: Evidence[] }>;
+  labels?: Record<string, { label: string; category: string }>;
 }
 
-async function get<T>(path: string): Promise<T | null> {
-  const res = await fetch(`${API}${path}`, { next: { revalidate: 15 } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`API ${path}: HTTP ${res.status}`);
-  return (await res.json()) as T;
+export interface Meta {
+  sourceBlock: number;
+  generatedAt: string;
+  window: { startBlock: number; endBlock: number; days: number; coveredDays: number; startTime?: string; endTime?: string };
+  counts: Record<string, number>;
+  label?: string;
 }
+
+function read<T>(dataset: Dataset, rel: string): T | null {
+  const path = join(DATA_DIR, dataset === "contrast" ? "contrast" : "", rel);
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, "utf8")) as T;
+}
+
+export const hasDataset = (dataset: Dataset) => read<Meta>(dataset, "meta.json") !== null;
 
 export const api = {
-  tokens: (sort: string) => get<{ sort: string; count: number; tokens: Token[] }>(`/tokens?sort=${encodeURIComponent(sort)}&limit=500`),
-  token: (address: string) => get<Token & { latestSnapshot: Snapshot | null }>(`/tokens/${address}`),
-  tokenClusters: (address: string) => get<{ count: number; clusters: Cluster[] }>(`/tokens/${address}/clusters`),
-  cluster: (id: string) => get<Cluster>(`/clusters/${id}`),
+  meta: (d: Dataset = "live") => read<Meta>(d, "meta.json"),
+  tokens: (d: Dataset = "live") => read<{ count: number; tokens: Token[] }>(d, "tokens.json")?.tokens ?? [],
+  token: (address: string, d: Dataset = "live") =>
+    read<Token & { latestSnapshot: Snapshot | null; clusters: Cluster[] }>(d, `tokens/${address.toLowerCase()}.json`),
+  cluster: (id: string, d: Dataset = "live") => read<Cluster>(d, `clusters/${id.toLowerCase()}.json`),
+  clusterIds: (d: Dataset = "live") => {
+    const ids = new Set<string>();
+    for (const t of api.tokens(d)) for (const c of api.token(t.address, d)?.clusters ?? []) ids.add(c.id);
+    return [...ids];
+  },
 };
+
+/** Static export needs at least one param per dynamic route; this placeholder renders the 404 page. */
+export const PLACEHOLDER = "none";

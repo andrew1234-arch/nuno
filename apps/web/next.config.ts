@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
-import { resolve } from "node:path";
 
+// Static export for GitHub Pages. NEXT_PUBLIC_BASE_PATH is "/<repo>" on Pages, empty locally.
 const config: NextConfig = {
-  outputFileTracingRoot: resolve(import.meta.dirname, "../.."),
-  outputFileTracingIncludes: { "/methodology": ["../../docs/METHODOLOGY.md"] },
+  output: "export",
+  trailingSlash: true,
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined,
+  images: { unoptimized: true },
 };
 
 export default config;

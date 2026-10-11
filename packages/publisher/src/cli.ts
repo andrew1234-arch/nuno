@@ -3,7 +3,7 @@ import { config, openLocal } from "@nuno/shared/node";
 import { publisherFromEnv } from "./env.js";
 import { publishAll } from "./publisher.js";
 
-// pnpm publish:snapshots — publish changed snapshots from the local DB (the Worker publishes from D1).
+// pnpm publish:snapshots — publish changed snapshots from the local DB (the scheduled tick does the same).
 async function main() {
   const cfg = publisherFromEnv();
   if (!cfg.env) throw new Error(`publishing not configured: ${cfg.reason}`);

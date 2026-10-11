@@ -10,7 +10,7 @@ import * as schema from "./schema.js";
 
 export const MIGRATIONS_DIR = resolve(import.meta.dirname, "../../migrations");
 
-/** Apply drizzle-kit migrations not yet recorded in `_migrations` (local file only; D1 uses wrangler). */
+/** Apply drizzle-kit migrations not yet recorded in `_migrations` (local file). */
 export function migrate(raw: DatabaseSync, dir = MIGRATIONS_DIR): string[] {
   raw.exec("create table if not exists _migrations (name text primary key, applied_at integer not null)");
   const applied = new Set((raw.prepare("select name from _migrations").all() as Array<{ name: string }>).map((r) => r.name));
@@ -46,8 +46,8 @@ export function openLocal(path: string): { db: SqlDb; raw: DatabaseSync; close: 
   migrate(raw);
   const db = drizzle(
     async (sql, ps, method) => {
-      // Emulate Cloudflare D1's limit so local runs and tests fail exactly where production would.
-      if (ps.length > MAX_PARAMS) throw new Error(`too many SQL variables: ${ps.length} > ${MAX_PARAMS} (D1 limit)`);
+      // Conservative cap on bound parameters: keeps every query batched and portable.
+      if (ps.length > MAX_PARAMS) throw new Error(`too many SQL variables: ${ps.length} > ${MAX_PARAMS} (parameter cap)`);
       const stmt = raw.prepare(sql);
       if (method === "run") {
         stmt.run(...params(ps));

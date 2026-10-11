@@ -1,4 +1,4 @@
-// Embeds docs/METHODOLOGY.md into the bundle at build time (Workers have no filesystem at runtime).
+// Embeds docs/METHODOLOGY.md into the static build.
 import { readFileSync, writeFileSync } from "node:fs";
 const md = readFileSync(new URL("../../../docs/METHODOLOGY.md", import.meta.url), "utf8");
 writeFileSync(

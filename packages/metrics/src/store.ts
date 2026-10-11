@@ -32,7 +32,7 @@ import { effectiveTrader, swapAsTrade } from "./attribution.js";
 import { ZERO, computeMetrics, evidenceRoot, type TokenMetrics, type VolumeTrade } from "./metrics.js";
 
 /**
- * Storage side of clustering + metrics on SQLite/D1 (SPEC §7.9a, §7.10).
+ * Storage side of clustering + metrics on SQLite (SPEC §7.9a, §7.10).
  *  - Full run (local): every link rebuilt, link_evidence and entity_members replaced, all tokens recomputed.
  *  - Incremental run (cron): links rebuilt only for the neighbourhood of new activity and inserted
  *    idempotently; touched pairs re-scored from ALL their stored evidence; entities only merge.
@@ -403,7 +403,7 @@ async function tokensTouchedBy(ctx: Pick<StoreCtx, "db">, ids: number[]): Promis
 /** The subset of `ids` that traded (attributed) or sent/received a tracked, unpruned token. */
 async function participantsAmong(ctx: StoreCtx, ids: number[]): Promise<number[]> {
   const out = new Set<number>();
-  // The id list is bound 5 times: 19 ids x 5 = 95 parameters, under D1's 100 per query.
+  // The id list is bound 5 times: 19 ids x 5 = 95 parameters, under the 100-parameter cap.
   for (const part of chunks(ids, Math.floor((MAX_PARAMS - 1) / 5))) {
     const list = sql.join(part.map((x) => sql`${x}`), sql`, `);
     const rs = await ctx.db.all<unknown>(sql`
@@ -425,7 +425,7 @@ export interface RunSummary {
   reattributed: number;
 }
 
-/** Local full recompute (never on Workers, SPEC §7.9a). */
+/** Full recompute (local or the recluster job, SPEC §7.9a). */
 export async function fullRun(ctx: StoreCtx, sourceBlock: number): Promise<RunSummary> {
   const cfg = ctx.cfg ?? DEFAULT_CLUSTER_CONFIG;
   const data = await loadAll(ctx, sourceBlock);

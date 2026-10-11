@@ -1,12 +1,12 @@
 import { customType, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
- * One schema for the local SQLite backfill and Cloudflare D1 (SPEC §7.10–7.11).
+ * One SQLite schema for the backfill and the scheduled pipeline (SPEC §7.10–7.11).
  * Storage rules: addresses are integer ids into `addresses` (20-byte blobs); tx hashes are 32-byte
  * blobs; token/wei amounts are decimal TEXT (they overflow SQLite integers); only decoded fields.
  */
 
-/** Raw bytes. D1 returns blobs as number[] or ArrayBuffer, node:sqlite as Uint8Array; normalise. */
+/** Raw bytes. Drivers return blobs as number[], ArrayBuffer or Uint8Array; normalise. */
 export const bytes = customType<{ data: Uint8Array; driverData: Uint8Array | ArrayBuffer | number[] }>({
   dataType: () => "blob",
   toDriver: (v) => v,

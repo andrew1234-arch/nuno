@@ -136,3 +136,38 @@ Deploy as soon as Cloudflare credentials and testnet keys exist (`README` → Se
 
 ### Deployed addresses / tx hashes
 None yet (no keys / Cloudflare account linked).
+
+## 2026-10-09 (Thu, evening): off Cloudflare (`e95c8a1`, not recorded at the time)
+- Replaced the Worker/D1 runtime with `packages/pipeline`: a bounded, budget-aware `tick` (index → funding → incremental clustering/metrics → publisher → Nansen checks; daily prune + VACUUM), a free-plan Nansen client (permanent cache, credit reserve, hub/related-wallet checks) and a static API export. `apps/worker` moved to `packages/api` (read model only). Storage budget set to 40/70/90 MB (stricter than before).
+- The commit left `packages/pipeline/src/{index,cli,export,settings}.ts` uncommitted, so `main` did not build from a fresh clone until 2026-10-11.
+
+## 2026-10-10 (Fri)
+No commits and no recorded work.
+
+## 2026-10-11 (Sun)
+
+### Repo
+- Committed the missing pipeline files (`387b768`) and made `typecheck` generate the embedded methodology first (`d789c04`). A fresh clone passes `pnpm i --frozen-lockfile`, typecheck, test (133), lint, web:build; `forge test` 15/15.
+- Created the private repo `github.com/andrew1234-arch/nuno` and pushed `main`. `gh` cannot reach api.github.com from this machine (`error connecting to api.github.com`); the repo was created through the REST API with git's stored credential.
+
+### Hosting decision (final, user, 2026-10-11)
+**GitHub Actions + GitHub Pages, $0.** Every Cloudflare/D1/wrangler reference is removed from code, README, `CLAUDE.md.new`, `SPEC.md.new` and `docs/DEMO.md` (`CLAUDE.md`/`SPEC.md` are root-owned: the user copies the `.new` files over). The DB lives gzipped on the `data` branch (one force-pushed commit). `.github/workflows/tick.yml` runs every 15 min: restore DB → tick → save DB → export static API → `next build` (static export) → deploy Pages. GitHub Pages on a free account needs the repo to be public.
+
+### Data sanity check (user request, blocking)
+| Check | Result |
+|---|---|
+| Chain | `eth_chainId` = `0x8f` (143, mainnet) on rpc1 and rpc.monad.xyz |
+| Contracts | All 7 mainnet addresses in `packages/shared/src/chain.ts` match nad.fun's `skill.md`/`indexer.md` |
+| Curve versions | nad.fun documents one mainnet curve (`0xA728…0aCE`), deployed at block 37,709,836 (2025-11-24, mainnet launch day) |
+| Other `CurveCreate` emitters | None (topic-only `eth_getLogs`, last 30k blocks) |
+| Curve event types | Create, Buy, Sell + one 4th topic (`0xfd4b…`, once per trade: CurveSync) |
+| Our 73 tokens (Oct 2 06:23 → Oct 9 05:38 UTC) vs nad.fun API `/agent/token/created/<creator>` | **73 = 73**, 0 missing, 0 extra |
+
+nad.fun activity collapsed: 2,528 launches by 1,814 creators on 2025-11-27; 26 by 23 on 2026-05-13; ~10/day by the same 10 wallets in October. These 10 wallets have each created 128–146 tokens since April–June (nad.fun API).
+
+`0xb245…66d3b3` is a private EOA (no code, nonce 91, ~1,097 MON). It received **300,000 MON** from `0xf89d…aa40` in tx `0x87d3adbb61deeee7b6a6a069cf9807612dca17381eca8e74370f0bc6f10a54f3` (block 66,370,945, 2026-04-06 16:20:42Z), then sent 14,995 MON to each of the 10 creators between blocks 66,478,706 and 66,478,748 (2026-04-07 04:21:47Z → 04:22:04Z, **17 s by block timestamps**; an earlier "13 s" came from 42 blocks × 0.302 s and was wrong). `0xf89d…` is exchange-like infrastructure (73,852 txs, 337M MON), already in `infrastructure.json`. `0xb245…` is not infrastructure and was not added.
+
+Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10 wallets seeded in one 17-second burst by a single private wallet." No "scam", no operator name; evidence txs linked (`apps/web/lib/finding.ts`).
+
+### Web
+`apps/web` is now a Next.js static export: pages read `site/api` at build time, one static page per token and cluster, sorting in the browser, `/contrast/` for the historical contrast dataset, headline finding with all 11 evidence txs, Nansen labels shown next to funders in the evidence table.

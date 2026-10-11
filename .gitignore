@@ -23,5 +23,5 @@ data/*
 .data/
 site/
 apps/web/lib/methodology.generated.ts
-.open-next/
-.wrangler/
+apps/web/out/
+.contrast-export/

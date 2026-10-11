@@ -1,6 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-// Generates SQL migrations for local SQLite and Cloudflare D1 (wrangler applies the same files).
+// Generates the SQLite migrations (applied by the local driver on open).
 export default defineConfig({
   dialect: "sqlite",
   schema: "./src/sqlite/schema.ts",

@@ -123,7 +123,7 @@ async function main() {
     } else if (cmd === "export") {
       checkpointWal();
       const outDir = resolve(ROOT_DIR, process.env.EXPORT_DIR || "site");
-      const r = await exportStatic(db, outDir, { dbSizeBytes: await dbBytes(db, config.localDbPath), backfillDays: cfg.backfillDays });
+      const r = await exportStatic(db, outDir, { dbSizeBytes: await dbBytes(db, config.localDbPath), backfillDays: cfg.backfillDays, label: process.env.EXPORT_LABEL || undefined });
       console.log(`[export] ${r.files} files, ${r.bytes.toLocaleString("en-US")} bytes -> ${outDir}/api`);
     } else {
       throw new Error("usage: cli.ts backfill|tick|recluster|export");

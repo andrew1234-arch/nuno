@@ -3,7 +3,8 @@ import type { Cluster } from "@/lib/api";
 import { EDGE_LABELS, addrUrl, short, txUrl } from "@/lib/format";
 
 /** Every accepted link with every piece of evidence, each linked to the explorer. */
-export function EvidenceTable({ cluster, limit = 200 }: { cluster: Cluster; limit?: number }) {
+/** `base` prefixes internal links ("" for the live window, "/contrast" for the historical dataset). */
+export function EvidenceTable({ cluster, limit = 200, base = "" }: { cluster: Cluster; limit?: number; base?: string }) {
   const rows = cluster.links.flatMap((l) => l.evidence.map((e) => ({ ...e, a: l.a, b: l.b, weight: l.weight })));
   const seen = new Set<string>();
   const unique = rows.filter((r) => {
@@ -39,13 +40,14 @@ export function EvidenceTable({ cluster, limit = 200 }: { cluster: Cluster; limi
               <td className="mono text-right tabular-nums">{r.block.toLocaleString("en-US")}</td>
               <td className="mono pl-3 text-[var(--muted)]">
                 {r.detail ? <a href={addrUrl(r.detail)} target="_blank" rel="noreferrer" className="hover:text-white">via {short(r.detail)}</a> : null}
-                {r.token ? <> {" "}<Link href={`/token/${r.token}`} className="hover:text-white">token {short(r.token)}</Link></> : null}
+                {r.detail && cluster.labels?.[r.detail] ? <span className="ml-1 rounded bg-[var(--line)] px-1 text-white" title="Nansen label">{cluster.labels[r.detail]!.label}</span> : null}
+                {r.token ? <> {" "}<Link href={`${base}/token/${r.token}/`} className="hover:text-white">token {short(r.token)}</Link></> : null}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {unique.length > limit ? <p className="mt-2 text-xs text-[var(--muted)]">Showing {limit} of {unique.length} evidence rows. Full list: <Link className="text-[var(--accent)]" href={`/cluster/${cluster.id}`}>cluster page</Link>.</p> : null}
+      {unique.length > limit ? <p className="mt-2 text-xs text-[var(--muted)]">Showing {limit} of {unique.length} evidence rows. Full list: <Link className="text-[var(--accent)]" href={`${base}/cluster/${cluster.id}/`}>cluster page</Link>.</p> : null}
     </div>
   );
 }

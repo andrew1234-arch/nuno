@@ -6,7 +6,7 @@ import type * as schema from "./schema.js";
 /** Async SQLite database used by every package: the local node:sqlite file via drizzle's proxy driver. */
 export type SqlDb = SqliteRemoteDatabase<typeof schema>;
 
-/** D1 / SQLite allow at most 100 bound parameters per statement (D1 limit, checked 2026-10-08). */
+/** At most 100 bound parameters per statement: a conservative cap that keeps queries batched. */
 export const MAX_PARAMS = 100;
 
 /** Insert rows in chunks that stay under MAX_PARAMS, ignoring rows that already exist. */
@@ -27,7 +27,7 @@ export function chunks<T>(xs: T[], size: number): T[][] {
   return out;
 }
 
-/** First column of the first row of a raw query, on either driver (proxy returns arrays, D1 objects). */
+/** First column of the first row of a raw query, on either driver (proxy returns arrays, others objects). */
 export async function scalar(db: SqlDb, query: SQL): Promise<number> {
   const r: unknown = await db.get(query);
   if (Array.isArray(r)) return Number(r[0] ?? 0);

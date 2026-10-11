@@ -4,7 +4,7 @@ import { DEFAULT_CLUSTER_CONFIG, type Cluster } from "@nuno/cluster";
 import { clustersFor, evidenceJsonFor } from "@nuno/metrics/store";
 import { AddressBook, rows, sqliteSchema as s, txHex, type SqlDb } from "@nuno/shared";
 
-// API read model over SQLite/D1 (address ids resolved back to hex via the address dictionary).
+// API read model over SQLite (address ids resolved back to hex via the address dictionary).
 
 export interface TokenMetricsDto {
   sourceBlock: number;

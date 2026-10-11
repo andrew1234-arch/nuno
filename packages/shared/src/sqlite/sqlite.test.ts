@@ -77,8 +77,8 @@ describe("AddressBook", () => {
   });
 });
 
-describe("D1 limit emulation", () => {
-  it("rejects statements with more than 100 bound parameters, like D1", async () => {
+describe("bound-parameter cap", () => {
+  it("rejects statements with more than 100 bound parameters", async () => {
     const { db, close } = openLocal(":memory:");
     const ids = Array.from({ length: 101 }, (_, i) => i + 1);
     await expect(db.select().from(cursors).where(inArray(cursors.updatedAt, ids))).rejects.toThrow(/too many SQL variables/);

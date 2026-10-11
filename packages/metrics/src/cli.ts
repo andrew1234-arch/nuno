@@ -4,7 +4,7 @@ import { getCursor } from "@nuno/indexer";
 import { infrastructureSet } from "./infrastructure.js";
 import { fullRun } from "./store.js";
 
-// pnpm cluster:full / metrics:full — local full recompute of entities + metrics (never on Workers).
+// pnpm cluster:full / metrics:full — local full recompute of entities + metrics.
 async function main() {
   const { db, close } = openLocal(config.localDbPath);
   const sourceBlock = await getCursor(db, "indexer");

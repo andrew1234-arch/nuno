@@ -26,7 +26,7 @@ export interface ExportResult {
   bytes: number;
 }
 
-export async function exportStatic(db: SqlDb, outDir: string, opts: { dbSizeBytes: number; backfillDays: number }): Promise<ExportResult> {
+export async function exportStatic(db: SqlDb, outDir: string, opts: { dbSizeBytes: number; backfillDays: number; label?: string }): Promise<ExportResult> {
   const book = new AddressBook(db);
   const repo = new SqlRepo(db, book);
   const nansen = new Nansen(db, book, {}); // cache reads only: no key, never calls the API
@@ -52,6 +52,7 @@ export async function exportStatic(db: SqlDb, outDir: string, opts: { dbSizeByte
   const sourceBlock = (await getCursor(db, INDEXER_CURSOR)) ?? 0;
   const windowStart = (await getCursor(db, WINDOW_CURSOR)) ?? sourceBlock;
   write("meta.json", {
+    ...(opts.label ? { label: opts.label } : {}),
     sourceBlock,
     generatedAt: new Date().toISOString(),
     dbSizeBytes: opts.dbSizeBytes,

@@ -1,4 +1,4 @@
-// Portable entry: safe for Node and Cloudflare Workers (no node:fs, no native drivers).
+// Portable entry: no node:fs, no native drivers.
 export * from "./rpc.js";
 export * from "./chain.js";
 export * from "./abis.js";
