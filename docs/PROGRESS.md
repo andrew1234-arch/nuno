@@ -171,3 +171,12 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
 
 ### Web
 `apps/web` is now a Next.js static export: pages read `site/api` at build time, one static page per token and cluster, sorting in the browser, `/contrast/` for the historical contrast dataset, headline finding with all 11 evidence txs, Nansen labels shown next to funders in the evidence table.
+
+### CORRECTION (2026-10-11, later): coverage is NOT complete, nad.fun has an undocumented V2 curve
+- nad.fun's API reports `market_type: "V2_CURVE"`, `market_id: 0x9f3832732923252A21044F21eE6bd87F09514ae4`, `version: "V2"` for e.g. token `0x47Ab…7777` (created block 92,051,446 by `0x0a0f…6f0c` through router `0x8986c8fd44eb85294a725a7e61af35e76ba26f91`). V2 is not in `nad.fun/abi.md`, `skill.md` or `indexer.md`; the contract is unverified on Monadscan and absent from Sourcify.
+- V2 activity is far larger than V1: first day of our window (blocks 109,821,684–110,107,684) had 111 V2 create events, 1,455 `Buy`, 902 `Sell`, 2,357 `Sync`. V1 had ~10 launches/day. **The indexer misses most nad.fun activity.**
+- The earlier "73 = 73" check only compared the 10 group wallets' token lists, so it could not see V2 launches by other creators. The headline "Every nad.fun launch from Oct 2–9 came from 10 wallets…" is only true for the V1 curve and must not be published as is.
+- V2 event signatures, verified by keccak hash match (openchain signature DB + local hashing): `0x89f5adc1` = `Buy(address,address,uint256,uint256)`, `0xa082022e` = `Sell(address,address,uint256,uint256)`, `0x27efe2fe` = `Sync(address,uint256,uint256,uint256,uint256)`. Create `0xac11ceed…` has no public signature: topics are (creator, token, pool) by position, verified against the API for one token; 480 data bytes undecoded. V1's 4th event `0xfd4bb47b` = `CurveSync(...)` (hash match).
+- The May 1 → Oct 11 per-day table computed from V1 `CurveCreate` only shows V1 dark from May 19 to Aug 24; nad.fun's API lists 77 June / 184 July tokens for the 10 group wallets, all on V2. The table is V1-only and incomplete.
+- Funding: up to 5 inbound edges per wallet shipped (`a42ded2`); the 300,000 MON deposit into `0xb245…` (block 66,370,945) is now stored. Re-cluster on current data: still 1 entity of 10 wallets.
+- Local DB note: 63 of 73 tokens were already pruned (`MIN_BUYERS=20`, from an Oct 9 run); only 191 trades remain.
