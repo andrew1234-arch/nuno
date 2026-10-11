@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { marked } from "marked";
 import { METHODOLOGY_MD } from "@/lib/methodology.generated";
 import { Sheet } from "../sheet";
+
+export const metadata: Metadata = { title: "Detailed method", description: "The full rules Nuno uses to group wallets and count real owners." };
 
 export default async function Methodology() {
   // Embedded from the repo's docs/METHODOLOGY.md at build time, so the page and the doc never diverge.

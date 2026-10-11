@@ -2,10 +2,10 @@ import type { Cluster } from "@/lib/api";
 import { EDGE_SHORT, short } from "@/lib/format";
 
 const EDGE_COLORS: Record<string, string> = {
-  same_direct_funder: "#8a4d31",
+  same_direct_funder: "#c0703f",
   common_funding_source: "#b0785a",
-  creator_funded: "#c2412d",
-  token_transfer: "#3f7d58",
+  creator_funded: "#d0533d",
+  token_transfer: "#4f9a6c",
   same_block_early_buy: "#d4a373",
   same_block_sell: "#a39184",
 };
@@ -38,9 +38,9 @@ export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlig
           const isHl = m === highlight;
           return (
             <g key={m}>
-              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} fill={isHl ? "#c2412d" : "#2b2420"} />
+              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} style={{ fill: isHl ? "#d0533d" : "var(--text)" }} />
               {members.length <= 16 ? (
-                <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={8} fill="#8a7c73" className="mono">
+                <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={8} style={{ fill: "var(--muted)" }} className="mono">
                   {short(m)}
                 </text>
               ) : null}

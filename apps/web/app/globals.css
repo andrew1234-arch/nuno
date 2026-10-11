@@ -2,19 +2,88 @@
 
 /* Warm light theme: cream surfaces, rust-brown bands, two-tone grey headlines. */
 :root {
+  color-scheme: light;
   --bg: #f3ece7;
   --surface: #fcf8f5;
   --panel: #f4ebe5;
   --line: #e6d9d0;
   --text: #2b2420;
-  --muted: #8a7c73;
-  --soft: #b9aaa0;
-  --accent: #8a4d31;
-  --accent-ink: #fcf8f5;
-  --accent-soft: #c9a594;
-  --bad: #c2412d;
+  --prose: #4a3f39;
+  --muted: #7d6f66;
+  --soft: #b3a399;
+  --bad: #b5392a;
   --good: #3f7d58;
+  /* Rust accent for text, links and buttons on light/dark surfaces. */
+  --c-accent: #8a4d31;
+  --c-accent-ink: #fcf8f5;
+  --c-accent-soft: #c9a594;
+  /* Rust bands (full-width brown sections). */
+  --band: #8a4d31;
+  --band-ink: #fcf8f5;
+  --band-soft: #e3c3b2;
+  --dot: rgba(138, 77, 49, 0.28);
 }
+
+/* Dark theme: follows the system unless the visitor picked a theme (data-theme on <html>). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #15100d;
+    --surface: #1f1814;
+    --panel: #2a201b;
+    --line: #3a2d26;
+    --text: #f2e9e3;
+    --prose: #d9cbc2;
+    --muted: #b0a095;
+    --soft: #75655c;
+    --bad: #f08a76;
+    --good: #7cc79a;
+    --c-accent: #e3976d;
+    --c-accent-ink: #1f130d;
+    --c-accent-soft: #8c5a42;
+    --band: #5b3220;
+    --band-ink: #fbefe7;
+    --band-soft: #d8ae98;
+    --dot: rgba(227, 151, 109, 0.22);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15100d;
+  --surface: #1f1814;
+  --panel: #2a201b;
+  --line: #3a2d26;
+  --text: #f2e9e3;
+  --prose: #d9cbc2;
+  --muted: #b0a095;
+  --soft: #75655c;
+  --bad: #f08a76;
+  --good: #7cc79a;
+  --c-accent: #e3976d;
+  --c-accent-ink: #1f130d;
+  --c-accent-soft: #8c5a42;
+  --band: #5b3220;
+  --band-ink: #fbefe7;
+  --band-soft: #d8ae98;
+  --dot: rgba(227, 151, 109, 0.22);
+}
+
+/* Components read --accent*; surfaces use the accent palette, bands remap it to band colours. */
+:root,
+.card {
+  --accent: var(--c-accent);
+  --accent-ink: var(--c-accent-ink);
+  --accent-soft: var(--c-accent-soft);
+}
+.band,
+.band-plain {
+  --accent: var(--band);
+  --accent-ink: var(--band-ink);
+  --accent-soft: var(--band-soft);
+}
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 body {
   background: var(--bg);
@@ -36,8 +105,8 @@ body {
 
 /* Rust-brown section with a dotted texture on both sides. */
 .band {
-  background-color: var(--accent);
-  color: var(--accent-ink);
+  background-color: var(--band);
+  color: var(--band-ink);
   background-image:
     radial-gradient(circle, rgba(252, 248, 245, 0.35) 1px, transparent 1.4px),
     radial-gradient(circle, rgba(252, 248, 245, 0.35) 1px, transparent 1.4px);
@@ -45,11 +114,11 @@ body {
   background-position: 0 0, 100% 0;
   background-repeat: repeat-y;
 }
-.band-plain { background: var(--accent); color: var(--accent-ink); }
+.band-plain { background: var(--band); color: var(--band-ink); }
 
 /* Dotted halo behind light hero sections. */
 .dots {
-  background-image: radial-gradient(circle, rgba(138, 77, 49, 0.28) 1px, transparent 1.4px);
+  background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.4px);
   background-size: 12px 12px;
   mask-image: radial-gradient(ellipse at center, transparent 35%, black 75%);
 }
@@ -67,7 +136,7 @@ body {
   transform: translateX(-50%);
   width: min(78%, 900px);
   height: 40px;
-  background: var(--accent);
+  background: var(--band);
   border-radius: 0 0 24px 24px;
 }
 
@@ -80,7 +149,7 @@ details.faq[open] .icon::before { content: "−"; }
 .prose-nuno h1 { font-size: 2.25rem; font-weight: 500; letter-spacing: -0.03em; margin: 1.5rem 0 1rem; }
 .prose-nuno h2 { font-size: 1.35rem; font-weight: 500; margin: 2rem 0 0.75rem; border-bottom: 1px solid var(--line); padding-bottom: 0.35rem; }
 .prose-nuno h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
-.prose-nuno p, .prose-nuno li { line-height: 1.7; color: #4a3f39; }
+.prose-nuno p, .prose-nuno li { line-height: 1.7; color: var(--prose); }
 .prose-nuno p { margin: 0.75rem 0; }
 .prose-nuno ul, .prose-nuno ol { margin: 0.5rem 0 0.5rem 1.5rem; list-style: disc; }
 .prose-nuno ol { list-style: decimal; }

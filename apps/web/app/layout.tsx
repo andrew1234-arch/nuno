@@ -4,47 +4,56 @@ import Link from "next/link";
 import { testnetDeployment } from "@/lib/deployments";
 import { addrUrl, short } from "@/lib/format";
 import { Logo } from "./logo";
+import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
 import "./globals.css";
 
 const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Nuno: how many people really own this token?",
+  title: { default: "Nuno: how many people really own this token?", template: "%s · Nuno" },
   description: "Nuno finds wallets that belong to the same person behind nad.fun tokens on Monad and shows the real number of owners, with public proof.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const REPO = "https://github.com/andrew1234-arch/nuno";
 
+const NAV: Array<[string, string]> = [
+  ["/#screener", "Tokens"],
+  ["/#how", "How it works"],
+  ["/#faq", "Questions"],
+  ["/methodology/", "Detailed method"],
+];
+
 function Nav() {
-  const links: Array<[string, string]> = [
-    ["/#screener", "Tokens"],
-    ["/#how", "How it works"],
-    ["/#faq", "Questions"],
-    ["/methodology/", "Detailed method"],
-  ];
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent)]">
+      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent)]" aria-label="Nuno home">
           <Logo className="h-5 w-7" />
           nuno.
         </Link>
         <div className="hidden items-center gap-1 rounded-full bg-[var(--panel)] p-1 text-sm md:flex">
-          {links.map(([href, label]) => (
-            <Link
-              key={href}
-              href={href}
-              className="pill px-4 py-1.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--accent)]"
-            >
+          {NAV.map(([href, label]) => (
+            <Link key={href} href={href} className="pill px-4 py-1.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--accent)]">
               {label}
             </Link>
           ))}
         </div>
-        <a href={`${BASE}/api/tokens.json`} className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)]">
-          Get the data
-        </a>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <a href={`${BASE}/api/tokens.json`} className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)]">
+            Get the data
+          </a>
+        </div>
       </nav>
+      {/* Small screens: the same links as a scrollable row. */}
+      <div className="flex gap-1 overflow-x-auto px-4 pb-2 text-sm md:hidden">
+        {NAV.map(([href, label]) => (
+          <Link key={href} href={href} className="pill shrink-0 bg-[var(--panel)] px-3 py-1 text-[var(--muted)] hover:text-[var(--accent)]">
+            {label}
+          </Link>
+        ))}
+      </div>
     </header>
   );
 }
@@ -115,10 +124,16 @@ function Footer() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={sans.variable}>
+    <html lang="en" className={sans.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-screen">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-[var(--surface)] focus:px-3 focus:py-2">
+          Skip to content
+        </a>
         <Nav />
-        <main>{children}</main>
+        <main id="main">{children}</main>
         <Footer />
       </body>
     </html>
