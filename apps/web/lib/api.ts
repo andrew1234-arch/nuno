@@ -76,10 +76,13 @@ export interface Meta {
   label?: string;
 }
 
+// Pages are rendered at build time and many read the same files (metadata + view + static params): parse each once.
+const cache = new Map<string, unknown>();
+
 function read<T>(dataset: Dataset, rel: string): T | null {
   const path = join(DATA_DIR, dataset === "contrast" ? "contrast" : "", rel);
-  if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, "utf8")) as T;
+  if (!cache.has(path)) cache.set(path, existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null);
+  return cache.get(path) as T | null;
 }
 
 export const hasDataset = (dataset: Dataset) => read<Meta>(dataset, "meta.json") !== null;

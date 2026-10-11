@@ -27,7 +27,8 @@ const NAV: Array<[string, string]> = [
 function Nav() {
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur">
-      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <nav aria-label="Main">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent)]" aria-label="Nuno home">
           <Logo className="h-5 w-7" />
           nuno.
@@ -45,8 +46,8 @@ function Nav() {
             Get the data
           </a>
         </div>
-      </nav>
-      {/* Small screens: the same links as a scrollable row. */}
+      </div>
+      {/* Small screens: the same links as a scrollable row (the wide-screen copy is hidden there). */}
       <div className="flex gap-1 overflow-x-auto px-4 pb-2 text-sm md:hidden">
         {NAV.map(([href, label]) => (
           <Link key={href} href={href} className="pill shrink-0 bg-[var(--panel)] px-3 py-1 text-[var(--muted)] hover:text-[var(--accent)]">
@@ -54,6 +55,7 @@ function Nav() {
           </Link>
         ))}
       </div>
+      </nav>
     </header>
   );
 }
@@ -73,7 +75,7 @@ function Footer() {
             </p>
           </div>
           <div className="text-sm">
-            <p className="text-[var(--accent-soft)]">On the Monad test network</p>
+            <p className="text-[var(--muted)]">On the Monad test network</p>
             <p className="mt-3">Nuno writes its numbers to a contract that other apps can read:</p>
             {dep ? (
               <ul className="mt-3 space-y-2">
@@ -89,11 +91,11 @@ function Footer() {
             ) : (
               <p className="mt-3">Not deployed yet.</p>
             )}
-            <p className="mt-6 text-[var(--accent-soft)]">Where the data comes from</p>
+            <p className="mt-6 text-[var(--muted)]">Where the data comes from</p>
             <p className="mt-3">The public Monad blockchain. Nuno only reads it; nothing private is used.</p>
           </div>
           <div className="text-sm">
-            <p className="text-[var(--accent-soft)]">Read it yourself</p>
+            <p className="text-[var(--muted)]">Read it yourself</p>
             <ul className="mt-3 divide-y divide-[var(--line)]">
               {[
                 [`${BASE}/api/tokens.json`, "Download all token numbers"],
@@ -124,7 +126,7 @@ function Footer() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={sans.variable} suppressHydrationWarning>
+    <html lang="en" className={sans.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
@@ -133,7 +135,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <Nav />
-        <main id="main">{children}</main>
+        <main id="main" tabIndex={-1} className="outline-none">
+          {children}
+        </main>
         <Footer />
       </body>
     </html>

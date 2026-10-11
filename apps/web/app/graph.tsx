@@ -31,14 +31,14 @@ export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlig
           const [a, b] = k.split("|") as [string, string];
           const p = pos.get(a)!;
           const q = pos.get(b)!;
-          return <line key={k} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={EDGE_COLORS[type] ?? "#555"} strokeOpacity={0.6} strokeWidth={1.2} />;
+          return <line key={k} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={EDGE_COLORS[type] ?? "#9a8a80"} strokeOpacity={0.6} strokeWidth={1.2} />;
         })}
         {members.map((m) => {
           const p = pos.get(m)!;
           const isHl = m === highlight;
           return (
             <g key={m}>
-              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} style={{ fill: isHl ? "#d0533d" : "var(--text)" }} />
+              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} style={isHl ? { fill: "var(--surface)", stroke: "var(--text)", strokeWidth: 2.5 } : { fill: "var(--text)" }} />
               {members.length <= 16 ? (
                 <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={8} style={{ fill: "var(--muted)" }} className="mono">
                   {short(m)}
@@ -56,7 +56,12 @@ export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlig
           </span>
         ))}
         {cluster.members.length > MAX ? <span>showing {MAX} of {cluster.members.length} wallets</span> : null}
-        <span>· each dot is a wallet, each line a reason they're linked</span>
+        {highlight && members.includes(highlight) ? (
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-[var(--text)]" /> token creator
+          </span>
+        ) : null}
+        <span>· each dot is a wallet, each line a reason they&apos;re linked</span>
       </figcaption>
     </figure>
   );

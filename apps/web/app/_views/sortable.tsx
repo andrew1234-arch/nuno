@@ -7,7 +7,7 @@ import { mon, pct, short } from "@/lib/format";
 
 // Sorting runs in the browser: the site is a static export, so there is no server to sort by query string.
 const SORTS: Array<[string, string, (t: Token) => number | bigint]> = [
-  ["holder_gap", "Most fake holders", (t) => (t.metrics ? t.metrics.rawHolders - t.metrics.realHolders : -1)],
+  ["holder_gap", "Biggest holder gap", (t) => (t.metrics ? t.metrics.rawHolders - t.metrics.realHolders : -1)],
   ["cluster_supply", "Most owned by groups", (t) => t.metrics?.clusterSupplyBps ?? -1],
   ["creator_supply", "Most owned by creator's side", (t) => t.metrics?.creatorLinkedSupplyBps ?? -1],
   ["wash", "Most in-and-out trading", (t) => (t.metrics && t.metrics.rawVolume !== "0" ? 10_000 - t.metrics.organicVolumeBps : -1)],

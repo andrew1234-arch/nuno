@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { PLACEHOLDER, api } from "@/lib/api";
-import { ClusterView, clusterParams } from "../../../_views/cluster";
+import { PLACEHOLDER } from "@/lib/api";
+import { ClusterView, clusterMetadata, clusterParams } from "../../../_views/cluster";
 import { Sheet } from "../../../sheet";
 
 export const dynamicParams = false;
@@ -11,8 +11,7 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const c = api.cluster((await params).id, "contrast");
-  return c ? { title: `Wallet group ${c.id.slice(0, 6)}…${c.id.slice(-4)}`, description: `${c.size} wallets that very likely belong to one owner, with the public proof.` } : { title: "Group not found" };
+  return clusterMetadata((await params).id, "contrast");
 }
 
 export default async function ClusterPage({ params }: { params: Promise<{ id: string }> }) {

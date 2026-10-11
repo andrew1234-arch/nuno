@@ -2,71 +2,29 @@
 
 /* Warm light theme: cream surfaces, rust-brown bands, two-tone grey headlines. */
 :root {
-  color-scheme: light;
-  --bg: #f3ece7;
-  --surface: #fcf8f5;
-  --panel: #f4ebe5;
-  --line: #e6d9d0;
-  --text: #2b2420;
-  --prose: #4a3f39;
-  --muted: #7d6f66;
-  --soft: #b3a399;
-  --bad: #b5392a;
-  --good: #3f7d58;
-  /* Rust accent for text, links and buttons on light/dark surfaces. */
-  --c-accent: #8a4d31;
-  --c-accent-ink: #fcf8f5;
-  --c-accent-soft: #c9a594;
-  /* Rust bands (full-width brown sections). */
-  --band: #8a4d31;
-  --band-ink: #fcf8f5;
-  --band-soft: #e3c3b2;
-  --dot: rgba(138, 77, 49, 0.28);
+  /* Each token is written once as light-dark(light, dark). The theme follows the system (color-scheme:
+     light dark) unless the visitor picked one, which sets data-theme on <html>. */
+  color-scheme: light dark;
+  --bg: light-dark(#f3ece7, #15100d);
+  --surface: light-dark(#fcf8f5, #1f1814);
+  --panel: light-dark(#f4ebe5, #2a201b);
+  --line: light-dark(#e6d9d0, #3a2d26);
+  --text: light-dark(#2b2420, #f2e9e3);
+  --prose: light-dark(#4a3f39, #d9cbc2);
+  --muted: light-dark(#7d6f66, #b0a095);
+  --soft: light-dark(#b3a399, #75655c);
+  --bad: light-dark(#b5392a, #f08a76);
+  --good: light-dark(#3f7d58, #7cc79a);
+  --c-accent: light-dark(#8a4d31, #e3976d);
+  --c-accent-ink: light-dark(#fcf8f5, #1f130d);
+  --c-accent-soft: light-dark(#c9a594, #8c5a42);
+  --band: light-dark(#8a4d31, #5b3220);
+  --band-ink: light-dark(#fcf8f5, #fbefe7);
+  --band-soft: light-dark(#f0d9cc, #d8ae98);
+  --dot: light-dark(rgba(138, 77, 49, 0.28), rgba(227, 151, 109, 0.22));
 }
-
-/* Dark theme: follows the system unless the visitor picked a theme (data-theme on <html>). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #15100d;
-    --surface: #1f1814;
-    --panel: #2a201b;
-    --line: #3a2d26;
-    --text: #f2e9e3;
-    --prose: #d9cbc2;
-    --muted: #b0a095;
-    --soft: #75655c;
-    --bad: #f08a76;
-    --good: #7cc79a;
-    --c-accent: #e3976d;
-    --c-accent-ink: #1f130d;
-    --c-accent-soft: #8c5a42;
-    --band: #5b3220;
-    --band-ink: #fbefe7;
-    --band-soft: #d8ae98;
-    --dot: rgba(227, 151, 109, 0.22);
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #15100d;
-  --surface: #1f1814;
-  --panel: #2a201b;
-  --line: #3a2d26;
-  --text: #f2e9e3;
-  --prose: #d9cbc2;
-  --muted: #b0a095;
-  --soft: #75655c;
-  --bad: #f08a76;
-  --good: #7cc79a;
-  --c-accent: #e3976d;
-  --c-accent-ink: #1f130d;
-  --c-accent-soft: #8c5a42;
-  --band: #5b3220;
-  --band-ink: #fbefe7;
-  --band-soft: #d8ae98;
-  --dot: rgba(227, 151, 109, 0.22);
-}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* Components read --accent*; surfaces use the accent palette, bands remap it to band colours. */
 :root,

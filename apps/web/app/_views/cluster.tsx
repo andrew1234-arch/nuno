@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api, type Dataset } from "@/lib/api";
@@ -5,6 +6,16 @@ import { EDGE_REASON, addrUrl, short } from "@/lib/format";
 import { ClusterGraph } from "../graph";
 import { EvidenceTable } from "../evidence";
 import { baseFor } from "./screener";
+
+/** Page title and description for a wallet-group page (historical pages say so). */
+export function clusterMetadata(id: string, dataset: Dataset): Metadata {
+  const c = api.cluster(id, dataset);
+  if (!c) return { title: "Group not found" };
+  const name = `Wallet group ${short(c.id)}`;
+  return dataset === "contrast"
+    ? { title: `${name}, historical week`, description: `${c.size} wallets that very likely belonged to one owner during a past week, with the public proof.` }
+    : { title: name, description: `${c.size} wallets that very likely belong to one owner, with the public proof.` };
+}
 
 export const clusterParams = (d: Dataset) => api.clusterIds(d).map((id) => ({ id }));
 

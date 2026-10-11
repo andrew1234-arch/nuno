@@ -13,7 +13,14 @@ function current(): "light" | "dark" {
 /** Light/dark switch. Defaults to the system theme; a choice is remembered on this device. */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark" | null>(null);
-  useEffect(() => setTheme(current()), []);
+  useEffect(() => {
+    setTheme(current());
+    // With no saved choice the page follows the system; keep the button in step when the OS flips.
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setTheme(current());
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
   const flip = () => {
     const next = current() === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
@@ -24,7 +31,7 @@ export function ThemeToggle() {
     }
     setTheme(next);
   };
-  const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  const label = theme === null ? "Switch light or dark mode" : theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
   return (
     <button
       type="button"

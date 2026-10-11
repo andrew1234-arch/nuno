@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api, type Dataset } from "@/lib/api";
@@ -17,6 +18,16 @@ function Stat({ label, raw, real, note }: { label: string; raw?: string; real: s
       {note ? <div className="mt-1 text-xs text-[var(--muted)]">{note}</div> : null}
     </div>
   );
+}
+
+/** Page title and description for a token page (historical pages say so). */
+export function tokenMetadata(address: string, dataset: Dataset): Metadata {
+  const t = api.token(address, dataset);
+  if (!t) return { title: "Token not found" };
+  const name = `${t.name} ($${t.symbol})`;
+  return dataset === "contrast"
+    ? { title: `${name}, historical week`, description: `Who owned ${name} during a past week on nad.fun, with the public proof. Not updated.` }
+    : { title: name, description: `Who really owns ${name} on nad.fun: real owners, wallet groups and the public proof.` };
 }
 
 export const tokenParams = (d: Dataset) => api.tokens(d).map((t) => ({ address: t.address }));
