@@ -27,6 +27,10 @@ export interface TickSettings {
   maxBlocksPerRun: number;
   /** Max new buyers funding-resolved per run (~60 archive calls each incl. hops). */
   maxFundingPerRun: number;
+  /** Parallel funding workers (the resolver shares in-flight lookups). Default 6. */
+  fundingConcurrency?: number;
+  /** Stop starting new buyers after this long, so the run stays inside the Actions timeout. Default 6 min. */
+  fundingBudgetMs?: number;
   /** Max snapshots published per run (sequential txs). */
   maxPublishPerRun: number;
   publisher: PublisherEnv | null;
@@ -75,9 +79,22 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
   } else out.hardStop = true;
 
   // 2. Funding for new buyers (bounded; never-tried first).
+  // Parallel and time-boxed: fresh V2 wallet chains can take ~1 min per buyer, and a run killed by
+  // the job timeout never reaches "Save DB". Buyers not started stay pending for the next run.
   const buyers = await pendingBuyers({ db, book }, cfg.maxFundingPerRun);
-  for (const b of buyers) await resolveFundingTree({ db, book, rpc: archiveRpc, log }, b.trader, b.firstBuy - 1, 3);
-  out.funded = buyers.length;
+  const fundingDeadline = Date.now() + (cfg.fundingBudgetMs ?? 6 * 60_000);
+  let nextBuyer = 0;
+  let funded = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(cfg.fundingConcurrency ?? 6, buyers.length) }, async () => {
+      while (nextBuyer < buyers.length && Date.now() < fundingDeadline) {
+        const b = buyers[nextBuyer++]!;
+        await resolveFundingTree({ db, book, rpc: archiveRpc, log }, b.trader, b.firstBuy - 1, 3);
+        funded++;
+      }
+    }),
+  );
+  out.funded = funded;
 
   // 3. Nansen hub/related-wallet checks (free-plan budget; cached forever). New infrastructure
   // labels feed the incremental run below.

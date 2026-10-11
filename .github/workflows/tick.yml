@@ -25,6 +25,11 @@ jobs:
       MONAD_MAINNET_RPC_URL: ${{ vars.MONAD_MAINNET_RPC_URL || 'https://rpc1.monad.xyz' }}
       MONAD_MAINNET_LOGS_RPC_URLS: ${{ vars.MONAD_MAINNET_LOGS_RPC_URLS || 'https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz' }}
       MONAD_MAINNET_LOGS_RANGE: ${{ vars.MONAD_MAINNET_LOGS_RANGE || '100' }}
+      # Full-history endpoints for funding resolution (archive state + debug traces), 4 in flight each.
+      MONAD_MAINNET_ARCHIVE_RPC_URLS: ${{ vars.MONAD_MAINNET_ARCHIVE_RPC_URLS || 'https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc2.monad.xyz' }}
+      ARCHIVE_RPC_CONCURRENCY: ${{ vars.ARCHIVE_RPC_CONCURRENCY || '12' }}
+      FUNDING_CONCURRENCY: ${{ vars.FUNDING_CONCURRENCY || '8' }}
+      TICK_FUNDING_SECONDS: ${{ vars.TICK_FUNDING_SECONDS || '360' }}
       MONAD_TESTNET_RPC_URL: ${{ vars.MONAD_TESTNET_RPC_URL || 'https://testnet-rpc.monad.xyz' }}
       NUNO_FEED_ADDRESS: ${{ vars.NUNO_FEED_ADDRESS }}
       PUBLISHER_PRIVATE_KEY: ${{ secrets.PUBLISHER_PRIVATE_KEY }}
