@@ -29,7 +29,7 @@ jobs:
       NUNO_FEED_ADDRESS: ${{ vars.NUNO_FEED_ADDRESS }}
       PUBLISHER_PRIVATE_KEY: ${{ secrets.PUBLISHER_PRIVATE_KEY }}
       NANSEN_API_KEY: ${{ secrets.NANSEN_API_KEY }}
-      MIN_BUYERS: ${{ vars.MIN_BUYERS || '20' }}
+      MIN_BUYERS: ${{ vars.MIN_BUYERS || '0' }}
       BACKFILL_DAYS: ${{ vars.BACKFILL_DAYS || '7' }}
       CONTRAST_LABEL: ${{ vars.CONTRAST_LABEL }}
     steps:

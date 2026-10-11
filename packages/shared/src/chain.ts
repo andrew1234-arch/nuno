@@ -13,6 +13,15 @@ export const NADFUN_MAINNET = {
   CREATOR_TREASURY: "0x42e75B4B96d7000E7Da1e0c729Cec8d2049B9731",
 } as const satisfies Record<string, Address | number>;
 
+/**
+ * nad.fun's second bonding curve ("V2"). Not in nad.fun/abi.md, skill.md or indexer.md, and unverified on
+ * Monadscan. Source: nad.fun's own API (`market_type: "V2_CURVE"`, `market_id`) for V2 tokens; trades go
+ * through router `0x8986…6f91`. Verified 2026-10-11: creator topic = API creator = tx signer for a sample token.
+ */
+export const NADFUN_CURVE_V2: Address = "0x9f3832732923252A21044F21eE6bd87F09514ae4";
+/** Router the V2 curve's creates and trades are sent to (tx `to` on live V2 txs, 2026-10-11). */
+export const NADFUN_ROUTER_V2: Address = "0x8986c8fd44eb85294a725a7e61af35e76ba26f91";
+
 /** Measured on mainnet 2026-10-08: 100k blocks took 30,206 s. */
 export const MONAD_SECONDS_PER_BLOCK = 0.302;
 

@@ -1,6 +1,7 @@
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import {
   AddressBook,
+  NADFUN_CURVE_V2,
   NADFUN_MAINNET,
   TOPICS,
   chunkRange,
@@ -59,13 +60,16 @@ export async function txSigner(rpc: RpcClient, txHash: string): Promise<string> 
   return tx.from.toLowerCase();
 }
 
-/** Curve events (creates, trades, graduations) for one log-range-sized chunk. Idempotent. */
+/** Curve events (creates, trades, graduations) of both nad.fun curves (V1 and V2) for one log-range-sized chunk. Idempotent. */
 export async function indexCurveRange(ctx: IndexerCtx, from: number, to: number): Promise<RangeStats> {
   const { db, book, logsRpc } = ctx;
   const stats = emptyStats();
   const curveLogs = await getLogs(
     logsRpc,
-    { address: NADFUN_MAINNET.CURVE, topics: [[TOPICS.CurveCreate, TOPICS.CurveBuy, TOPICS.CurveSell, TOPICS.CurveGraduate]] },
+    {
+      address: [NADFUN_MAINNET.CURVE, NADFUN_CURVE_V2],
+      topics: [[TOPICS.CurveCreate, TOPICS.CurveBuy, TOPICS.CurveSell, TOPICS.CurveGraduate, TOPICS.V2Create, TOPICS.V2Buy, TOPICS.V2Sell]],
+    },
     from,
     to,
   );

@@ -1,5 +1,5 @@
-import { decodeEventLog, type Address, type Hex } from "viem";
-import { curveEventsAbi, erc20TransferAbi, uniswapV3SwapAbi, type RpcLog } from "@nuno/shared";
+import { decodeAbiParameters, decodeEventLog, type Address, type Hex } from "viem";
+import { TOPICS, curveEventsAbi, curveV2CreateDataTypes, curveV2EventsAbi, erc20TransferAbi, uniswapV3SwapAbi, type RpcLog } from "@nuno/shared";
 
 export type CurveRecord =
   | {
@@ -29,7 +29,39 @@ export const logMeta = (l: RpcLog): LogMeta => ({
 
 const lc = (a: Address): Address => a.toLowerCase() as Address;
 
+const topicAddress = (t: Hex | undefined): Address | null => (t && t.length === 66 ? (`0x${t.slice(26)}` as Address) : null);
+
+/** nad.fun V2 curve: create (layout-decoded, no public signature), buy, sell. */
+function decodeCurveV2Log(l: RpcLog): CurveRecord {
+  const t0 = l.topics[0]?.toLowerCase();
+  if (t0 === TOPICS.V2Create) {
+    const [creator, token, pool] = [topicAddress(l.topics[1]), topicAddress(l.topics[2]), topicAddress(l.topics[3])];
+    if (!creator || !token || !pool) return { kind: "ignored" };
+    try {
+      const [, name, symbol, tokenUri] = decodeAbiParameters(curveV2CreateDataTypes, l.data);
+      return { kind: "create", token: lc(token), creator: lc(creator), pool: lc(pool), name, symbol, tokenUri };
+    } catch {
+      return { kind: "ignored" };
+    }
+  }
+  try {
+    const ev = decodeEventLog({ abi: curveV2EventsAbi, data: l.data, topics: l.topics as [Hex, ...Hex[]] });
+    return {
+      kind: "trade",
+      side: ev.eventName === "Buy" ? "buy" : "sell",
+      token: lc(ev.args.token),
+      trader: lc(ev.args.sender),
+      amountIn: ev.args.amountIn,
+      amountOut: ev.args.amountOut,
+    };
+  } catch {
+    return { kind: "ignored" };
+  }
+}
+
 export function decodeCurveLog(l: RpcLog): CurveRecord {
+  const t0 = l.topics[0]?.toLowerCase();
+  if (t0 === TOPICS.V2Create || t0 === TOPICS.V2Buy || t0 === TOPICS.V2Sell) return decodeCurveV2Log(l);
   let ev;
   try {
     ev = decodeEventLog({ abi: curveEventsAbi, data: l.data, topics: l.topics as [Hex, ...Hex[]] });

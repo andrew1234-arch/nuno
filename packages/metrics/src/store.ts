@@ -17,7 +17,9 @@ import {
 import {
   AddressBook,
   MAX_PARAMS,
+  NADFUN_CURVE_V2,
   NADFUN_MAINNET,
+  NADFUN_ROUTER_V2,
   chunks,
   insertIgnore,
   isContractCode,
@@ -56,6 +58,8 @@ const PROTOCOL = [
   NADFUN_MAINNET.CREATOR_TREASURY,
   NADFUN_MAINNET.WMON,
   NADFUN_MAINNET.LENS,
+  NADFUN_CURVE_V2,
+  NADFUN_ROUTER_V2,
 ].map((a) => a.toLowerCase());
 
 type TokenRow = typeof s.tokens.$inferSelect;
