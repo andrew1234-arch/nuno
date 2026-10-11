@@ -13,7 +13,7 @@ export default async function Methodology() {
     <Sheet>
       <p className="max-w-3xl rounded-xl bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
         This is Nuno&apos;s full rulebook, written for people who want to check every detail. For the short, plain-language version, see{" "}
-        <Link href="/#how" className="text-[var(--accent)] underline">how it works</Link>.
+        <Link href="/#how" className="text-[var(--accent-text)] underline">how it works</Link>.
       </p>
       <article className="prose-nuno max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
     </Sheet>

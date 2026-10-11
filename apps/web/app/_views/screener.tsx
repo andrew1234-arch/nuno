@@ -11,16 +11,16 @@ function Finding() {
     <section className="mt-4 rounded-lg border border-[var(--accent)] bg-[var(--panel)] p-4 text-sm">
       <p className="font-semibold">{FINDING_TEXT}</p>
       <p className="mt-2 text-[var(--muted)]">
-        Seeder <a className="mono hover:text-[var(--accent)]" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a> received{" "}
+        Seeder <a className="mono hover:text-[var(--accent-text)]" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a> received{" "}
         {SEEDER_DEPOSIT.mon.toLocaleString("en-US")} MON in{" "}
-        <a className="mono text-[var(--accent)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">{short(SEEDER_DEPOSIT.tx)}</a>{" "}
+        <a className="mono text-[var(--accent-text)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">{short(SEEDER_DEPOSIT.tx)}</a>{" "}
         (block {SEEDER_DEPOSIT.block.toLocaleString("en-US")}), then sent 14,995 MON to each creator wallet:
       </p>
       <ul className="mono mt-2 grid gap-x-4 text-xs sm:grid-cols-2">
         {PAYOUTS.map((p) => (
           <li key={p.tx}>
-            <a className="text-[var(--accent)] hover:underline" href={txUrl(p.tx)} target="_blank" rel="noreferrer">{short(p.tx)}</a>{" "}
-            → <a className="hover:text-[var(--accent)]" href={addrUrl(p.wallet)} target="_blank" rel="noreferrer">{short(p.wallet)}</a>{" "}
+            <a className="text-[var(--accent-text)] hover:underline" href={txUrl(p.tx)} target="_blank" rel="noreferrer">{short(p.tx)}</a>{" "}
+            → <a className="hover:text-[var(--accent-text)]" href={addrUrl(p.wallet)} target="_blank" rel="noreferrer">{short(p.wallet)}</a>{" "}
             <span className="text-[var(--muted)]">block {p.block.toLocaleString("en-US")}</span>
           </li>
         ))}
@@ -40,7 +40,7 @@ export function ScreenerView({ dataset }: { dataset: Dataset }) {
           <h1 className="text-2xl font-bold">{meta?.label ?? "Historical contrast"}</h1>
           <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
             A fixed historical week, kept as a separate dataset for comparison with the live window. It is not updated.{" "}
-            <Link href="/" className="text-[var(--accent)] hover:underline">Back to the live window</Link>.
+            <Link href="/" className="text-[var(--accent-text)] hover:underline">Back to the live window</Link>.
           </p>
         </>
       ) : (
@@ -53,7 +53,7 @@ export function ScreenerView({ dataset }: { dataset: Dataset }) {
           <Finding />
           {contrast ? (
             <p className="mt-3 text-sm">
-              <Link href="/contrast/" className="text-[var(--accent)] hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"} →</Link>
+              <Link href="/contrast/" className="text-[var(--accent-text)] hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"} →</Link>
             </p>
           ) : null}
         </>

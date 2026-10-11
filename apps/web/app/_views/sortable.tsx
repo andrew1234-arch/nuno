@@ -20,7 +20,7 @@ function Row({ t, base }: { t: Token; base: string }) {
   return (
     <tr className="border-t border-[var(--line)] hover:bg-[var(--panel)]">
       <td className="py-2 pr-3">
-        <Link href={`${base}/token/${t.address}/`} className="font-medium hover:text-[var(--accent)]">
+        <Link href={`${base}/token/${t.address}/`} className="font-medium hover:text-[var(--accent-text)]">
           {t.symbol}
         </Link>
         <div className="mono text-xs text-[var(--muted)]">{short(t.address)}</div>
@@ -62,7 +62,7 @@ export function SortableTable({ tokens, base, limit }: { tokens: Token[]; base: 
           <button
             key={k}
             onClick={() => setSort(k)}
-            className={`rounded-full border px-3.5 py-1.5 ${k === sort ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent)]"}`}
+            className={`rounded-full border px-3.5 py-1.5 ${k === sort ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent-text)]"}`}
           >
             {label}
           </button>
@@ -90,7 +90,7 @@ export function SortableTable({ tokens, base, limit }: { tokens: Token[]; base: 
         {tokens.length === 0 ? <p className="mt-6 text-[var(--muted)]">No tokens in this dataset.</p> : null}
         {limit && !all && sorted.length > limit ? (
           <div className="mt-6 text-center">
-            <button onClick={() => setAll(true)} className="pill border border-[var(--accent)] px-6 py-2.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--panel)]">
+            <button onClick={() => setAll(true)} className="pill border border-[var(--accent)] px-6 py-2.5 text-sm font-medium text-[var(--accent-text)] hover:bg-[var(--panel)]">
               Show all {sorted.length} tokens
             </button>
           </div>

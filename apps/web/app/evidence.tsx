@@ -30,24 +30,24 @@ export function EvidenceTable({ cluster, limit = 200, base = "" }: { cluster: Cl
             <tr key={i} className="border-t border-[var(--line)]">
               <td className="py-1 pr-2">{EDGE_LABELS[r.type] ?? r.type} <span className="text-[var(--muted)]">({strength(r.weight)})</span></td>
               <td className="mono pr-2">
-                <a href={addrUrl(r.a)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">{short(r.a)}</a>
+                <a href={addrUrl(r.a)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{short(r.a)}</a>
                 {" ↔ "}
-                <a href={addrUrl(r.b)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">{short(r.b)}</a>
+                <a href={addrUrl(r.b)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{short(r.b)}</a>
               </td>
               <td className="mono pr-2">
-                <a href={txUrl(r.txHash)} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">{short(r.txHash)}</a>
+                <a href={txUrl(r.txHash)} target="_blank" rel="noreferrer" className="text-[var(--accent-text)] hover:underline">{short(r.txHash)}</a>
               </td>
               <td className="mono text-right tabular-nums">{r.block.toLocaleString("en-US")}</td>
               <td className="mono pl-3 text-[var(--muted)]">
-                {r.detail ? <a href={addrUrl(r.detail)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">via {short(r.detail)}</a> : null}
-                {r.detail && cluster.labels?.[r.detail] ? <span className="ml-1 rounded bg-[var(--panel)] px-1 text-[var(--accent)]" title="Nansen label">{cluster.labels[r.detail]!.label}</span> : null}
-                {r.token ? <> {" "}<Link href={`${base}/token/${r.token}/`} className="hover:text-[var(--accent)]">token {short(r.token)}</Link></> : null}
+                {r.detail ? <a href={addrUrl(r.detail)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">via {short(r.detail)}</a> : null}
+                {r.detail && cluster.labels?.[r.detail] ? <span className="ml-1 rounded bg-[var(--panel)] px-1 text-[var(--accent-text)]" title="Nansen label">{cluster.labels[r.detail]!.label}</span> : null}
+                {r.token ? <> {" "}<Link href={`${base}/token/${r.token}/`} className="hover:text-[var(--accent-text)]">token {short(r.token)}</Link></> : null}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {unique.length > limit ? <p className="mt-2 text-xs text-[var(--muted)]">Showing {limit} of {unique.length} pieces of evidence. See them all on the <Link className="text-[var(--accent)]" href={`${base}/cluster/${cluster.id}/`}>group page</Link>.</p> : null}
+      {unique.length > limit ? <p className="mt-2 text-xs text-[var(--muted)]">Showing {limit} of {unique.length} pieces of evidence. See them all on the <Link className="text-[var(--accent-text)]" href={`${base}/cluster/${cluster.id}/`}>group page</Link>.</p> : null}
     </div>
   );
 }

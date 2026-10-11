@@ -15,9 +15,9 @@ function Freshness({ meta, tokens }: { meta: NonNullable<ReturnType<typeof api.m
   const asOf = meta.sourceTime ? `${meta.sourceTime.slice(0, 16).replace("T", " ")} UTC` : `block ${n(meta.window.endBlock)}`;
   return (
     <span className="pill inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-[var(--panel)] px-3 py-1 text-xs text-[var(--muted)]">
-      <span className={`h-2 w-2 rounded-full ${stale ? "bg-[var(--bad)]" : "bg-[var(--good)]"}`} aria-hidden="true" />
+      <span className={`h-2 w-2 rounded-full ${stale ? "bg-[var(--unknown)]" : "bg-[var(--accent)]"}`} aria-hidden="true" />
       {n(tokens)} nad.fun tokens checked · data as of {asOf}
-      {behindMin !== null && behindMin > 1 ? <span className={stale ? "text-[var(--bad)]" : ""}>· {behindMin < 120 ? `${behindMin} min` : `${Math.round(behindMin / 60)} h`} behind the live chain</span> : null}
+      {behindMin !== null && behindMin > 1 ? <span className={stale ? "font-medium text-[var(--text)]" : ""}>· {behindMin < 120 ? `${behindMin} min` : `${Math.round(behindMin / 60)} h`} behind the live chain</span> : null}
     </span>
   );
 }
@@ -28,7 +28,7 @@ function Hero({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.m
       <div className="dots pointer-events-none absolute inset-0" aria-hidden="true" />
       <div className="relative mx-auto max-w-3xl">
         {meta ? <Freshness meta={meta} tokens={tokens.length} /> : null}
-        <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">Wallet-cluster detector for nad.fun</p>
+        <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent-text)]">Wallet-cluster detector for nad.fun</p>
         <h1 className="headline mt-3 text-5xl sm:text-7xl">
           How Many People <span className="fade">Really</span>
           <br />
@@ -44,7 +44,7 @@ function Hero({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.m
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
           <a href="#screener" className="pill bg-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-ink)] hover:opacity-90">See the tokens</a>
-          <a href="#how" className="pill border border-[var(--accent)] px-6 py-3 font-medium text-[var(--accent)] hover:bg-[var(--panel)]">How it works</a>
+          <a href="#how" className="pill border border-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-text)] hover:bg-[var(--panel)]">How it works</a>
         </div>
       </div>
     </section>
@@ -67,7 +67,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
             {gap.metrics!.rawHolders} <span className="text-[var(--soft)]">→</span> {gap.metrics!.realHolders}
           </p>
           <p className="mt-1 text-sm text-[var(--muted)]">holders shown → real owners</p>
-          <p className="mt-4 text-sm font-medium text-[var(--accent)]">${gap.symbol} <span className="mono text-xs text-[var(--muted)]">{short(gap.address)}</span></p>
+          <p className="mt-4 text-sm font-medium text-[var(--accent-text)]">${gap.symbol} <span className="mono text-xs text-[var(--muted)]">{short(gap.address)}</span></p>
         </Link>
       ) : null}
       {byVol.length ? (
@@ -75,8 +75,8 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--muted)]">Trading: all vs by holders</p>
             <span className="flex gap-3 text-[10px] text-[var(--muted)]">
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent-soft)]" />all</span>
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--accent)]" />by holders</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--soft)]" />all</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--organic)]" />by holders</span>
             </span>
           </div>
           <div className="mt-4 flex h-28 items-end justify-between gap-2">
@@ -85,8 +85,8 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
               const org = monNum(t.metrics!.organicVolume);
               return (
                 <Link key={t.address} href={`/token/${t.address}/`} className="flex h-full flex-1 flex-col items-center justify-end" title={`${t.symbol}: ${mon(t.metrics!.rawVolume)} MON traded, of which ${mon(t.metrics!.organicVolume)} MON by owners who kept their tokens`}>
-                  <div className="relative w-full max-w-7 overflow-hidden rounded-full bg-[var(--accent-soft)]" style={{ height: `${Math.max(8, (raw / maxVol) * 100)}%` }}>
-                    <div className="absolute bottom-0 w-full rounded-full bg-[var(--accent)]" style={{ height: `${raw ? (org / raw) * 100 : 0}%` }} />
+                  <div className="relative w-full max-w-7 overflow-hidden rounded-full bg-[var(--soft)]" style={{ height: `${Math.max(8, (raw / maxVol) * 100)}%` }}>
+                    <div className="absolute bottom-0 w-full rounded-full bg-[var(--organic)]" style={{ height: `${raw ? (org / raw) * 100 : 0}%` }} />
                   </div>
                   <span className="mt-1 max-w-full truncate text-[10px] text-[var(--muted)]">{t.symbol}</span>
                 </Link>
@@ -117,7 +117,7 @@ function FindingBand() {
   return (
     <section className="band-plain px-4 py-20">
       <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[auto_1fr]">
-        <span className="select-none text-8xl font-semibold leading-none text-[var(--accent-soft)]" aria-hidden="true">“</span>
+        <span className="select-none text-8xl font-semibold leading-none text-[var(--accent-text)]" aria-hidden="true">“</span>
         <div>
           <p className="text-3xl font-medium leading-tight tracking-tight sm:text-4xl">{FINDING_TEXT}</p>
           <p className="mt-6 max-w-3xl text-sm text-[var(--accent-soft)]">
@@ -129,7 +129,7 @@ function FindingBand() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {PAYOUTS.map((p) => (
-              <a key={p.tx} href={txUrl(p.tx)} target="_blank" rel="noreferrer" className="pill mono border border-[var(--accent-soft)] px-3 py-1 text-xs hover:bg-[var(--accent-ink)] hover:text-[var(--accent)]" title={`to ${p.wallet}, block ${n(p.block)}`}>
+              <a key={p.tx} href={txUrl(p.tx)} target="_blank" rel="noreferrer" className="pill mono border border-[var(--accent-soft)] px-3 py-1 text-xs hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--c-accent-ink)]" title={`to ${p.wallet}, block ${n(p.block)}`}>
                 {short(p.tx)} → {short(p.wallet)}
               </a>
             ))}
@@ -173,7 +173,7 @@ function How({ tokens }: { tokens: Token[] }) {
           <ol className="space-y-6">
             {steps.map(([title, body], i) => (
               <li key={title} className="flex gap-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--panel)] text-sm font-medium text-[var(--accent)]">{i + 1}</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--panel)] text-sm font-medium text-[var(--accent-text)]">{i + 1}</span>
                 <div>
                   <p className="font-medium">{title}</p>
                   <p className="mt-1 text-sm text-[var(--muted)]">{body}</p>
@@ -195,7 +195,7 @@ function How({ tokens }: { tokens: Token[] }) {
                       <span className="tabular-nums">{t.metrics!.rawHolders} → <b className="text-[var(--text)]">{t.metrics!.realHolders}</b></span>
                     </div>
                     <div className="relative mt-1 h-3 rounded-full bg-[var(--line)]">
-                      <div className="absolute inset-y-0 left-0 rounded-full bg-[var(--accent-soft)]" style={{ width: `${(t.metrics!.rawHolders / max) * 100}%` }} />
+                      <div className="absolute inset-y-0 left-0 rounded-full bg-[var(--soft)]" style={{ width: `${(t.metrics!.rawHolders / max) * 100}%` }} />
                       <div className="absolute inset-y-0 left-0 rounded-full bg-[var(--accent)]" style={{ width: `${(t.metrics!.realHolders / max) * 100}%` }} />
                     </div>
                   </Link>
@@ -232,7 +232,7 @@ function Stats({ counts }: { counts: Record<string, number> }) {
             <span className="pill inline-flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--accent-ink)_14%,transparent)] px-2.5 py-1 text-xs">
               <Icon d={icon} /> {label}
             </span>
-            <p className="mt-5 text-6xl font-medium tracking-tight">{value === undefined ? "–" : n(value)}</p>
+            <p className="mt-5 text-6xl font-medium tracking-tight text-[var(--accent-text)]">{value === undefined ? "–" : n(value)}</p>
             <p className="mt-3 text-sm text-[var(--accent-soft)]">{sub}</p>
           </div>
         ))}
@@ -264,7 +264,7 @@ function Screener({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof a
         </div>
         {hasDataset("contrast") ? (
           <p className="mt-2 text-sm">
-            <Link href="/contrast/" className="text-[var(--accent)] hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"} →</Link>
+            <Link href="/contrast/" className="text-[var(--accent-text)] hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"} →</Link>
           </p>
         ) : null}
         <SortableTable tokens={tokens} base="" limit={15} />

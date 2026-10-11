@@ -38,7 +38,7 @@ export function ThemeToggle() {
       onClick={flip}
       aria-label={label}
       title={label}
-      className="pill flex h-9 w-9 items-center justify-center border border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      className="pill flex h-9 w-9 items-center justify-center border border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent-text)]"
     >
       {/* Rendered after mount so server HTML never disagrees with the visitor's theme. */}
       {theme === null ? null : theme === "dark" ? (

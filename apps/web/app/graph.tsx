@@ -2,12 +2,12 @@ import type { Cluster } from "@/lib/api";
 import { EDGE_SHORT, short } from "@/lib/format";
 
 const EDGE_COLORS: Record<string, string> = {
-  same_direct_funder: "#c0703f",
-  common_funding_source: "#b0785a",
-  creator_funded: "#d0533d",
-  token_transfer: "#4f9a6c",
-  same_block_early_buy: "#d4a373",
-  same_block_sell: "#a39184",
+  same_direct_funder: "#e5484d",
+  common_funding_source: "#d6409f",
+  creator_funded: "#8e4ec6",
+  token_transfer: "#3e63dd",
+  same_block_early_buy: "#12a594",
+  same_block_sell: "#6e56cf",
 };
 
 /** Static circular layout of an entity's wallets and accepted links (server-rendered SVG). */
@@ -31,7 +31,7 @@ export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlig
           const [a, b] = k.split("|") as [string, string];
           const p = pos.get(a)!;
           const q = pos.get(b)!;
-          return <line key={k} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={EDGE_COLORS[type] ?? "#9a8a80"} strokeOpacity={0.6} strokeWidth={1.2} />;
+          return <line key={k} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={EDGE_COLORS[type] ?? "#8b8d98"} strokeOpacity={0.6} strokeWidth={1.2} />;
         })}
         {members.map((m) => {
           const p = pos.get(m)!;

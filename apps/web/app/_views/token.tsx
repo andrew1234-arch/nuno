@@ -44,7 +44,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
     <div className="space-y-8">
       <div>
         {dataset === "contrast" ? (
-          <p className="mb-2 text-xs uppercase text-[var(--bad)]">
+          <p className="mb-2 text-xs uppercase tracking-wide text-[var(--muted)]">
             <Link href="/contrast/" className="hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"}</Link>
           </p>
         ) : null}
@@ -52,9 +52,9 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
           {token.name} <span className="text-[var(--muted)]">${token.symbol}</span>
         </h1>
         <div className="mono mt-1 flex flex-wrap gap-x-4 text-xs text-[var(--muted)]">
-          <a href={addrUrl(token.address)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">token {token.address}</a>
-          <a href={addrUrl(token.creator)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">creator {short(token.creator)}</a>
-          <a href={txUrl(token.createTx)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">created at block {token.createBlock.toLocaleString("en-US")}</a>
+          <a href={addrUrl(token.address)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">token {token.address}</a>
+          <a href={addrUrl(token.creator)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">creator {short(token.creator)}</a>
+          <a href={txUrl(token.createTx)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">created at block {token.createBlock.toLocaleString("en-US")}</a>
           {token.graduatedPool ? <span>moved to open trading → {short(token.graduatedPool)}</span> : <span>still on nad.fun&apos;s launch curve</span>}
         </div>
       </div>
@@ -83,7 +83,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
           {snap ? (
             <p className="mt-1 text-[var(--muted)]">
               Last written at test-network block {snap.publishBlock.toLocaleString("en-US")} from mainnet block {snap.sourceBlock.toLocaleString("en-US")}:{" "}
-              <a className="mono text-[var(--accent)] hover:underline" href={txUrl(snap.txHash, snap.chainId)} target="_blank" rel="noreferrer">
+              <a className="mono text-[var(--accent-text)] hover:underline" href={txUrl(snap.txHash, snap.chainId)} target="_blank" rel="noreferrer">
                 {short(snap.txHash)}
               </a>
             </p>
@@ -107,7 +107,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
           {clusters.map((c) => (
             <div key={c.id} className="rounded-lg border border-[var(--line)] p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <Link href={`${base}/cluster/${c.id}/`} className="font-semibold hover:text-[var(--accent)]">
+                <Link href={`${base}/cluster/${c.id}/`} className="font-semibold hover:text-[var(--accent-text)]">
                   Group <span className="mono">{short(c.id)}</span>: {c.size} wallets, one owner
                 </Link>
                 {c.createdTokens.length ? (

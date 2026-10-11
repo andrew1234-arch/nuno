@@ -1,42 +1,50 @@
 @import "tailwindcss";
 
-/* Warm light theme: cream surfaces, rust-brown bands, two-tone grey headlines. */
+/* Amber brand on off-white / ink, with two-tone grey headlines and ink bands. */
 :root {
-  /* Each token is written once as light-dark(light, dark). The theme follows the system (color-scheme:
-     light dark) unless the visitor picked one, which sets data-theme on <html>. */
+  /* Brand: amber accent on off-white (light) or near-black ink (dark). Each token is written once as
+     light-dark(light, dark); the theme follows the system unless the visitor picked one (data-theme). */
   color-scheme: light dark;
-  --bg: light-dark(#f3ece7, #15100d);
-  --surface: light-dark(#fcf8f5, #1f1814);
-  --panel: light-dark(#f4ebe5, #2a201b);
-  --line: light-dark(#e6d9d0, #3a2d26);
-  --text: light-dark(#2b2420, #f2e9e3);
-  --prose: light-dark(#4a3f39, #d9cbc2);
-  --muted: light-dark(#7d6f66, #b0a095);
-  --soft: light-dark(#b3a399, #75655c);
-  --bad: light-dark(#b5392a, #f08a76);
-  --good: light-dark(#3f7d58, #7cc79a);
-  --c-accent: light-dark(#8a4d31, #e3976d);
-  --c-accent-ink: light-dark(#fcf8f5, #1f130d);
-  --c-accent-soft: light-dark(#c9a594, #8c5a42);
-  --band: light-dark(#8a4d31, #5b3220);
-  --band-ink: light-dark(#fcf8f5, #fbefe7);
-  --band-soft: light-dark(#f0d9cc, #d8ae98);
-  --dot: light-dark(rgba(138, 77, 49, 0.28), rgba(227, 151, 109, 0.22));
+  --bg: light-dark(#fafaf7, #0e0f12);
+  --surface: light-dark(#ffffff, #16181d);
+  --panel: light-dark(#f1f1ec, #1d2026);
+  --line: light-dark(#e3e3dc, #2a2d35);
+  --text: light-dark(#16171a, #edeef0);
+  --prose: light-dark(#3b3d44, #c8cad0);
+  --muted: light-dark(#686b75, #9a9da8);
+  --soft: light-dark(#a6a8b0, #5c5f6a);
+  --c-accent: light-dark(#f5a524, #f5a524);
+  --c-accent-ink: light-dark(#0e0f12, #0e0f12);
+  --c-accent-text: light-dark(#9a5b00, #f5a524);
+  --c-accent-soft: light-dark(#fbe3b5, #4a3613);
+  --band: light-dark(#0e0f12, #17191f);
+  --band-ink: light-dark(#f4f4f1, #f4f4f1);
+  --band-soft: light-dark(#a3a6b0, #a3a6b0);
+  --dot: light-dark(rgba(154, 91, 0, 0.22), rgba(245, 165, 36, 0.18));
+  /* Data colours: fixed in both themes and never used as the brand accent. */
+  --flag: #e5484d; /* cluster or flagged */
+  --organic: #30a46c; /* organic */
+  --unknown: #8b8d98; /* unknown or pending */
+  --bad: var(--flag);
+  --good: var(--organic);
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
-/* Components read --accent*; surfaces use the accent palette, bands remap it to band colours. */
+/* Components read --accent (fills), --accent-ink (text on fills), --accent-text (amber text and links),
+   --accent-soft (soft fills/borders). Bands (ink sections) remap ink/soft to their own light-on-dark colours. */
 :root,
 .card {
   --accent: var(--c-accent);
   --accent-ink: var(--c-accent-ink);
+  --accent-text: var(--c-accent-text);
   --accent-soft: var(--c-accent-soft);
 }
 .band,
 .band-plain {
-  --accent: var(--band);
+  --accent: var(--c-accent);
   --accent-ink: var(--band-ink);
+  --accent-text: #f5a524;
   --accent-soft: var(--band-soft);
 }
 
@@ -61,13 +69,13 @@ body {
 .band .headline { color: var(--accent-ink); }
 .band .headline .fade { color: var(--accent-soft); }
 
-/* Rust-brown section with a dotted texture on both sides. */
+/* Ink section with an amber dotted texture on both sides. */
 .band {
   background-color: var(--band);
   color: var(--band-ink);
   background-image:
-    radial-gradient(circle, rgba(252, 248, 245, 0.35) 1px, transparent 1.4px),
-    radial-gradient(circle, rgba(252, 248, 245, 0.35) 1px, transparent 1.4px);
+    radial-gradient(circle, rgba(245, 165, 36, 0.28) 1px, transparent 1.4px),
+    radial-gradient(circle, rgba(245, 165, 36, 0.28) 1px, transparent 1.4px);
   background-size: 14px 14px, 14px 14px;
   background-position: 0 0, 100% 0;
   background-repeat: repeat-y;
@@ -84,7 +92,7 @@ body {
 .card { background: var(--surface); border-radius: 18px; }
 .pill { border-radius: 999px; }
 
-/* Footer tab notch, like a folder tab cut into the cream sheet. */
+/* Footer tab notch, like a folder tab cut into the sheet. */
 .notch { position: relative; }
 .notch::before {
   content: "";
@@ -101,7 +109,7 @@ body {
 details.faq summary { list-style: none; cursor: pointer; }
 details.faq summary::-webkit-details-marker { display: none; }
 details.faq .icon::before { content: "+"; }
-details.faq[open] .icon { background: var(--accent); color: var(--accent-ink); }
+details.faq[open] .icon { background: var(--c-accent); color: var(--c-accent-ink); }
 details.faq[open] .icon::before { content: "−"; }
 
 .prose-nuno h1 { font-size: 2.25rem; font-weight: 500; letter-spacing: -0.03em; margin: 1.5rem 0 1rem; }
@@ -117,4 +125,4 @@ details.faq[open] .icon::before { content: "−"; }
 .prose-nuno table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; display: block; overflow-x: auto; }
 .prose-nuno th, .prose-nuno td { border: 1px solid var(--line); padding: 0.45rem 0.65rem; text-align: left; vertical-align: top; }
 .prose-nuno th { background: var(--panel); font-weight: 600; }
-.prose-nuno a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.prose-nuno a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }

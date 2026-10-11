@@ -28,29 +28,29 @@ function Nav() {
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur">
       <nav aria-label="Main">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent)]" aria-label="Nuno home">
+      <div className="flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]" aria-label="Nuno home">
           <Logo className="h-5 w-7" />
           nuno.
         </Link>
         <div className="hidden items-center gap-1 rounded-full bg-[var(--panel)] p-1 text-sm md:flex">
           {NAV.map(([href, label]) => (
-            <Link key={href} href={href} className="pill px-4 py-1.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--accent)]">
+            <Link key={href} href={href} className="pill px-4 py-1.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--accent-text)]">
               {label}
             </Link>
           ))}
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <a href={`${BASE}/api/tokens.json`} className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)]">
+          <a href={`${BASE}/api/tokens.json`} className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)]">
             Get the data
           </a>
         </div>
       </div>
       {/* Small screens: the same links as a scrollable row (the wide-screen copy is hidden there). */}
-      <div className="flex gap-1 overflow-x-auto px-4 pb-2 text-sm md:hidden">
+      <div className="flex gap-1 overflow-x-auto px-4 pb-2 text-sm sm:px-6 md:hidden">
         {NAV.map(([href, label]) => (
-          <Link key={href} href={href} className="pill shrink-0 bg-[var(--panel)] px-3 py-1 text-[var(--muted)] hover:text-[var(--accent)]">
+          <Link key={href} href={href} className="pill shrink-0 bg-[var(--panel)] px-3 py-1 text-[var(--muted)] hover:text-[var(--accent-text)]">
             {label}
           </Link>
         ))}
@@ -64,7 +64,7 @@ function Footer() {
   const dep = testnetDeployment();
   return (
     <footer className="band-plain pt-10">
-      <div className="notch card mx-2 overflow-hidden rounded-b-none px-6 pt-20 text-[var(--accent)] sm:mx-4 sm:px-12">
+      <div className="notch card mx-2 overflow-hidden rounded-b-none px-6 pt-20 text-[var(--accent-text)] sm:mx-4 sm:px-12">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.3fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-2 text-3xl font-semibold tracking-tight">

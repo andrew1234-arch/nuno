@@ -28,7 +28,7 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
     <div className="space-y-6">
       <div>
         {dataset === "contrast" ? (
-          <p className="mb-2 text-xs uppercase text-[var(--bad)]">
+          <p className="mb-2 text-xs uppercase tracking-wide text-[var(--muted)]">
             <Link href="/contrast/" className="hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"}</Link>
           </p>
         ) : null}
@@ -46,7 +46,7 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
           <ul className="mono mt-2 grid grid-cols-2 gap-x-4 text-xs">
             {c.members.map((m) => (
               <li key={m}>
-                <a href={addrUrl(m)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)]">{m}</a>
+                <a href={addrUrl(m)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{m}</a>
                 {c.labels?.[m] ? <span className="ml-1 text-[var(--muted)]">({c.labels[m]!.label})</span> : null}
               </li>
             ))}
