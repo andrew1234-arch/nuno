@@ -197,3 +197,13 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - No snapshots published yet: waiting for the 7-day V1+V2 backfill.
 - The first 7-day backfill run crashed on a transient null `eth_getTransactionByHash` from one round-robin node. `txSigner` now retries. Resumed.
 - Second crash: `rpc3.monad.xyz` returns `null` for older txs (recent history only). The local `.env` still points log reads at rpc3 alone (`MONAD_MAINNET_LOGS_RPC_URL`, range 1000). The backfill now runs with `MONAD_MAINNET_LOGS_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz` and `MONAD_MAINNET_LOGS_RANGE=100`, the same as Actions. `.env` should be changed to match.
+
+### 7-day V1+V2 backfill: paused by the user (2026-10-11, ~21:50 local)
+- Indexing complete for window blocks 110,547,485–112,552,209 (cursors `indexer:curve` = `indexer:tokens` = `backfill:target` = 112,552,209).
+- **Rows:** 350 tokens, 23,324 curve trades, 35,374 transfers, 5,913 addresses, 2,050 distinct buyers. DB 10.9 MB, under the 40 MB target.
+- **Funding:** 160 wallets / 201 edges resolved. About 1,850 buyers still pending.
+- **Resume** (skips indexing, goes straight to funding, then reclusters and computes metrics):
+  `MONAD_MAINNET_LOGS_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc.monad.xyz MONAD_MAINNET_LOGS_RANGE=100 BACKFILL_DAYS=7 MIN_BUYERS=0 FUNDING_CONCURRENCY=6 pnpm backfill:local`
+  Estimated 1.5–2.5 h at ~17 s/wallet with 6 workers.
+- **After it finishes:** `pnpm export:static`, check the site, draft the new headline for user approval (the Oct 2–9 V1-only wording in `apps/web/lib/finding.ts` is invalid), publish the first snapshots to NunoFeed (`NUNO_FEED_ADDRESS` must be in `.env`), then run `pnpm web:build` (not yet run after the redesign).
+- **Web redesign** (`635ed6f`): cream/rust theme from the user's template, landing page built from exported data only. Dev server checked on desktop and at ~520 px; the static build is still unverified.
