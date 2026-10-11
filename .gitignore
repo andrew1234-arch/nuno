@@ -17,8 +17,11 @@ apps/web/next-env.d.ts
 CLAUDE.md.new
 SPEC.md.new
 
-# Local SQLite (SPEC §7.10)
-data/
+# The SQLite DB lives only on the `data` branch (gzipped), never on main.
+data/*
+!data/infra-addresses.json
+.data/
+site/
+apps/web/lib/methodology.generated.ts
 .open-next/
 .wrangler/
-apps/web/lib/methodology.generated.ts

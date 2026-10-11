@@ -2,17 +2,13 @@ import { statSync, existsSync } from "node:fs";
 import { sql } from "drizzle-orm";
 import { MONAD_SECONDS_PER_BLOCK, scalar, sqliteSchema as s } from "@nuno/shared";
 import { config, openLocal } from "@nuno/shared/node";
-import { budgetLevel, projectBytes, type Budget } from "./storage.js";
+import { budgetFromEnv, budgetLevel, projectBytes } from "./storage.js";
 
-// pnpm storage:report — size + row counts of the local DB, projection for BACKFILL_DAYS, budget level.
-// Writes a storage_stats row (SPEC §7.11).
-const budget: Budget = {
-  targetBytes: Number(process.env.STORAGE_TARGET_BYTES || 1_500_000_000),
-  alarmBytes: Number(process.env.STORAGE_ALARM_BYTES || 2_500_000_000),
-  hardStopBytes: Number(process.env.STORAGE_HARD_STOP_BYTES || 3_000_000_000),
-};
+// pnpm storage:report — file size + row counts of data/nuno.sqlite, projection for BACKFILL_DAYS,
+// budget level (target 40 MB, alarm 70 MB, hard stop 90 MB). Writes a storage_stats row.
+const budget = budgetFromEnv(process.env);
 
-const TABLES = ["addresses", "tokens", "graduations", "curve_trades", "transfers", "dex_swaps", "wallets", "funding_edges", "link_evidence", "entity_members", "token_metrics", "snapshots", "labels", "storage_stats"];
+const TABLES = ["addresses", "tokens", "graduations", "curve_trades", "transfers", "dex_swaps", "wallets", "funding_edges", "link_evidence", "entity_members", "token_metrics", "snapshots", "labels", "nansen_cache", "storage_stats"];
 
 async function main() {
   const { db, raw, close } = openLocal(config.localDbPath);
@@ -29,11 +25,11 @@ async function main() {
 
   await db.insert(s.storageStats).values({ at: Date.now(), bytes: pageBytes, rowCounts: JSON.stringify(rowCounts) });
   console.log(JSON.stringify({ file: config.localDbPath, pageBytes, fileBytes, coveredDays: Number(coveredDays.toFixed(2)), rowCounts }, null, 2));
-  console.log(`[storage] level now: ${budgetLevel(pageBytes, budget)} (target ${budget.targetBytes.toLocaleString("en-US")} B)`);
+  console.log(`[storage] file ${fileBytes.toLocaleString("en-US")} B, level ${budgetLevel(Math.max(pageBytes, fileBytes), budget)} (target ${budget.targetBytes.toLocaleString("en-US")} B, alarm ${budget.alarmBytes.toLocaleString("en-US")}, hard stop ${budget.hardStopBytes.toLocaleString("en-US")})`);
   if (projected !== null) {
     console.log(`[storage] projected for BACKFILL_DAYS=${config.backfillDays}: ${projected.toLocaleString("en-US")} B -> ${budgetLevel(projected, budget)}`);
     if (projected > budget.targetBytes) {
-      console.log("[storage] PROJECTION OVER TARGET: shrink BACKFILL_DAYS or raise MIN_BUYERS before the full backfill (SPEC §7.11).");
+      console.log("[storage] PROJECTION OVER TARGET: shrink BACKFILL_DAYS or raise MIN_BUYERS before the full backfill.");
       process.exitCode = 2;
     }
   }

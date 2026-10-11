@@ -234,6 +234,7 @@ export async function runChunks(
   concurrency: number,
   fn: (from: number, to: number) => Promise<void>,
   onDone: (watermark: number, completed: number) => Promise<void>,
+  shouldStop: () => boolean = () => false,
 ): Promise<void> {
   const done = new Array<boolean>(chunkList.length).fill(false);
   let next = 0;
@@ -241,7 +242,8 @@ export async function runChunks(
   let completed = 0;
   let flushing = Promise.resolve();
   const worker = async () => {
-    while (next < chunkList.length) {
+    // Stop taking new chunks when asked; in-flight chunks finish so the watermark stays valid.
+    while (next < chunkList.length && !shouldStop()) {
       const i = next++;
       const [a, b] = chunkList[i]!;
       await fn(a, b);
@@ -265,7 +267,24 @@ export async function runChunks(
  *  2. transfers + swaps for every token tracked by the end of pass 1.
  * Afterwards the shared INDEXER_CURSOR is set to `to` for the live tail.
  */
-export async function backfill(ctx: IndexerCtx, from: number, to: number, concurrency = 8): Promise<void> {
+export interface BackfillControl {
+  /** Checked between chunks; when true, the backfill stops cleanly at a resumable watermark. */
+  shouldStop?: () => boolean;
+  /** Called (awaited) at most every `checkpointEveryMs`, after a cursor was saved. */
+  onCheckpoint?: () => Promise<void>;
+  checkpointEveryMs?: number;
+}
+
+/** Returns true when both passes completed, false when stopped early (re-run to resume). */
+export async function backfill(ctx: IndexerCtx, from: number, to: number, concurrency = 8, control: BackfillControl = {}): Promise<boolean> {
+  const stop = control.shouldStop ?? (() => false);
+  let lastCheckpoint = Date.now();
+  const maybeCheckpoint = async () => {
+    if (control.onCheckpoint && Date.now() - lastCheckpoint >= (control.checkpointEveryMs ?? Infinity)) {
+      lastCheckpoint = Date.now();
+      await control.onCheckpoint();
+    }
+  };
   const log = ctx.log ?? (() => {});
   const curveFrom = Math.max(from, ((await getCursor(ctx.db, CURVE_CURSOR)) ?? from - 1) + 1);
   const curveChunks = chunkRange(curveFrom, to, ctx.logsRange);
@@ -281,8 +300,11 @@ export async function backfill(ctx: IndexerCtx, from: number, to: number, concur
         logged1 = n;
         log(`[indexer] pass 1: ${n}/${curveChunks.length} chunks, watermark ${mark}`);
       }
+      await maybeCheckpoint();
     },
+    stop,
   );
+  if (stop()) return false;
 
   // Pass 1 ran chunks out of order: attach graduations now that every create is stored.
   await applyGraduations(ctx.db);
@@ -301,9 +323,13 @@ export async function backfill(ctx: IndexerCtx, from: number, to: number, concur
         logged2 = n;
         log(`[indexer] pass 2: ${n}/${tokenChunks.length} chunks, watermark ${mark}`);
       }
+      await maybeCheckpoint();
     },
+    stop,
   );
+  if (stop()) return false;
   await setCursor(ctx.db, INDEXER_CURSOR, to);
+  return true;
 }
 
 /** Index [from, to] sequentially, advancing the cursor after each chunk (live tail). */

@@ -36,6 +36,25 @@ describe("runChunks", () => {
     expect(marks).toEqual([9, 19, 29]);
   });
 
+  it("stops taking new chunks when asked, leaving a valid watermark", async () => {
+    const marks: number[] = [];
+    let ran = 0;
+    await runChunks(
+      [
+        [0, 9],
+        [10, 19],
+        [20, 29],
+        [30, 39],
+      ],
+      1,
+      async () => void ran++,
+      async (m) => void marks.push(m),
+      () => ran >= 2,
+    );
+    expect(ran).toBe(2);
+    expect(marks).toEqual([9, 19]); // resume from 20
+  });
+
   it("propagates chunk errors", async () => {
     await expect(
       runChunks([[0, 9]], 2, async () => Promise.reject(new Error("boom")), async () => {}),
