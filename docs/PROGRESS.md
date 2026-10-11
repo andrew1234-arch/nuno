@@ -224,3 +224,8 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - Plan: run the graduation re-index immediately before pushing the DB, so the backfill ends at the chain head.
   - Then time one real tick at `TICK_MAX_BLOCKS=8000` (after funding, so it does not compete for RPC limits) and raise the Actions default if it fits the 14-min timeout.
   - Site and `meta.json` now show "data as of" (last indexed block time) and how far behind the head the data was at export.
+- **Nansen verified with the real key** (side-agent note). New command `pnpm --filter @nuno/pipeline nansen <address>`.
+  - One call on seeder `0xb245…`: 1 credit used, 99 remaining.
+  - Result: First Funder `0xf89d…aa40` "High Activity", tx `0x8efaee1f74b4a1e87a7b0c2addb37cc9e4da89536a9d5fae82407894da8e7695`. This is identical to our stored first-funding edge (block 61,808,158, 10 MON), an independent confirmation of the resolver.
+  - The call ran against a DB copy (`data/nuno.nansen-test.sqlite`) because the backfill holds the main DB. **TODO:** run it once on the main DB after the backfill (1 credit), so the cached row and label ship in the export.
+  - Budget: the tick spends ≤ 5 credits/run with a reserve of 3. The ~99 trial credits cover the first ~19 runs of hub checks, then the free plan's ~10/day.

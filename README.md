@@ -143,6 +143,12 @@ Monad's public RPCs serve archive state and `debug_traceBlockByNumber`, but no `
 
 Nuno uses Nansen to stop exchanges and other shared infrastructure from acting as links between unrelated wallets. On the free plan it calls `POST /api/v1/profiler/address/related-wallets` (1 credit, `chain: "monad"`) for hub funders, meaning funding origins shared by several buyers. It reads Nansen's `address_label` for the funder from the returned rows. Every response is cached permanently, and the tick keeps a credit reserve. Labels appear next to funders in the evidence tables. Implementation: [`packages/pipeline/src/nansen.ts`](packages/pipeline/src/nansen.ts).
 
+**Live check (2026-10-11).** `pnpm --filter @nuno/pipeline nansen 0xb2454805656dd62b4aec8718a53f5543cc66d3b3` used 1 credit and returned:
+- **First funder:** `0xf89d7b9c864f589bbf53a82105107622b35eaa40`, labelled "High Activity".
+- **Tx:** [`0x8efaee1f…7695`](https://monadscan.com/tx/0x8efaee1f74b4a1e87a7b0c2addb37cc9e4da89536a9d5fae82407894da8e7695).
+
+That is the same first-funding edge (same tx, block 61,808,158, 10 MON) that Nuno's own archive-state resolver found independently. Nansen thus confirms Nuno's funding method on this wallet. "High Activity" is a behavioural label, not an exchange label, so it is shown but does not mark the address as infrastructure. `0xf89d…` is already treated as infrastructure by the on-chain heuristic (73,852 txs, 337M MON).
+
 ## Validation
 
 _TODO: observed precision on the hand-reviewed sample in `docs/VALIDATION.md` only._

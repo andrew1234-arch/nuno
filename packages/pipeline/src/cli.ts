@@ -18,6 +18,7 @@ import { fullRun } from "@nuno/metrics";
 import { AddressBook, RpcClient, blockAtTimestamp, getBlockNumber, getBlockTimestamp, toHex } from "@nuno/shared";
 import { ROOT_DIR, config, openLocal } from "@nuno/shared/node";
 import { exportStatic } from "./export.js";
+import { Nansen } from "./nansen.js";
 import { infrastructure } from "./infra.js";
 import { settingsFromEnv } from "./settings.js";
 import { METRICS_CURSOR, dailyPrune, dbBytes, recordStorage, tick } from "./tick.js";
@@ -168,8 +169,17 @@ async function main() {
         freshness: process.env.EXPORT_LABEL ? undefined : freshness,
       });
       console.log(`[export] ${r.files} files, ${r.bytes.toLocaleString("en-US")} bytes -> ${outDir}/api`);
+    } else if (cmd === "nansen") {
+      // One related-wallets lookup (1 credit, cached permanently): `pnpm --filter @nuno/pipeline nansen <address>`.
+      const address = process.argv[3];
+      if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("usage: cli.ts nansen <address>");
+      const nansen = new Nansen(db, book, { ...cfg.nansen, maxCalls: 1, log: console.log });
+      const rows = await nansen.relatedWallets(address);
+      console.log(`[nansen] ${address}: ${rows === null ? `no result (${nansen.disabled ?? "error"})` : `${rows.length} related wallets`}`);
+      for (const r of rows ?? []) console.log(`  ${r.relation.padEnd(18)} ${r.address} ${r.label ?? "(no label)"} tx ${r.tx}`);
+      console.log(`[nansen] credits used ${nansen.spent}, remaining ${nansen.remaining ?? "unknown"}`);
     } else {
-      throw new Error("usage: cli.ts backfill|tick|recluster|export");
+      throw new Error("usage: cli.ts backfill|tick|recluster|export|nansen <address>");
     }
   } finally {
     close();

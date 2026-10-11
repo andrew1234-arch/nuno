@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "tick": "tsx src/cli.ts tick",
     "recluster": "tsx src/cli.ts recluster",
     "export-static": "tsx src/cli.ts export",
-    "backfill": "tsx src/cli.ts backfill"
+    "backfill": "tsx src/cli.ts backfill",
+    "nansen": "tsx src/cli.ts nansen"
   },
   "dependencies": {
     "@nuno/api": "workspace:*",
