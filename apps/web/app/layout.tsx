@@ -11,7 +11,7 @@ const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display:
 
 export const metadata: Metadata = {
   title: { default: "Nuno: how many people really own this token?", template: "%s · Nuno" },
-  description: "Nuno finds wallets that belong to the same person behind nad.fun tokens on Monad and shows the real number of owners, with public proof.",
+  description: "Nuno is a wallet-cluster detector for nad.fun tokens on Monad: it finds groups of wallets run by one person and shows how many real people are behind each token, with public proof.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -69,7 +69,7 @@ function Footer() {
               <Logo className="h-7 w-10" /> nuno.
             </div>
             <p className="mt-5 max-w-xs text-lg leading-snug">
-              Shows how many real people are behind a nad.fun token, not just how many wallets.
+              A wallet-cluster detector for nad.fun: how many real people are behind a token, not just how many wallets.
             </p>
           </div>
           <div className="text-sm">

@@ -28,14 +28,19 @@ function Hero({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.m
       <div className="dots pointer-events-none absolute inset-0" aria-hidden="true" />
       <div className="relative mx-auto max-w-3xl">
         {meta ? <Freshness meta={meta} tokens={tokens.length} /> : null}
-        <h1 className="headline mt-6 text-5xl sm:text-7xl">
+        <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">Wallet-cluster detector for nad.fun</p>
+        <h1 className="headline mt-3 text-5xl sm:text-7xl">
           How Many People <span className="fade">Really</span>
           <br />
           Own <span className="fade">This Token?</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-xl text-lg text-[var(--muted)]">
-          On nad.fun, one person can spread their money over dozens of wallets to make a new token look popular. Nuno finds the wallets that belong to the
-          same person and shows you the real numbers.
+        <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--muted)]">
+          <b className="font-medium text-[var(--text)]">Nuno is a wallet-cluster detector for nad.fun tokens on Monad.</b> A wallet cluster is a group of
+          wallets run by one person, often used to make a new token look more popular than it is. Nuno finds these clusters and shows how many real people
+          are behind each token.
+        </p>
+        <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--muted)]">
+          Under the hood: it reads the public Monad blockchain and publishes its results as open data that apps and smart contracts can use.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
           <a href="#screener" className="pill bg-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-ink)] hover:opacity-90">See the tokens</a>

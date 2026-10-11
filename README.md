@@ -1,8 +1,8 @@
 # Nuno
 
-**The real numbers behind every nad.fun launch.**
+**A wallet-cluster detector for nad.fun tokens on Monad.**
 
-Nuno detects coordinated wallet clusters behind [nad.fun](https://nad.fun) tokens on Monad and publishes cluster-adjusted metrics (real holders, real concentration, organic volume) through a static JSON API and an on-chain feed contract that other apps and contracts can read.
+A wallet cluster is a group of wallets run by one person, often used to make a new token look more popular than it is. Nuno detects these clusters behind [nad.fun](https://nad.fun) tokens on Monad and publishes cluster-adjusted metrics (real holders, real concentration, organic volume) through a static JSON API and an on-chain feed contract that other apps and contracts can read.
 
 > Status: under active development for Monad Metropolis (Track 04). See [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
