@@ -191,3 +191,8 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
 - **Storage projection (gate, rule 8).** A 1-day V1+V2 ingest (blocks 112,256,706–112,542,905) gave 61 tokens, 4,373 curve trades, 5,185 transfers, 818 addresses and **1.9 MB** of events. Projected 7-day window ≈ 13 MB of events, ~15–20 MB with funding/metrics. That is under the 40 MB target, so no pruning is needed.
 - Funding in the local backfill now runs in parallel (`FUNDING_CONCURRENCY`, default 6; `9d80c4d`). Sequential resolution measured ~17 s/wallet incl. the deposit search.
 - Local DBs: `data/nuno.v1-only.sqlite` = old V1-only DB (63 tokens pruned). `data/nuno.day1.sqlite` = 1-day projection run. `data/nuno.sqlite` = 7-day V1+V2 backfill, seeded from the day-1 run (in progress).
+- **Contracts deployed on Monad testnet (10143)**, block 70,192,539. Deployer/publisher `0x3Da64F02123A5F66f36Ca1591321e2fB5BD98028`.
+  - NunoFeed `0xBeda259a77417E20839ebc2bDE4558Abcfd47042`, tx `0x54e120caa109b968c06dfc1ad486d65bf5c0eef98df98e5ddd66d4acaa43c01c`
+  - OrganicGate `0xec3b8718154f5a060bc9D29A11b23583999BBbd8`, tx `0x94e1f7928d3551ab31674ca946f81e910d454b0c9675cab3b0c9ac2a61b155ce`
+  - No snapshots published yet: waiting for the 7-day V1+V2 backfill.
+- The first 7-day backfill run crashed on a transient null `eth_getTransactionByHash` from one round-robin node. `txSigner` now retries. Resumed.

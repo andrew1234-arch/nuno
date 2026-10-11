@@ -56,6 +56,15 @@ TypeScript (pnpm workspaces), viem, Drizzle ORM (SQLite dialect, `node:sqlite`),
 - **Analysis reads Monad mainnet** (chain 143), read-only: nad.fun curve events, Uniswap V3 swaps, ERC-20 transfers, funding history.
 - **NunoFeed and OrganicGate are deployed on Monad testnet** (chain 10143) and carry snapshots of mainnet data.
 
+### Deployed contracts (Monad testnet, chain 10143)
+
+| Contract | Address | Deploy tx |
+|---|---|---|
+| NunoFeed | [`0xBeda259a77417E20839ebc2bDE4558Abcfd47042`](https://testnet.monadscan.com/address/0xBeda259a77417E20839ebc2bDE4558Abcfd47042) | [`0x54e120ca…c01c`](https://testnet.monadscan.com/tx/0x54e120caa109b968c06dfc1ad486d65bf5c0eef98df98e5ddd66d4acaa43c01c) |
+| OrganicGate | [`0xec3b8718154f5a060bc9D29A11b23583999BBbd8`](https://testnet.monadscan.com/address/0xec3b8718154f5a060bc9D29A11b23583999BBbd8) | [`0x94e1f792…55ce`](https://testnet.monadscan.com/tx/0x94e1f7928d3551ab31674ca946f81e910d454b0c9675cab3b0c9ac2a61b155ce) |
+
+Deployed at testnet block 70,192,539. Publisher: `0x3Da64F02123A5F66f36Ca1591321e2fB5BD98028`. Machine-readable copy: [`deployments/monad-testnet.json`](deployments/monad-testnet.json).
+
 ## Setup
 
 Requirements: Node 22.5+ (built-in `node:sqlite`), pnpm 10, [Foundry](https://getfoundry.sh). No accounts are needed to run it locally.
