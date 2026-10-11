@@ -21,20 +21,34 @@ export interface FundingCtx {
   book: AddressBook;
   /** Must serve archive state and debug_traceBlockByNumber (e.g. rpc1.monad.xyz). */
   rpc: RpcClient;
+  /** Optional extra endpoints for state at recent blocks (see RecentState). */
+  recent?: RecentState;
   log?: (msg: string) => void;
 }
+
+/**
+ * Endpoints that keep state only for recent blocks (e.g. rpc.monad.xyz, thirdweb). State reads
+ * (balance, nonce, code) at blocks >= `fromBlock` go here, so they spread over more rate-limit
+ * buckets; older blocks, block bodies and traces stay on the archive RPC.
+ */
+export interface RecentState {
+  rpc: RpcClient;
+  fromBlock: number;
+}
+
+const stateRpc = (rpc: RpcClient, recent: RecentState | undefined, block: number) => (recent && block >= recent.fromBlock ? recent.rpc : rpc);
 
 export type WalletFunding =
   | { status: "resolved"; block: number; blockTime: number; transfers: InboundTransfer[]; isContract: boolean }
   | { status: "unfunded"; isContract: boolean }
   | { status: "contract"; isContract: true };
 
-async function isContract(rpc: RpcClient, addr: Address, block: number): Promise<boolean> {
-  return isContractCode(await rpc.call<Hex>("eth_getCode", [addr, toHex(block)], { cache: true }));
+async function isContract(rpc: RpcClient, addr: Address, block: number, recent?: RecentState): Promise<boolean> {
+  return isContractCode(await stateRpc(rpc, recent, block).call<Hex>("eth_getCode", [addr, toHex(block)], { cache: true }));
 }
 
-async function balanceAt(rpc: RpcClient, addr: Address, block: number): Promise<bigint> {
-  return BigInt(await rpc.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true }));
+async function balanceAt(rpc: RpcClient, addr: Address, block: number, recent?: RecentState): Promise<bigint> {
+  return BigInt(await stateRpc(rpc, recent, block).call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true }));
 }
 
 /** Value transfers into `wallet` in `block`: top-level txs first, callTracer frames otherwise. */
@@ -49,21 +63,22 @@ async function inboundAt(rpc: RpcClient, wallet: Address, block: number): Promis
   return { blockTime: Number(body.timestamp), transfers };
 }
 
-async function touched(rpc: RpcClient, addr: Address, block: number): Promise<boolean> {
+async function touched(rpc: RpcClient, addr: Address, block: number, recent?: RecentState): Promise<boolean> {
   // Balance first; the nonce only matters when the balance is zero. Public archive RPCs are
   // rate-limited per IP, so skipping the second call on funded probes is a direct speed-up.
-  if (BigInt(await rpc.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true })) > 0n) return true;
-  return BigInt(await rpc.call<Hex>("eth_getTransactionCount", [addr, toHex(block)], { cache: true })) > 0n;
+  const r = stateRpc(rpc, recent, block);
+  if (BigInt(await r.call<Hex>("eth_getBalance", [addr, toHex(block)], { cache: true })) > 0n) return true;
+  return BigInt(await r.call<Hex>("eth_getTransactionCount", [addr, toHex(block)], { cache: true })) > 0n;
 }
 
 /**
  * Find the first native-MON funding of `wallet` at or before `beforeBlock`, with evidence.
  * Source: archive state (binary search) + callTracer on the funding block.
  */
-export async function resolveFirstFunding(rpc: RpcClient, wallet: Address, beforeBlock: number): Promise<WalletFunding> {
-  if (await isContract(rpc, wallet, beforeBlock)) return { status: "contract", isContract: true };
+export async function resolveFirstFunding(rpc: RpcClient, wallet: Address, beforeBlock: number, recent?: RecentState): Promise<WalletFunding> {
+  if (await isContract(rpc, wallet, beforeBlock, recent)) return { status: "contract", isContract: true };
 
-  const block = await firstTrueBlock(0, beforeBlock, (b) => touched(rpc, wallet, b));
+  const block = await firstTrueBlock(0, beforeBlock, (b) => touched(rpc, wallet, b, recent));
   if (block === null) return { status: "unfunded", isContract: false };
 
   const { blockTime, transfers } = await inboundAt(rpc, wallet, block);
@@ -92,21 +107,28 @@ export interface Deposit {
  * the midpoint halves the remaining gap each step, so the search ends after a few deposits. It finds
  * deposits that raised the net balance; deposits spent before `beforeBlock` can be missed (METHODOLOGY).
  */
-export async function resolveLaterDeposits(rpc: RpcClient, wallet: Address, firstBlock: number, beforeBlock: number, max: number): Promise<Deposit[]> {
+export async function resolveLaterDeposits(
+  rpc: RpcClient,
+  wallet: Address,
+  firstBlock: number,
+  beforeBlock: number,
+  max: number,
+  recent?: RecentState,
+): Promise<Deposit[]> {
   const out: Deposit[] = [];
   const hi = beforeBlock - 1;
   if (max <= 0 || hi <= firstBlock) return out;
-  const top = await balanceAt(rpc, wallet, hi);
+  const top = await balanceAt(rpc, wallet, hi, recent);
   let lo = firstBlock;
   for (let step = 0; step < max * 3 && out.length < max; step++) {
-    const low = await balanceAt(rpc, wallet, lo);
+    const low = await balanceAt(rpc, wallet, lo, recent);
     if (top - low < MIN_DEPOSIT_WEI) break;
     const t = low + (top - low) / 2n;
     let a = lo;
     let c = hi;
     while (c - a > 1) {
       const m = Math.floor((a + c) / 2);
-      if ((await balanceAt(rpc, wallet, m)) >= t) c = m;
+      if ((await balanceAt(rpc, wallet, m, recent)) >= t) c = m;
       else a = m;
     }
     const { blockTime, transfers } = await inboundAt(rpc, wallet, c);
@@ -187,9 +209,9 @@ function resolveOne(ctx: FundingCtx, addr: Address, before: number, hop: number)
       return edges.filter((e) => e.origin !== walletId).map((e) => ({ addr: hex.get(e.origin)! as Address, before: e.block }));
     }
     try {
-      const f = await resolveFirstFunding(ctx.rpc, addr, before);
+      const f = await resolveFirstFunding(ctx.rpc, addr, before, ctx.recent);
       const deposits =
-        f.status === "resolved" ? await resolveLaterDeposits(ctx.rpc, addr, f.block, before, MAX_EDGES_PER_WALLET - Math.min(f.transfers.length, MAX_EDGES_PER_WALLET)) : [];
+        f.status === "resolved" ? await resolveLaterDeposits(ctx.rpc, addr, f.block, before, MAX_EDGES_PER_WALLET - Math.min(f.transfers.length, MAX_EDGES_PER_WALLET), ctx.recent) : [];
       const hops = await store(ctx, addr, f, deposits);
       if (f.status === "resolved") await markDeposits(ctx, walletId, before);
       ctx.log?.(`[funding] hop ${hop} ${addr}: ${f.status}${f.status === "resolved" ? ` @${f.block}${deposits.length ? ` +${deposits.length} later` : ""} <- ${[...new Set(hops.map((h) => h.addr))].join(",") || "(none)"}` : ""}`);
@@ -219,7 +241,7 @@ async function markDeposits(ctx: FundingCtx, walletId: number, before: number) {
 async function addLaterDeposits(ctx: FundingCtx, walletId: number, addr: Address, firstBlock: number, before: number, hop: number) {
   const [row] = await ctx.db.select({ n: sql<number>`count(*)` }).from(s.fundingEdges).where(eq(s.fundingEdges.wallet, walletId));
   const room = MAX_EDGES_PER_WALLET - Number(row?.n ?? 0);
-  const deposits = await resolveLaterDeposits(ctx.rpc, addr, firstBlock, before, room);
+  const deposits = await resolveLaterDeposits(ctx.rpc, addr, firstBlock, before, room, ctx.recent);
   await storeEdges(ctx, walletId, addr, deposits, room);
   await markDeposits(ctx, walletId, before);
   if (deposits.length) ctx.log?.(`[funding] hop ${hop} ${addr}: +${deposits.length} later deposit(s) @${deposits.map((d) => d.block).join(",")}`);

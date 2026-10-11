@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { sql } from "drizzle-orm";
-import { pendingBuyers, resolveFundingTree } from "@nuno/funding";
+import { pendingBuyers, resolveFundingTree, type RecentState } from "@nuno/funding";
 import {
   CURVE_CURSOR,
   INDEXER_CURSOR,
@@ -15,7 +15,7 @@ import {
   setCursor,
 } from "@nuno/indexer";
 import { fullRun } from "@nuno/metrics";
-import { AddressBook, RpcClient, blockAtTimestamp, getBlockNumber } from "@nuno/shared";
+import { AddressBook, RpcClient, blockAtTimestamp, getBlockNumber, toHex } from "@nuno/shared";
 import { ROOT_DIR, config, openLocal } from "@nuno/shared/node";
 import { exportStatic } from "./export.js";
 import { infrastructure } from "./infra.js";
@@ -32,6 +32,28 @@ const HOUR = 3_600_000;
 function output(key: string, value: string) {
   console.log(`${key}=${value}`);
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+}
+
+/**
+ * Optional recent-state endpoints (MONAD_MAINNET_RECENT_RPC_URLS) for state reads at blocks within
+ * RECENT_STATE_BLOCKS of the head. Each URL is checked at the cut-off block first; failing ones are dropped.
+ */
+async function recentState(head: number): Promise<RecentState | undefined> {
+  const urls = (process.env.MONAD_MAINNET_RECENT_RPC_URLS ?? "").split(",").map((u) => u.trim()).filter(Boolean);
+  if (!urls.length) return undefined;
+  const fromBlock = head - Number(process.env.RECENT_STATE_BLOCKS || 2_000_000);
+  const ok: string[] = [];
+  for (const url of urls) {
+    try {
+      await new RpcClient({ url, retries: 1 }).call("eth_getBalance", ["0x0000000000000000000000000000000000000000", toHex(fromBlock)]);
+      ok.push(url);
+    } catch (err) {
+      console.log(`[funding] recent-state RPC ${url} dropped: no state at ${fromBlock} (${(err as Error).message.slice(0, 120)})`);
+    }
+  }
+  if (!ok.length) return undefined;
+  console.log(`[funding] recent-state RPCs from block ${fromBlock}: ${ok.join(", ")}`);
+  return { rpc: new RpcClient({ url: ok, maxConcurrency: Number(process.env.RECENT_RPC_CONCURRENCY || 4 * ok.length), timeoutMs: 30_000, cacheSize: 20_000 }), fromBlock };
 }
 
 function rpcs() {
@@ -79,11 +101,12 @@ async function main() {
         const buyers = await pendingBuyers({ db, book }, 1_000_000);
         console.log(`[backfill] resolving funding for ${buyers.length} buyers`);
         // Parallel workers (the resolver shares in-flight lookups, so common funders are resolved once).
+        const recent = await recentState(head);
         let next = 0;
         const worker = async () => {
           while (next < buyers.length && !shouldStop()) {
             const b = buyers[next++]!;
-            await resolveFundingTree({ db, book, rpc: archiveRpc, log: console.log }, b.trader, b.firstBuy - 1, 3);
+            await resolveFundingTree({ db, book, rpc: archiveRpc, recent, log: console.log }, b.trader, b.firstBuy - 1, 3);
           }
         };
         await Promise.all(Array.from({ length: Number(process.env.FUNDING_CONCURRENCY || 6) }, worker));
