@@ -211,3 +211,12 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - Fixes: archive calls round-robin over rpc1 + monadinfra (`MONAD_MAINNET_ARCHIVE_RPC_URLS`), and the search gallops back from the spend block first (search.ts; same result, equivalence-tested).
   - Measured: ~10 → ~17 funding lookups/min at 12 in flight (~7.5 buyers/min, ~2.4 lookups per buyer). At 24 in flight it was slower (~11/min) and hit HTTP 429, so 12 stays.
   - Remaining ~1,750 buyers ≈ 4 h. Resume command: the one above plus `MONAD_MAINNET_ARCHIVE_RPC_URLS=https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com ARCHIVE_RPC_CONCURRENCY=12 FUNDING_CONCURRENCY=12`.
+- **More archive capacity:** `rpc2.monad.xyz` also serves full archive state + `debug_traceBlockByNumber` (chain 143), so funding now uses rpc1 + monadinfra + rpc2 at 18 in flight. Probed and unusable for funding: drpc (state from block ~109.6M only, no traces), thirdweb/ankr/rpc3/rpc.monad.xyz (recent state only), blastapi/publicnode/onfinality (no response).
+- **Tick funding:** now parallel and time-boxed (`FUNDING_CONCURRENCY`, `TICK_FUNDING_SECONDS`, default 360 s). Sequential V2-volume runs could have exceeded the 14-min Actions timeout and lost the run's work. `tick.yml` uses the three archive RPCs.
+- **V2 graduation found.** Moncat (`0x7d1c…7777`) graduated in tx `0x0e4e7c25700f5d6a7c5555a5f0b2fdeca892a2e53e3739fa001bbd8e8092b01b` (block 110,980,938):
+  - The V2 curve emits `Graduate(address token, address pool)` (`0xc0682ac2…`, keccak match).
+  - The pool `0xbd1b…8f4e` is a Uniswap V2-style pair (factory `0xa25b…1001`, token0 = WMON) emitting `Sync`/`Mint`/`Swap(address,uint256,uint256,uint256,uint256,address)`. 34 swaps in the 700 blocks after graduation.
+  - Indexer and decoder updated (V2-pair swaps normalized to signed pool deltas). 1 of the 16 top-traded tokens checked via nad.fun's API was graduated.
+- **TODO after funding completes:** the backfill's passes ran before this change, so V2 graduations and their pair swaps are missing from the DB.
+  - Reset `indexer:curve` and `indexer:tokens` to `indexer:window_start − 1` and re-run the backfill (both passes, idempotent; ~1 h), then `pnpm recluster`.
+  - Don't run it concurrently with the funding backfill (one SQLite writer).
