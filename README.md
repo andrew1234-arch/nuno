@@ -53,7 +53,7 @@ TypeScript (pnpm workspaces), viem, Drizzle ORM (SQLite dialect, `node:sqlite`),
 
 ## Data split
 
-- **Analysis reads Monad mainnet** (chain 143), read-only: nad.fun curve events, Uniswap V3 swaps, ERC-20 transfers, funding history.
+- **Analysis reads Monad mainnet** (chain 143), read-only: events from both nad.fun bonding curves (the documented curve `0xA728…0aCE` and the undocumented V2 curve `0x9f38…4ae4`, which carries most activity), Uniswap V3 swaps, ERC-20 transfers, funding history.
 - **NunoFeed and OrganicGate are deployed on Monad testnet** (chain 10143) and carry snapshots of mainnet data.
 
 ### Deployed contracts (Monad testnet, chain 10143)
@@ -125,11 +125,23 @@ Addresses are lowercase. The same layout under `api/contrast/` holds the histori
 
 ## Why Monad
 
-_TODO: measured numbers only._
+Measured on Monad mainnet (details in [`docs/PROGRESS.md`](docs/PROGRESS.md)):
+
+| Measurement | Value |
+|---|---|
+| Block time | 0.302 s (100,000 blocks in 30,206 s) |
+| One 7-day window | ~2,000,000 blocks |
+| nad.fun activity, one day of October 2026 (both curves) | 61 launches, 4,373 curve trades, 5,185 token transfers |
+| One 7-day window, both curves | 350 launches, 23,324 curve trades, 35,374 token transfers, 2,050 distinct buyers |
+| Storage for that window | ~11 MB of SQLite before funding |
+
+At sub-second blocks, a bundler's coordinated buys land in the same block or a few blocks apart, so same-block co-trading is a strong signal. Funding chains are also short in time: fresh wallets are typically funded a few blocks before they trade. Nuno's funding search exploits that by searching backwards from the spend block before falling back to a full binary search.
+
+Monad's public RPCs serve archive state and `debug_traceBlockByNumber`, but no `trace_filter`, and native MON transfers emit no logs. So Nuno finds each wallet's funding from archive balances and nonces plus block traces (see [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) §2), and spreads those calls over the full-history endpoints `rpc1`, `rpc2` and `rpc-mainnet.monadinfra.com`.
 
 ## Nansen usage
 
-_TODO_
+Nuno uses Nansen to stop exchanges and other shared infrastructure from acting as links between unrelated wallets. On the free plan it calls `POST /api/v1/profiler/address/related-wallets` (1 credit, `chain: "monad"`) for hub funders, meaning funding origins shared by several buyers. It reads Nansen's `address_label` for the funder from the returned rows. Every response is cached permanently, and the tick keeps a credit reserve. Labels appear next to funders in the evidence tables. Implementation: [`packages/pipeline/src/nansen.ts`](packages/pipeline/src/nansen.ts).
 
 ## Validation
 
@@ -142,7 +154,8 @@ _TODO: observed precision on the hand-reviewed sample in `docs/VALIDATION.md` on
 - GitHub Actions: [checkout](https://github.com/actions/checkout), [setup-node](https://github.com/actions/setup-node), [upload-pages-artifact](https://github.com/actions/upload-pages-artifact), [deploy-pages](https://github.com/actions/deploy-pages) (MIT), [pnpm/action-setup](https://github.com/pnpm/action-setup) (MIT)
 - [Foundry](https://getfoundry.sh) and [forge-std](https://github.com/foundry-rs/forge-std) (MIT/Apache-2.0), vendored in `contracts/lib/forge-std`
 - [Vitest](https://vitest.dev) (MIT), [TypeScript](https://www.typescriptlang.org) (Apache-2.0), [tsx](https://github.com/privatenumber/tsx) (MIT)
-- nad.fun event ABIs and contract addresses copied from nad.fun's published docs (`nad.fun/abi.md`, `nad.fun/skill.md`)
+- nad.fun event ABIs and contract addresses copied from nad.fun's published docs (`nad.fun/abi.md`, `nad.fun/skill.md`). The V2 curve is undocumented: its address comes from nad.fun's own API (`market_type: "V2_CURVE"`), and its event layout was derived from live logs and keccak signature matches (see `packages/shared/src/abis.ts`)
+- [Inter Tight](https://fonts.google.com/specimen/Inter+Tight) (SIL Open Font License), loaded with `next/font/google`
 
 No pre-existing code is included; everything was written during the Metropolis build window.
 
