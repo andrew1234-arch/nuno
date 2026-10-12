@@ -152,10 +152,11 @@ async function main() {
     } else if (cmd === "export") {
       checkpointWal();
       const outDir = resolve(ROOT_DIR, process.env.EXPORT_DIR || "site");
-      const freshness = async (sourceBlock: number) => {
+      const freshness = async (sourceBlock: number, windowStart: number) => {
         try {
           const rpc = new RpcClient({ url: config.mainnetLogsRpcUrls, retries: 2, timeoutMs: 15_000 });
-          return { sourceTime: new Date((await getBlockTimestamp(rpc, sourceBlock)) * 1000).toISOString(), chainHead: await getBlockNumber(rpc) };
+          const iso = async (b: number) => new Date((await getBlockTimestamp(rpc, b)) * 1000).toISOString();
+          return { sourceTime: await iso(sourceBlock), windowStartTime: await iso(windowStart), chainHead: await getBlockNumber(rpc) };
         } catch (err) {
           console.log(`[export] freshness unavailable: ${(err as Error).message.slice(0, 120)}`);
           return null;

@@ -30,13 +30,15 @@ export interface ExportResult {
 export interface Freshness {
   /** ISO time of the last indexed block. */
   sourceTime: string;
+  /** ISO time of the window's first block. */
+  windowStartTime: string;
   chainHead: number;
 }
 
 export async function exportStatic(
   db: SqlDb,
   outDir: string,
-  opts: { dbSizeBytes: number; backfillDays: number; label?: string; freshness?: (sourceBlock: number) => Promise<Freshness | null> },
+  opts: { dbSizeBytes: number; backfillDays: number; label?: string; freshness?: (sourceBlock: number, windowStart: number) => Promise<Freshness | null> },
 ): Promise<ExportResult> {
   const book = new AddressBook(db);
   const repo = new SqlRepo(db, book);
@@ -62,7 +64,7 @@ export async function exportStatic(
   const entityIds = (await db.selectDistinct({ e: s.entityMembers.entity }).from(s.entityMembers)).map((r) => r.e);
   const sourceBlock = (await getCursor(db, INDEXER_CURSOR)) ?? 0;
   const windowStart = (await getCursor(db, WINDOW_CURSOR)) ?? sourceBlock;
-  const fresh = opts.freshness ? await opts.freshness(sourceBlock) : null;
+  const fresh = opts.freshness ? await opts.freshness(sourceBlock, windowStart) : null;
   write("meta.json", {
     ...(opts.label ? { label: opts.label } : {}),
     sourceBlock,
@@ -72,6 +74,7 @@ export async function exportStatic(
     window: {
       startBlock: windowStart,
       endBlock: sourceBlock,
+      ...(fresh ? { startTime: fresh.windowStartTime, endTime: fresh.sourceTime } : {}),
       days: opts.backfillDays,
       coveredDays: Number((((sourceBlock - windowStart) * MONAD_SECONDS_PER_BLOCK) / 86_400).toFixed(2)),
     },

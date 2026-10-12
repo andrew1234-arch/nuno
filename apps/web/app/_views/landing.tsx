@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { api, hasDataset, type Cluster, type Token } from "@/lib/api";
-import { FINDING_TEXT, PAYOUTS, SEEDER, SEEDER_DEPOSIT } from "@/lib/finding";
+import { PAYOUTS, SEEDER, SEEDER_DEPOSIT, computeFinding, type Finding } from "@/lib/finding";
 import { addrUrl, mon, short, txUrl } from "@/lib/format";
 import { SortableTable } from "./sortable";
 
@@ -113,27 +113,32 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
   );
 }
 
-function FindingBand() {
+function FindingBand({ finding }: { finding: Finding }) {
   return (
     <section className="band-plain px-4 py-20">
       <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[auto_1fr]">
         <span className="select-none text-8xl font-semibold leading-none text-[var(--accent-text)]" aria-hidden="true">“</span>
         <div>
-          <p className="text-3xl font-medium leading-tight tracking-tight sm:text-4xl">{FINDING_TEXT}</p>
-          <p className="mt-6 max-w-3xl text-sm text-[var(--accent-soft)]">
-            How we know: one wallet,{" "}
-            <a className="mono text-[var(--accent-ink)] hover:underline" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a>, received{" "}
-            {n(SEEDER_DEPOSIT.mon)} MON (
-            <a className="mono text-[var(--accent-ink)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">proof</a>), then sent 14,995 MON to each of
-            the launching wallets. Every payment below is public; click one to see it on the Monad explorer.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {PAYOUTS.map((p) => (
-              <a key={p.tx} href={txUrl(p.tx)} target="_blank" rel="noreferrer" className="pill mono border border-[var(--accent-soft)] px-3 py-1 text-xs hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--c-accent-ink)]" title={`to ${p.wallet}, block ${n(p.block)}`}>
-                {short(p.tx)} → {short(p.wallet)}
-              </a>
-            ))}
-          </div>
+          <p className="text-3xl font-medium leading-tight tracking-tight sm:text-4xl">{finding.headline}</p>
+          <p className="mt-4 text-lg text-[var(--accent-soft)]">{finding.sub}</p>
+          {finding.seeded ? (
+            <>
+              <p className="mt-6 max-w-3xl text-sm text-[var(--accent-soft)]">
+                How we know: one wallet,{" "}
+                <a className="mono text-[var(--accent-ink)] hover:underline" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a>, received{" "}
+                {n(SEEDER_DEPOSIT.mon)} MON (
+                <a className="mono text-[var(--accent-ink)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">proof</a>), then sent 14,995 MON to
+                each of the 10 launching wallets within 17 seconds. Every payment below is public; click one to see it on the Monad explorer.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {PAYOUTS.map((p) => (
+                  <a key={p.tx} href={txUrl(p.tx)} target="_blank" rel="noreferrer" className="pill mono border border-[var(--accent-soft)] px-3 py-1 text-xs hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--c-accent-ink)]" title={`to ${p.wallet}, block ${n(p.block)}`}>
+                    {short(p.tx)} → {short(p.wallet)}
+                  </a>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </section>
@@ -328,12 +333,13 @@ export function Landing() {
   const meta = api.meta("live");
   const tokens = api.tokens("live");
   const clusters = api.clusterIds("live").map((id) => api.cluster(id, "live")).filter((c): c is Cluster => c !== null);
-  const largest = clusters.sort((a, b) => b.size - a.size)[0] ?? null;
+  const largest = [...clusters].sort((a, b) => b.size - a.size)[0] ?? null;
+  const finding = meta ? computeFinding(meta, tokens, clusters) : null;
   return (
     <>
       <Hero tokens={tokens} meta={meta} />
       <Tiles tokens={tokens} largest={largest} />
-      <FindingBand />
+      {finding ? <FindingBand finding={finding} /> : null}
       <How tokens={tokens} />
       {meta ? <Stats counts={meta.counts} /> : null}
       <Screener tokens={tokens} meta={meta} />

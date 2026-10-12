@@ -217,6 +217,8 @@ describe("engine invariants", () => {
     const r = clusterToken(input({ wallets, funding: wallets.map((w, i) => fund(w, "0xbot", i)) }), { ...DEFAULT_CLUSTER_CONFIG, maxHubFanout: 0 });
     expect(r.clusters).toHaveLength(1);
     expect(r.clusters[0]!.members).toHaveLength(150);
+    // Same-funder evidence is a time-ordered chain: n − 1 links, not every pair.
+    expect(r.clusters[0]!.links.filter((l) => l.type === "same_direct_funder")).toHaveLength(149);
   });
 });
 

@@ -1,33 +1,8 @@
 import Link from "next/link";
 import { api, hasDataset, type Dataset } from "@/lib/api";
-import { FINDING_TEXT, PAYOUTS, SEEDER, SEEDER_DEPOSIT } from "@/lib/finding";
-import { addrUrl, short, txUrl } from "@/lib/format";
 import { SortableTable } from "./sortable";
 
 export const baseFor = (d: Dataset) => (d === "contrast" ? "/contrast" : "");
-
-function Finding() {
-  return (
-    <section className="mt-4 rounded-lg border border-[var(--accent)] bg-[var(--panel)] p-4 text-sm">
-      <p className="font-semibold">{FINDING_TEXT}</p>
-      <p className="mt-2 text-[var(--muted)]">
-        Seeder <a className="mono hover:text-[var(--accent-text)]" href={addrUrl(SEEDER)} target="_blank" rel="noreferrer">{short(SEEDER)}</a> received{" "}
-        {SEEDER_DEPOSIT.mon.toLocaleString("en-US")} MON in{" "}
-        <a className="mono text-[var(--accent-text)] hover:underline" href={txUrl(SEEDER_DEPOSIT.tx)} target="_blank" rel="noreferrer">{short(SEEDER_DEPOSIT.tx)}</a>{" "}
-        (block {SEEDER_DEPOSIT.block.toLocaleString("en-US")}), then sent 14,995 MON to each creator wallet:
-      </p>
-      <ul className="mono mt-2 grid gap-x-4 text-xs sm:grid-cols-2">
-        {PAYOUTS.map((p) => (
-          <li key={p.tx}>
-            <a className="text-[var(--accent-text)] hover:underline" href={txUrl(p.tx)} target="_blank" rel="noreferrer">{short(p.tx)}</a>{" "}
-            → <a className="hover:text-[var(--accent-text)]" href={addrUrl(p.wallet)} target="_blank" rel="noreferrer">{short(p.wallet)}</a>{" "}
-            <span className="text-[var(--muted)]">block {p.block.toLocaleString("en-US")}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
 
 export function ScreenerView({ dataset }: { dataset: Dataset }) {
   const meta = api.meta(dataset);
@@ -50,7 +25,6 @@ export function ScreenerView({ dataset }: { dataset: Dataset }) {
             Raw holder counts and volume are easy to fake with wallet farms. Nuno groups wallets controlled by the same operator into entities, using
             on-chain funding, transfer and trading evidence, and recomputes each token per entity.
           </p>
-          <Finding />
           {contrast ? (
             <p className="mt-3 text-sm">
               <Link href="/contrast/" className="text-[var(--accent-text)] hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"} →</Link>

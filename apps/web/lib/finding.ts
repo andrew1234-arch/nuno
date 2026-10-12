@@ -1,8 +1,46 @@
-// The headline finding for the Oct 2–9, 2026 window, with every evidence transaction.
-// Verified on-chain 2026-10-11 (docs/PROGRESS.md): block timestamps 2026-04-07 04:21:47Z → 04:22:04Z (17 s),
-// all 73 launches in the window matched nad.fun's own API. Wording is fixed: no "scam", no operator name.
-export const FINDING_TEXT =
-  "Every nad.fun launch from Oct 2–9, 2026 came from 10 wallets seeded in one 17-second burst by a single private wallet.";
+import type { Cluster, Meta, Token } from "./api";
+
+// The headline finding, computed from the exported data at build time so it always matches the page.
+// Wording approved by the user 2026-10-12 (no "scam", no operator name). The seeding facts are fixed and
+// verified on-chain (docs/PROGRESS.md): 10 creator wallets first funded by one private wallet, block
+// timestamps 2026-04-07 04:21:47Z → 04:22:04Z (17 s).
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "Oct 4–12, 2026" or "Sep 30–Oct 6, 2026" from two ISO times (UTC). */
+export function dateRange(startIso: string, endIso: string): string {
+  const a = new Date(startIso);
+  const b = new Date(endIso);
+  const left = `${MONTHS[a.getUTCMonth()]} ${a.getUTCDate()}`;
+  const right = a.getUTCMonth() === b.getUTCMonth() ? `${b.getUTCDate()}` : `${MONTHS[b.getUTCMonth()]} ${b.getUTCDate()}`;
+  return `${left}–${right}, ${b.getUTCFullYear()}`;
+}
+
+export interface Finding {
+  headline: string;
+  sub: string;
+  /** True when the group is exactly the 10 wallets of the verified seeding burst (evidence chips apply). */
+  seeded: boolean;
+}
+
+export function computeFinding(meta: Meta, tokens: Token[], clusters: Cluster[]): Finding | null {
+  const payout = new Set(PAYOUTS.map((p) => p.wallet));
+  const group = clusters.find((c) => c.members.some((m) => payout.has(m)));
+  if (!group || tokens.length === 0) return null;
+  const inWindow = new Set(tokens.map((t) => t.address));
+  const launched = group.createdTokens.filter((t) => inWindow.has(t)).length;
+  const seeded = group.members.length === payout.size && group.members.every((m) => payout.has(m));
+  const range = meta.window.startTime && meta.window.endTime ? `from ${dateRange(meta.window.startTime, meta.window.endTime)}` : "in the last week";
+  const grouped = new Set(clusters.flatMap((c) => c.members));
+  const pct = Math.round((tokens.filter((t) => grouped.has(t.creator)).length / tokens.length) * 100);
+  return {
+    headline: seeded
+      ? `One group of ${group.members.length} wallets, seeded by a single private wallet in 17 seconds, launched ${launched} of the ${tokens.length} nad.fun tokens ${range}.`
+      : `One group of ${group.members.length} wallets launched ${launched} of the ${tokens.length} nad.fun tokens ${range}.`,
+    sub: `Across the week, ${pct}% of launches came from wallets in a group.`,
+    seeded,
+  };
+}
 
 export const SEEDER = "0xb2454805656dd62b4aec8718a53f5543cc66d3b3";
 
