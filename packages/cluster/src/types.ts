@@ -36,6 +36,8 @@ export interface FundingEdge {
   block: number;
   blockTime: number;
   txHash: string;
+  /** Amount in wei (native MON). Used to tell farm-style payouts from service payouts. */
+  value?: bigint;
 }
 
 export interface Trade {
@@ -83,6 +85,20 @@ export interface ClusterConfig {
   sameFunderWindowSecs: number;
   maxFundingHops: number;
   earlyBuyBlocks: number;
+  /**
+   * Distribution-hub cap: an address that funds, is a shared funding ancestor of, or sends tokens to more
+   * than this many distinct participants is treated as a hub (airdrop, bot service, payout wallet), and its
+   * fan-out stops linking those participants. 0 disables the cap.
+   */
+  maxHubFanout: number;
+  /**
+   * Farm exception to the hub cap (direct funders only): a funder above the cap still links its wallets
+   * when its payments look like one operator seeding its own wallets: median payment ≤ farmMaxMedianWei,
+   * at least farmShare of payments within ½×–2× the median, and at least farmShare of recipients receiving
+   * their first funding from it.
+   */
+  farmMaxMedianWei: bigint;
+  farmShare: number;
 }
 
 export const DEFAULT_CLUSTER_CONFIG: ClusterConfig = {
@@ -99,6 +115,11 @@ export const DEFAULT_CLUSTER_CONFIG: ClusterConfig = {
   maxFundingHops: 3,
   // Monad blocks are ~0.3s; 200 blocks is the first ~minute after creation.
   earlyBuyBlocks: 200,
+  // User decision 2026-10-12: one wallet sending tokens to 1,375 people chained 3,728 wallets into one group.
+  maxHubFanout: 50,
+  // User decision 2026-10-12: keep tiny, similar payouts to fresh wallets (e.g. 101 × ~0.37 MON) as links.
+  farmMaxMedianWei: 10n * 10n ** 18n,
+  farmShare: 0.8,
 };
 
 export interface Cluster {

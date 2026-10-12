@@ -56,6 +56,15 @@ Consequences of the weights:
 
 **Infrastructure (exchange-like) addresses.** Until Nansen labels are integrated, `pnpm infra:scan` profiles every funding origin on-chain. It marks an address exchange-like if it has sent **≥ 5,000 transactions** or holds **≥ 1,000,000 MON**. Each entry in `infrastructure.json` records the numbers and block it was judged on. This is a heuristic, not a label. A busy private wallet can be over-excluded, which only costs recall: its funded wallets are not linked through it. A small exchange deposit wallet can be missed. On 2026-10-08 it flagged 16 of 46 funding origins. The serial-launch funder `0xb245…` (91 txs) is not flagged.
 
+**Distribution hubs (fan-out cap).** Some addresses fund, or send tokens to, hundreds of unrelated people: airdrops, payout wallets, trading-bot services. Without a limit, one of them chains everyone it touched into a single "entity". On the October 2026 window, one wallet that sent tokens to 1,375 different wallets helped merge 3,728 wallets into one group. So an address that **funds more than 50 distinct participants**, **is a shared funding ancestor of more than 50**, or **swaps tokens with more than 50** is treated as a hub, and those links stop grouping wallets. Its recipients can still be grouped by their own evidence.
+
+**Farm exception.** A direct funder above the cap still links its wallets when its payments look like one operator seeding its own wallets:
+- the median payment is at most 10 MON;
+- at least 80% of payments are within half to double the median;
+- at least 80% of recipients got their **first** funding from it.
+
+Example: `0xb56e…e299` paid 101 fresh wallets about 0.37 MON each. Funders whose payments vary widely, are large, or go to already-funded wallets stay hubs. The exception covers direct funding only, never token transfers or shared ancestors.
+
 **Hard rules**
 - Contracts are never entity members. Each address's code is checked with `eth_getCode`. nad.fun protocol contracts, curve pools and graduated pools are always excluded.
 - Infrastructure addresses never act as linking funders or ancestors.

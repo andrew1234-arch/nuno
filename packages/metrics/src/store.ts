@@ -139,7 +139,7 @@ async function toInput(ctx: StoreCtx, data: Loaded, wallets: number[], contracts
     contracts: new Set([...contracts].map(h)),
     infrastructure: ctx.infrastructure,
     funding: data.funding.map(
-      (f): FundingEdge => ({ wallet: h(f.wallet), funder: h(f.funder), origin: h(f.origin), block: f.block, blockTime: f.blockTime, txHash: txHex(f.tx) }),
+      (f): FundingEdge => ({ wallet: h(f.wallet), funder: h(f.funder), origin: h(f.origin), block: f.block, blockTime: f.blockTime, txHash: txHex(f.tx), value: BigInt(f.value) }),
     ),
     trades: data.trades.map((t) => ({ token: h(t.token), wallet: h(t.trader), side: t.side === s.SIDE.buy ? "buy" : "sell", block: t.block, txHash: txHex(t.tx) })),
     transfers: data.transfers.map((t) => ({ token: h(t.token), from: h(t.from), to: h(t.to), block: t.block, txHash: txHex(t.tx) })),

@@ -31,6 +31,23 @@ const eligible = (input: ClusterInput) => {
   return (w: Addr) => set.has(w) && !input.contracts.has(w);
 };
 
+/** True when `n` distinct participants exceeds the distribution-hub cap (0 = no cap). */
+const isHub = (n: number, cfg: ClusterConfig) => cfg.maxHubFanout > 0 && n > cfg.maxHubFanout;
+
+/**
+ * Farm pattern: tiny, similar payments, mostly each recipient's first funding. Such a funder still links its
+ * wallets above the hub cap. `firstFunding` maps a wallet to the tx hash of its earliest funding edge.
+ */
+export function looksLikeFarm(payments: FundingEdge[], firstFunding: Map<Addr, string>, cfg: ClusterConfig): boolean {
+  const values = payments.map((p) => p.value).filter((v): v is bigint => v !== undefined).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  if (values.length < payments.length || values.length === 0) return false; // amounts unknown: no exception
+  const median = values[Math.floor(values.length / 2)]!;
+  if (median > cfg.farmMaxMedianWei) return false;
+  const similar = values.filter((v) => v * 2n >= median && v <= median * 2n).length;
+  const fresh = payments.filter((p) => firstFunding.get(p.wallet) === p.txHash).length;
+  return similar >= cfg.farmShare * values.length && fresh >= cfg.farmShare * payments.length;
+}
+
 /** Wallets whose direct (hop-1) funding came from the same non-infrastructure origin within the window. */
 export function sameDirectFunderLinks(input: ClusterInput, cfg: ClusterConfig): Link[] {
   const ok = eligible(input);
@@ -45,9 +62,19 @@ export function sameDirectFunderLinks(input: ClusterInput, cfg: ClusterConfig): 
   // would miss two fundings 1 h apart that straddle a bucket boundary). Each wallet links to at
   // most MAX_PAIRWISE_GROUP following wallets, keeping work O(n) for huge fan-outs; consecutive
   // pairs are always included, so connectivity is unaffected.
+  // Each wallet's earliest funding (any funder), for the farm exception's "fresh wallet" test.
+  const firstFunding = new Map<Addr, string>();
+  const earliest = new Map<Addr, number>();
+  for (const f of input.funding)
+    if (!earliest.has(f.wallet) || f.blockTime < earliest.get(f.wallet)!) {
+      earliest.set(f.wallet, f.blockTime);
+      firstFunding.set(f.wallet, f.txHash);
+    }
   const out: Link[] = [];
   for (const [funder, edges] of byFunder) {
     const firstPerWallet = [...new Map([...edges].sort((x, y) => x.blockTime - y.blockTime).map((e) => [e.wallet, e])).values()];
+    // Distribution hub: funds too many participants to mean "same owner", unless it pays out like a farm.
+    if (isHub(firstPerWallet.length, cfg) && !looksLikeFarm(firstPerWallet, firstFunding, cfg)) continue;
     firstPerWallet.sort((x, y) => x.blockTime - y.blockTime);
     for (let i = 0; i < firstPerWallet.length; i++) {
       const a = firstPerWallet[i]!;
@@ -119,6 +146,7 @@ export function commonSourceLinks(
   // emit at most one link per pair, carrying the evidence of every shared source.
   const byPair = new Map<string, Link>();
   for (const group of bySource.values()) {
+    if (isHub(new Set(group.map((g) => g.wallet)).size, cfg)) continue; // ancestor shared by too many participants
     for (const l of linkGroup(group, "common_funding_source", cfg.weights.common_funding_source)) {
       const k = l.a < l.b ? `${l.a}|${l.b}` : `${l.b}|${l.a}`;
       const prev = byPair.get(k);
@@ -139,10 +167,13 @@ export function creatorFundedLinks(
   const out: Link[] = [];
   const creators = new Map<Addr, Addr[]>();
   for (const l of input.launches) creators.set(l.creator, [...(creators.get(l.creator) ?? []), l.token]);
+  // A creator that is a funding ancestor of too many participants is a hub too.
+  const descendants = new Map<Addr, number>();
+  for (const [w, anc] of ancestors) if (ok(w)) for (const a of anc.keys()) if (creators.has(a)) descendants.set(a, (descendants.get(a) ?? 0) + 1);
   for (const [w, anc] of ancestors) {
     if (!ok(w)) continue;
     for (const [creator, tokens] of creators) {
-      if (w === creator) continue;
+      if (w === creator || isHub(descendants.get(creator) ?? 0, cfg)) continue;
       const e = anc.get(creator);
       if (!e) continue;
       out.push({
@@ -160,8 +191,21 @@ export function creatorFundedLinks(
 /** Direct token transfers between two eligible (non-contract) wallets. */
 export function tokenTransferLinks(input: ClusterInput, cfg: ClusterConfig): Link[] {
   const ok = eligible(input);
-  return input.transfers
-    .filter((t) => t.from !== t.to && ok(t.from) && ok(t.to))
+  const direct = input.transfers.filter((t) => t.from !== t.to && ok(t.from) && ok(t.to));
+  // Wallets that swap tokens with too many distinct participants (airdrops, payout or bot wallets) are hubs.
+  const partners = new Map<Addr, Set<Addr>>();
+  for (const t of direct)
+    for (const [x, y] of [
+      [t.from, t.to],
+      [t.to, t.from],
+    ] as const) {
+      const s = partners.get(x) ?? new Set<Addr>();
+      s.add(y);
+      partners.set(x, s);
+    }
+  const hub = (w: Addr) => isHub(partners.get(w)?.size ?? 0, cfg);
+  return direct
+    .filter((t) => !hub(t.from) && !hub(t.to))
     .map((t) => ({
       a: t.from,
       b: t.to,

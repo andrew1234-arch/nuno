@@ -212,11 +212,72 @@ describe("engine invariants", () => {
     expect(r1.clusters).toEqual(r2.clusters);
   });
 
-  it("chains large same-funder groups into one cluster", () => {
+  it("chains large same-funder groups into one cluster (hub cap disabled)", () => {
     const wallets = Array.from({ length: 150 }, (_, i) => `0xw${i.toString().padStart(3, "0")}`);
-    const r = clusterToken(input({ wallets, funding: wallets.map((w, i) => fund(w, "0xbot", i)) }));
+    const r = clusterToken(input({ wallets, funding: wallets.map((w, i) => fund(w, "0xbot", i)) }), { ...DEFAULT_CLUSTER_CONFIG, maxHubFanout: 0 });
     expect(r.clusters).toHaveLength(1);
     expect(r.clusters[0]!.members).toHaveLength(150);
+  });
+});
+
+describe("distribution-hub cap", () => {
+  const many = (n: number, p = "0xw") => Array.from({ length: n }, (_, i) => `${p}${i.toString().padStart(3, "0")}`);
+  const tx = (from: string, to: string, i: number): TokenTransfer => ({ token: TOKEN, from, to, block: 100 + i, txHash: `0xt${from}${to}${i}` });
+
+  it("a funder of more than maxHubFanout participants links nobody; one at the cap still links", () => {
+    const over = many(51);
+    expect(clusterToken(input({ wallets: over, funding: over.map((w, i) => fund(w, "0xhub", i)) })).clusters).toHaveLength(0);
+    const at = many(50);
+    const r = clusterToken(input({ wallets: at, funding: at.map((w, i) => fund(w, "0xfarm", i)) }));
+    expect(r.clusters).toHaveLength(1);
+    expect(r.clusters[0]!.members).toHaveLength(50);
+  });
+
+  it("a shared ancestor of more than maxHubFanout participants is not a common source", () => {
+    const ws = many(60);
+    const mids = ws.map((_, i) => `0xm${i.toString().padStart(3, "0")}`);
+    // each wallet has its own funder; all funders share one root ancestor
+    const funding = [...ws.map((w, i) => fund(w, mids[i]!, i)), ...mids.map((m, i) => fund(m, "0xroot", i))];
+    expect(clusterToken(input({ wallets: ws, funding })).clusters).toHaveLength(0);
+  });
+
+  it("a wallet sending tokens to more than maxHubFanout participants (airdrop) links nobody", () => {
+    const ws = many(80);
+    const r = clusterToken(input({ wallets: ["0xdrop", ...ws], transfers: ws.map((w, i) => tx("0xdrop", w, i)) }));
+    expect(r.clusters).toHaveLength(0);
+  });
+
+  const MON = 10n ** 18n;
+  const pay = (w: string, origin: string, i: number, value: bigint) => ({ ...fund(w, origin, i), txHash: `0xf${origin}${w}`, value });
+
+  it("farm exception: tiny, similar first payments to fresh wallets still link above the cap (like 0xb56e: 101 × ~0.37 MON)", () => {
+    const ws = many(101);
+    const funding = ws.map((w, i) => pay(w, "0xfarm", i, (37n * MON) / 100n + BigInt(i % 3) * 10n ** 15n));
+    const r = clusterToken(input({ wallets: ws, funding }));
+    expect(r.clusters).toHaveLength(1);
+    expect(r.clusters[0]!.members).toHaveLength(101);
+  });
+
+  it("no exception for varied or large payouts (like 0xc7bf: 5 to 31,179 MON)", () => {
+    const ws = many(60);
+    const varied = ws.map((w, i) => pay(w, "0xsvc", i, BigInt(5 + ((i * 7919) % 31_000)) * MON));
+    expect(clusterToken(input({ wallets: ws, funding: varied })).clusters).toHaveLength(0);
+    const large = ws.map((w, i) => pay(w, "0xsvc2", i, 2_400n * MON));
+    expect(clusterToken(input({ wallets: ws, funding: large })).clusters).toHaveLength(0);
+  });
+
+  it("no exception when the recipients were already funded elsewhere (not fresh)", () => {
+    const ws = many(60);
+    const earlier = ws.map((w, i) => ({ ...pay(w, `0xown${i}`, i, MON), blockTime: -1000 }));
+    const tiny = ws.map((w, i) => pay(w, "0xtopup", i, MON / 3n));
+    expect(clusterToken(input({ wallets: ws, funding: [...earlier, ...tiny] })).clusters).toHaveLength(0);
+  });
+
+  it("a hub's recipients are still grouped by their own evidence", () => {
+    const ws = many(80);
+    const transfers = [...ws.map((w, i) => tx("0xdrop", w, i)), tx(ws[0]!, ws[1]!, 999)];
+    const r = clusterToken(input({ wallets: ["0xdrop", ...ws], transfers }));
+    expect(r.clusters.map((c) => c.members)).toEqual([[ws[0], ws[1]]]);
   });
 });
 
