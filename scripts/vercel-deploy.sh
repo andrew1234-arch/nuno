@@ -4,7 +4,7 @@
 # is kept in .vercel/project.json at the repo root, so the build output folder can be wiped freely.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CLI="npx -y vercel@39.1.1"
+CLI="npx -y vercel@63.1.2"
 TOKEN_ARGS=()
 [ -n "${VERCEL_TOKEN:-}" ] && TOKEN_ARGS=(--token "$VERCEL_TOKEN")
 if [ ! -f .vercel/project.json ]; then
