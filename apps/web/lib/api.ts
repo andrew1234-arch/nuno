@@ -64,6 +64,28 @@ export interface Cluster {
   labels?: Record<string, { label: string; category: string }>;
 }
 
+export interface FundingEdge {
+  wallet: string;
+  funder: string;
+  origin: string | null;
+  kind: string;
+  value: string;
+  block: number;
+  blockTime: number;
+  txHash: string;
+  source: string;
+}
+
+export interface Wallet {
+  address: string;
+  isContract: boolean;
+  entityId: string | null;
+  fundingStatus: string;
+  fundedBy: FundingEdge[];
+  funded: FundingEdge[];
+  trades: Array<{ token: string; buys: number; sells: number }>;
+}
+
 export interface Meta {
   sourceBlock: number;
   /** Time of the last indexed block and how far the chain head was ahead at export (absent offline). */
@@ -103,6 +125,7 @@ export const api = {
   token: (address: string, d: Dataset = "live") =>
     read<Token & { latestSnapshot: Snapshot | null; clusters: Cluster[] }>(d, `tokens/${address.toLowerCase()}.json`),
   cluster: (id: string, d: Dataset = "live") => read<Cluster>(d, `clusters/${id.toLowerCase()}.json`),
+  wallet: (address: string, d: Dataset = "live") => read<Wallet>(d, `wallets/${address.toLowerCase()}.json`),
   /** Logos and links from each token's nad.fun metadata (scripts/fetch-logos.mjs); empty when not fetched. */
   links: (address: string, d: Dataset = "live"): TokenLinks => read<Record<string, TokenLinks>>(d, "logos.json")?.[address.toLowerCase()] ?? {},
   clusterIds: (d: Dataset = "live") => {

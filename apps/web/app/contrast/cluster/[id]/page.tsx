@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { PLACEHOLDER } from "@/lib/api";
 import { ClusterView, clusterMetadata, clusterParams } from "../../../_views/cluster";
-import { Sheet } from "../../../sheet";
 
 export const dynamicParams = false;
 
@@ -15,5 +14,5 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function ClusterPage({ params }: { params: Promise<{ id: string }> }) {
-  return <Sheet><ClusterView id={(await params).id} dataset="contrast" /></Sheet>;
+  return <ClusterView id={(await params).id} dataset="contrast" />;
 }
