@@ -44,6 +44,11 @@ export interface Row {
   name: string;
   symbol: string;
   image: string | null;
+  curve: "V1" | "V2" | null;
+  createdAt: string | null;
+  clusterSupplyBps: number | null;
+  /** The creator's wallet group, if any. */
+  entity: { id: string; size: number } | null;
   createBlock: number;
   rawHolders: number | null;
   realHolders: number | null;

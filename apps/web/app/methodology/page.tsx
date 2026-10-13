@@ -51,7 +51,7 @@ export default async function Docs() {
               <li>Open a wallet group to see which wallets are linked, why, and the public transaction behind each link.</li>
             </ol>
             <p className="mt-4 text-[var(--prose)]">
-              To browse instead, open <Link href="/tokens/" className="text-[var(--accent-text)] underline">all tokens</Link>: filter by label, sort by trading,
+              To browse instead, open <Link href="/" className="text-[var(--accent-text)] underline">screener</Link>: filter by label, sort by trading,
               holders or holder gap, and share the link, which keeps your filters.
             </p>
 

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 /** Main navigation links; the current section is highlighted. */
 export function NavLinks({ items }: { items: Array<[string, string]> }) {
   const path = usePathname();
-  const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href) || (href === "/tokens/" && path.startsWith("/token/")));
+  const isActive = (href: string) => (href === "/" ? path === "/" || path.startsWith("/token/") || path.startsWith("/cluster/") : path.startsWith(href));
   return (
     <>
       {items.map(([href, label]) => (

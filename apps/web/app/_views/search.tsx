@@ -43,7 +43,7 @@ export function Search({ items, size = "md", autoFocus }: { items: SearchItem[];
   };
   const submit = () => {
     if (top[active]) go(`/token/${top[active]![0]}/`);
-    else if (q.trim()) go(`/tokens/?q=${encodeURIComponent(q.trim())}`);
+    else if (q.trim()) go(`/?q=${encodeURIComponent(q.trim())}`);
   };
 
   const lg = size === "lg";
@@ -126,7 +126,7 @@ export function Search({ items, size = "md", autoFocus }: { items: SearchItem[];
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => go(`/tokens/?q=${encodeURIComponent(q.trim())}`)}
+              onClick={() => go(`/?q=${encodeURIComponent(q.trim())}`)}
               className="block w-full border-t border-[var(--line)] px-4 py-2.5 text-left text-sm font-medium text-[var(--accent-text)] hover:bg-[var(--panel)]"
             >
               See all {hits.length} result{hits.length === 1 ? "" : "s"} →

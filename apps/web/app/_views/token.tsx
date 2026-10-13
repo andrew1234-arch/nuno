@@ -107,7 +107,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
               {clusters.length} wallet group{clusters.length > 1 ? "s" : ""} trade this token ↓
             </a>
           ) : null}
-          <Link href="/docs/#labels" className="text-[var(--muted)] hover:underline">How labels are decided</Link>
+          <Link href="/methodology/#labels" className="text-[var(--muted)] hover:underline">How labels are decided</Link>
         </div>
       </section>
 

@@ -91,6 +91,8 @@ export interface TokenLinks {
   twitter?: string | null;
   telegram?: string | null;
   nsfw?: boolean;
+  curve?: "V1" | "V2" | null;
+  createdAt?: string;
 }
 
 export const hasDataset = (dataset: Dataset) => read<Meta>(dataset, "meta.json") !== null;
