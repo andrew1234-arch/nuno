@@ -5,9 +5,10 @@ import { useId, useRef, useState } from "react";
 import { short } from "@/lib/format";
 import type { Level } from "@/lib/levels";
 import { Badge } from "./badge";
+import { TokenLogo } from "./token-logo";
 
 /** Compact search index entry: address, symbol, name, label. */
-export type SearchItem = [string, string, string, Level];
+export type SearchItem = [string, string, string, Level, string | null];
 
 export function match(items: SearchItem[], q: string): SearchItem[] {
   const query = q.trim().toLowerCase().replace(/^\$/, "");
@@ -98,7 +99,7 @@ export function Search({ items, size = "md", autoFocus }: { items: SearchItem[];
       ) : null}
       {open && q.trim() ? (
         <div id={`${id}-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-left shadow-xl">
-          {top.map(([a, s, n, l], i) => (
+          {top.map(([a, s, n, l, img], i) => (
             <button
               key={a}
               type="button"
@@ -107,9 +108,10 @@ export function Search({ items, size = "md", autoFocus }: { items: SearchItem[];
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setActive(i)}
               onClick={() => go(`/token/${a}/`)}
-              className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-sm ${i === active ? "bg-[var(--panel)]" : ""}`}
+              className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm ${i === active ? "bg-[var(--panel)]" : ""}`}
             >
-              <span className="min-w-0 text-left">
+              <TokenLogo src={img} symbol={s} size={32} />
+              <span className="min-w-0 flex-1 text-left">
                 <span className="font-medium">{s}</span> <span className="text-[var(--muted)]">{n}</span>
                 <span className="mono block text-xs text-[var(--muted)]">{short(a)}</span>
               </span>

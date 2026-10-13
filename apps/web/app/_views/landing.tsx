@@ -29,7 +29,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
   const maxVol = byVol.length ? monNum(byVol[0]!.metrics!.rawVolume) : 1;
   if (!gap && !byVol.length && !largest) return null;
   return (
-    <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-14 md:grid-cols-3">
+    <section className="grid w-full gap-4 px-4 pb-14 md:grid-cols-3">
       {gap ? (
         <Link href={`/token/${gap.address}/`} className="card block p-5 text-left shadow-sm transition hover:-translate-y-0.5">
           <p className="text-sm text-[var(--muted)]">Biggest gap between looks and reality</p>
@@ -131,7 +131,7 @@ function How({ tokens }: { tokens: Token[] }) {
   const max = top.length ? top[0]!.metrics!.rawHolders : 1;
   return (
     <section id="how" className="px-2 py-6 sm:px-4">
-      <div className="card mx-auto max-w-6xl px-6 py-14 sm:px-12">
+      <div className="card w-full px-6 py-14 sm:px-12">
         <div className="grid gap-8 md:grid-cols-2">
           <h2 className="headline text-4xl sm:text-5xl">
             Count People, <span className="fade">Not Wallets</span>
@@ -201,7 +201,7 @@ function Stats({ counts }: { counts: Record<string, number> }) {
   ];
   return (
     <section className="band-plain px-4 py-16">
-      <div className="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid w-full gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {items.map(([label, icon, value, sub], i) => (
           <div key={label} className={i ? "lg:border-l lg:border-dashed lg:border-[var(--accent-soft)] lg:pl-8" : ""}>
             <span className="pill inline-flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--accent-ink)_14%,transparent)] px-2.5 py-1 text-xs">

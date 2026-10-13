@@ -43,6 +43,7 @@ export interface Row {
   address: string;
   name: string;
   symbol: string;
+  image: string | null;
   createBlock: number;
   rawHolders: number | null;
   realHolders: number | null;

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/embed-methodology.mjs && next dev -p 3000",
-    "build": "node scripts/embed-methodology.mjs && next build",
+    "build": "node scripts/embed-methodology.mjs && node scripts/fetch-logos.mjs && next build",
     "typecheck": "node scripts/embed-methodology.mjs && tsc --noEmit"
   },
   "dependencies": {

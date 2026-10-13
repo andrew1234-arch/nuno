@@ -6,6 +6,7 @@ import { dateRange } from "@/lib/finding";
 import { rows } from "@/lib/verdict";
 import { mon } from "@/lib/format";
 import { Search } from "./search";
+import { TokenLogo } from "./token-logo";
 import { Badge } from "./badge";
 import { Freshness } from "./landing";
 
@@ -18,8 +19,8 @@ function Steps() {
     ["Check the proof", "Open the token to see each wallet group, how its wallets are linked and the public transactions behind every link."],
   ];
   return (
-    <section id="how-to" className="scroll-mt-20 px-4 pt-14 sm:px-6">
-      <div className="card mx-auto max-w-7xl px-6 py-12 sm:px-12">
+    <section id="how-to" className="scroll-mt-20 px-4 pt-14 sm:px-6 lg:px-8">
+      <div className="card w-full px-6 py-12 sm:px-12">
         <h2 className="headline text-4xl sm:text-5xl">
           How to <span className="fade">Use It</span>
         </h2>
@@ -61,8 +62,8 @@ function Build() {
     ["OrganicGate", "One call lets your contract refuse tokens that are mostly held by wallet groups, or whose data is stale.", "/developers/#contracts", "See the example"],
   ];
   return (
-    <section className="band-plain mt-14 px-4 py-16">
-      <div className="mx-auto max-w-7xl">
+    <section className="band-plain mt-14 px-4 py-16 sm:px-6 lg:px-8">
+      <div className="w-full">
         <h2 className="headline text-4xl text-[var(--accent-ink)] sm:text-5xl">
           Build <span className="text-[var(--accent-soft)]">on Nuno</span>
         </h2>
@@ -98,6 +99,7 @@ function Top({ title, list, value, sort, filter }: { title: string; list: Row[];
           <li key={r.address}>
             <Link href={`/token/${r.address}/`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-[var(--panel)]">
               <span className="w-4 text-sm tabular-nums text-[var(--soft)]">{i + 1}</span>
+              <TokenLogo src={r.image} symbol={r.symbol} size={36} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{r.symbol}</span>
                 <span className="block truncate text-xs text-[var(--muted)]">{r.name}</span>
@@ -143,7 +145,7 @@ export function Home() {
             See how many real people own a token and which of its wallets are linked to each other, with public proof for every link.
           </p>
           <div className="mx-auto mt-8 max-w-2xl">
-            <Search items={all.map((r) => [r.address, r.symbol, r.name, r.level])} size="lg" />
+            <Search items={all.map((r) => [r.address, r.symbol, r.name, r.level, r.image])} size="lg" />
           </div>
           <p className="mt-3 text-sm text-[var(--muted)]">
             or <Link href="/tokens/" className="text-[var(--accent-text)] hover:underline">browse all {n(all.length)} tokens</Link>
@@ -151,7 +153,7 @@ export function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 sm:px-6">
+      <section className="w-full px-4 sm:px-6 lg:px-8">
         <dl className="card grid grid-cols-2 divide-[var(--line)] lg:grid-cols-4 lg:divide-x">
           {stats.map(([v, label]) => (
             <div key={label} className="p-5">
@@ -163,7 +165,7 @@ export function Home() {
         </dl>
       </section>
 
-      <section className="mx-auto mt-10 max-w-7xl px-4 sm:px-6">
+      <section className="mt-10 w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <h2 className="text-2xl font-semibold tracking-tight">Top tokens right now</h2>
           <Link href="/tokens/" className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)]">All tokens →</Link>

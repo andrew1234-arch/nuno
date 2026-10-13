@@ -66,6 +66,7 @@ jobs:
       - name: Build site
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          LOGOS_CACHE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/api/logos.json
         run: |
           pnpm web:build
           cp -r site/api apps/web/out/api

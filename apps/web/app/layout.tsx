@@ -31,7 +31,7 @@ function Nav() {
   const items = searchItems("live");
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur">
-      <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+      <nav aria-label="Main" className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]" aria-label="Nuno home">
           <Logo className="h-5 w-7" />
           nuno.
@@ -89,7 +89,7 @@ function Footer() {
   ];
   return (
     <footer className="mt-16 border-t border-[var(--line)] bg-[var(--surface)]">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="grid w-full gap-10 px-4 py-12 sm:px-6 lg:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]">
             <Logo className="h-5 w-7" /> nuno.
@@ -119,7 +119,7 @@ function Footer() {
         ))}
       </div>
       <div className="border-t border-[var(--line)]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-[var(--muted)] sm:px-6">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-[var(--muted)] sm:px-6 lg:px-8">
           <span>Labels describe links found in public Monad transactions. Not financial advice.</span>
           <span>MIT licensed · Monad Metropolis 2026</span>
         </div>

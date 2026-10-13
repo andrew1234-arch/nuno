@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { mon, pct, short } from "@/lib/format";
 import { LEVEL_LABEL, type Level, type Row } from "@/lib/levels";
 import { Badge } from "./badge";
+import { TokenLogo } from "./token-logo";
 
 // Search, filter and sort run in the browser: the site is a static export with no server.
 const SORTS: Array<[string, string, (r: Row) => number | bigint]> = [
@@ -23,12 +24,15 @@ function TokenRow({ r, base }: { r: Row; base: string }) {
   return (
     <tr className="border-t border-[var(--line)] hover:bg-[var(--panel)]">
       <td className="py-3 pr-3">
-        <Link href={href} className="font-medium hover:text-[var(--accent-text)]">
-          {r.symbol}
+        <Link href={href} className="flex items-center gap-3 hover:text-[var(--accent-text)]">
+          <TokenLogo src={r.image} symbol={r.symbol} size={36} />
+          <span className="min-w-0">
+            <span className="block font-medium">{r.symbol}</span>
+            <span className="block max-w-[12rem] truncate text-xs text-[var(--muted)]" title={r.name}>
+              {r.name} · <span className="mono">{short(r.address)}</span>
+            </span>
+          </span>
         </Link>
-        <div className="max-w-[12rem] truncate text-xs text-[var(--muted)]" title={r.name}>
-          {r.name} · <span className="mono">{short(r.address)}</span>
-        </div>
       </td>
       <td className="py-3 pr-3">
         <Link href={href} className="block">

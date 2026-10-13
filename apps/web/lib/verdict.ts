@@ -68,6 +68,7 @@ export function rows(d: Dataset = "live"): Row[] {
       address: t.address,
       name: t.name,
       symbol: t.symbol,
+      image: api.links(t.address, d).image ?? null,
       createBlock: t.createBlock,
       rawHolders: m?.rawHolders ?? null,
       realHolders: m?.realHolders ?? null,
@@ -82,4 +83,4 @@ export function rows(d: Dataset = "live"): Row[] {
 }
 
 /** Compact index for the search box: [address, symbol, name, label]. */
-export const searchItems = (d: Dataset = "live"): Array<[string, string, string, Level]> => rows(d).map((r) => [r.address, r.symbol, r.name, r.level]);
+export const searchItems = (d: Dataset = "live"): Array<[string, string, string, Level, string | null]> => rows(d).map((r) => [r.address, r.symbol, r.name, r.level, r.image]);

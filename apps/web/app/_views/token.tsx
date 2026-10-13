@@ -7,6 +7,7 @@ import { ClusterGraph } from "../graph";
 import { EvidenceTable } from "../evidence";
 import { LEVEL_HINT, verdict } from "@/lib/verdict";
 import { Badge } from "./badge";
+import { TokenLogo } from "./token-logo";
 import { baseFor } from "./screener";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -44,6 +45,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
   const m = token.metrics;
   const snap = token.latestSnapshot;
   const v = verdict(token, dataset);
+  const links = api.links(token.address, dataset);
   // The creator's group first, then the biggest.
   const groups = [...clusters].sort((a, b) => Number(b.members.includes(token.creator)) - Number(a.members.includes(token.creator)) || b.size - a.size);
 
@@ -55,9 +57,21 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
             <Link href="/contrast/" className="hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"}</Link>
           </p>
         ) : null}
-        <h1 className="text-2xl font-bold">
-          {token.name} <span className="text-[var(--muted)]">${token.symbol}</span>
-        </h1>
+        <div className="flex flex-wrap items-center gap-4">
+          <TokenLogo src={links.image} symbol={token.symbol} size={56} />
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold">
+              {token.name} <span className="text-[var(--muted)]">${token.symbol}</span>
+            </h1>
+            <div className="mt-1 flex flex-wrap gap-2 text-xs">
+              {([[`https://nad.fun/tokens/${token.address}`, "nad.fun"], [links.twitter, "X"], [links.telegram, "Telegram"], [links.website, "Website"], [addrUrl(token.address), "Monadscan"]] as Array<[string | null | undefined, string]>)
+                .filter((x): x is [string, string] => Boolean(x[0]))
+                .map(([href, label]) => (
+                  <a key={label} href={href} target="_blank" rel="noreferrer" className="pill border border-[var(--line)] px-3 py-1 hover:border-[var(--accent)] hover:text-[var(--accent-text)]">{label} ↗</a>
+                ))}
+            </div>
+          </div>
+        </div>
         <div className="mono mt-1 flex flex-wrap gap-x-4 text-xs text-[var(--muted)]">
           <a href={addrUrl(token.address)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">token {token.address}</a>
           <a href={addrUrl(token.creator)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">creator {short(token.creator)}</a>

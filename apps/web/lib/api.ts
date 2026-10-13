@@ -85,6 +85,14 @@ function read<T>(dataset: Dataset, rel: string): T | null {
   return cache.get(path) as T | null;
 }
 
+export interface TokenLinks {
+  image?: string | null;
+  website?: string | null;
+  twitter?: string | null;
+  telegram?: string | null;
+  nsfw?: boolean;
+}
+
 export const hasDataset = (dataset: Dataset) => read<Meta>(dataset, "meta.json") !== null;
 
 export const api = {
@@ -93,6 +101,8 @@ export const api = {
   token: (address: string, d: Dataset = "live") =>
     read<Token & { latestSnapshot: Snapshot | null; clusters: Cluster[] }>(d, `tokens/${address.toLowerCase()}.json`),
   cluster: (id: string, d: Dataset = "live") => read<Cluster>(d, `clusters/${id.toLowerCase()}.json`),
+  /** Logos and links from each token's nad.fun metadata (scripts/fetch-logos.mjs); empty when not fetched. */
+  links: (address: string, d: Dataset = "live"): TokenLinks => read<Record<string, TokenLinks>>(d, "logos.json")?.[address.toLowerCase()] ?? {},
   clusterIds: (d: Dataset = "live") => {
     const ids = new Set<string>();
     for (const t of api.tokens(d)) for (const c of api.token(t.address, d)?.clusters ?? []) ids.add(c.id);
