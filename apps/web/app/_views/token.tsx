@@ -78,8 +78,8 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
             <Badge level={v.level} />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
-            <span className="flex items-center gap-1.5">
-              <span className="mono text-[var(--text)]">{token.address}</span>
+            <span className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
+              <span className="mono break-all text-[var(--text)]">{token.address}</span>
               <CopyButton text={token.address} />
               <a href={addrUrl(token.address)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">Monadscan ↗</a>
             </span>
