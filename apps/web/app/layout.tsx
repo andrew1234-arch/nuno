@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 const REPO = "https://github.com/andrew1234-arch/nuno";
 
 const NAV: Array<[string, string]> = [
-  ["/", "Screener"],
+  ["/#screener", "Screener"],
   ["/methodology/", "Methodology"],
   ["/developers/", "API"],
   ["/contracts/", "Contracts"],
