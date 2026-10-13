@@ -164,7 +164,13 @@ That is the same first-funding edge (same tx, block 61,808,158, 10 MON) that Nun
 
 ## Validation
 
-_TODO: observed precision on the hand-reviewed sample in `docs/VALIDATION.md` only._
+There is no labelled ground truth for wallet clusters, so accuracy is reported only for a reproducible random sample, in [`docs/VALIDATION.md`](docs/VALIDATION.md).
+
+- **Sample:** 20 flagged links and 10 unflagged buyer wallets, drawn with seed 42 at mainnet block 111,709,445.
+- **Flagged links: 20 true, 0 false, 0 unclear: observed precision 20/20 on this sample.** All 20 come from one entity (the only multi-wallet entity in that earlier window), so this tests one clustering decision, not 20 independent ones.
+- **Unflagged wallets:** 9 true negatives, 1 possible miss (a sniper wallet trading through its own contract; the attribution was fixed afterwards).
+- **Status:** verdicts were pre-filled by Claude Code from on-chain checks (every evidence tx re-fetched) and are marked "pending human review" in the file.
+- **Not covered:** the sample predates the V2 curve data, the distribution-hub rule and the farm exception, so it says nothing about the current window's 327 entities. No accuracy is claimed beyond this sample.
 
 ## Attribution
 
