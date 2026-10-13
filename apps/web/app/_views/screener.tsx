@@ -23,7 +23,7 @@ export function ScreenerView({ dataset }: { dataset: Dataset }) {
         <>
           <h1 className="text-2xl font-bold">The real numbers behind every nad.fun launch</h1>
           <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
-            Raw holder counts and volume are easy to fake with wallet farms. Nuno groups wallets controlled by the same operator into entities, using
+            Raw holder counts and volume can be inflated with many linked wallets. Nuno groups wallets that act as the same entity, using
             on-chain funding, transfer and trading evidence, and recomputes each token per entity.
           </p>
           {contrast ? (

@@ -219,7 +219,7 @@ function Stats({ counts }: { counts: Record<string, number> }) {
 const FAQ: Array<[string, string]> = [
   [
     "What problem does Nuno solve?",
-    "New tokens are judged by how many people hold them and how much they are traded. Both numbers are easy to fake: one person can spread money over many wallets and trade with themselves. Nuno works out which wallets belong to the same person, so the numbers you see reflect real people.",
+    "New tokens are judged by how many people hold them and how much they are traded. Both numbers can be inflated: one person can spread money over many wallets and trade with themselves. Nuno works out which wallets belong to the same person, so the numbers you see reflect real people.",
   ],
   [
     "How can you tell two wallets belong to the same person?",
@@ -280,7 +280,7 @@ export function About() {
           Count People, <span className="fade">Not Wallets</span>
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--muted)]">
-          New tokens are judged by how many people hold them and how much they trade. One person with many wallets can fake both. Here is what Nuno
+          New tokens are judged by how many people hold them and how much they trade. One person with many wallets can inflate both. Here is what Nuno
           found on nad.fun, and how it works.
         </p>
       </section>
