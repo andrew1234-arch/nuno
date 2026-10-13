@@ -5,17 +5,23 @@ import { testnetDeployment } from "@/lib/deployments";
 import { addrUrl } from "@/lib/format";
 import { RULES } from "@/lib/verdict";
 import { Badge } from "../_views/badge";
+import { CopyButton } from "../_views/copy";
 import { Sheet } from "../sheet";
 
 export const metadata: Metadata = {
-  title: "Developers",
+  title: "API",
   description: "Use Nuno's numbers in your app or contract: a free static JSON API and the NunoFeed and OrganicGate contracts on Monad testnet.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function Code({ children }: { children: string }) {
-  return <pre className="mono mt-3 overflow-x-auto rounded-md bg-[var(--panel)] p-4 text-xs leading-relaxed">{children}</pre>;
+  return (
+    <div className="relative mt-3">
+      <div className="absolute right-2 top-2"><CopyButton text={children} /></div>
+      <pre className="mono overflow-x-auto rounded-md bg-[var(--panel)] p-4 pr-16 text-xs leading-relaxed">{children}</pre>
+    </div>
+  );
 }
 
 function H2({ id, children }: { id: string; children: React.ReactNode }) {
@@ -29,6 +35,19 @@ function H2({ id, children }: { id: string; children: React.ReactNode }) {
 export default function Developers() {
   const dep = testnetDeployment();
   const sample = api.tokens("live").find((t) => t.metrics && t.metrics.rawHolders > 0)?.address ?? "0x…";
+  const firstToken = api.tokens("live").find((t) => t.address === sample);
+  const detail = api.token(sample, "live");
+  const cid = detail?.clusters?.[0]?.id ?? api.clusterIds("live")[0];
+  const cl = cid ? api.cluster(cid, "live") : null;
+  const wal = cl ? api.wallet(cl.members[0]!, "live") : null;
+  const excerpt = (v: unknown) => JSON.stringify(v, null, 2);
+  const samples: Record<string, string> = {
+    "api/meta.json": excerpt(api.meta("live")),
+    "api/tokens.json": excerpt({ count: api.tokens("live").length, tokens: [firstToken, "…"] }),
+    "api/tokens/{token}.json": excerpt(detail ? { ...detail, clusters: detail.clusters.slice(0, 1).map((c) => ({ ...c, members: [...c.members.slice(0, 2), "…"], links: [c.links[0], "…"] })), evidenceCanonical: "…" } : null),
+    "api/clusters/{groupId}.json": excerpt(cl ? { ...cl, members: [...cl.members.slice(0, 3), "…"], createdTokens: [...cl.createdTokens.slice(0, 2), "…"], links: [cl.links[0], "…"] } : null),
+    "api/wallets/{wallet}.json": excerpt(wal),
+  };
   const endpoints: Array<[string, string]> = [
     ["api/meta.json", "Window (blocks and dates), data freshness, counts."],
     ["api/tokens.json", "Every token in the window with its numbers. Start here."],
@@ -72,7 +91,14 @@ export default function Developers() {
                   <td className="py-2.5 pr-4">
                     {path.includes("{") ? <span className="mono whitespace-nowrap">{path}</span> : <a className="mono whitespace-nowrap text-[var(--accent-text)] hover:underline" href={`${BASE}/${path}`}>{path}</a>}
                   </td>
-                  <td className="py-2.5 text-[var(--muted)]">{what}</td>
+                  <td className="py-2.5 text-[var(--muted)]">
+                    {what}
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-xs text-[var(--accent-text)]">Sample from the current export</summary>
+                      <div className="mt-2 flex justify-end"><CopyButton text={samples[path] ?? ""} label="Copy JSON" /></div>
+                      <pre className="mono mt-1 max-h-72 overflow-auto rounded-md bg-[var(--panel)] p-3 text-[11px] leading-relaxed text-[var(--text)]">{samples[path]}</pre>
+                    </details>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -135,6 +161,15 @@ console.log(\`wallet groups trading it: \${t.clusters.length}\`);`}</Code>
 
 // At most 20% of supply in wallet groups, data at most 1 day old:
 gate.requireOrganic(token, 2000, 1 days);`}</Code>
+        <p className="mt-6 font-medium">Read it with viem</p>
+        <Code>{`import { createPublicClient, http, parseAbi } from "viem";
+
+const client = createPublicClient({ transport: http("https://testnet-rpc.monad.xyz") });
+const abi = parseAbi([
+  "function latest(address token) view returns ((uint64 sourceBlock, uint64 publishedAt, uint32 rawHolders, uint32 realHolders, uint16 clusterSupplyBps, uint16 effectiveTop10Bps, uint16 creatorLinkedSupplyBps, uint16 organicVolumeBps, bytes32 evidenceRoot))",
+]);
+const s = await client.readContract({ address: "${dep?.NunoFeed ?? "0x…"}", abi, functionName: "latest", args: ["${sample}"] });
+console.log(s.rawHolders, "holders,", s.realHolders, "real owners");`}</Code>
         <p className="mt-6 font-medium">Read the raw snapshot</p>
         <Code>{`struct Snapshot {
     uint64 sourceBlock;            // mainnet block the numbers are from
