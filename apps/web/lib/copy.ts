@@ -9,4 +9,4 @@ export const ONE_LINER =
   "Nuno groups linked wallets behind nad.fun tokens into real entities and publishes real holder counts and organic volume, through an open API and on-chain on Monad.";
 
 /** Public site URL, for absolute Open Graph links (GitHub Pages project site by default). */
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://andrew1234-arch.github.io/nuno";
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://andrew1234-arch.github.io/nuno";

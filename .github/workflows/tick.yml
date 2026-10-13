@@ -1,6 +1,7 @@
 # Every 15 minutes: restore the DB from the `data` branch, run one bounded pipeline tick
 # (index → funding → cluster/metrics → testnet snapshots → Nansen hub checks), save the DB,
-# export the static API, build the static site and deploy it to GitHub Pages. $0 hosting.
+# export the static API, build the static site and deploy it to Vercel (Hobby). The backend (pipeline,
+# DB on the `data` branch, testnet snapshots) stays on GitHub Actions. $0 hosting.
 name: tick
 
 on:
@@ -10,8 +11,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: tick
@@ -65,22 +64,19 @@ jobs:
           fi
       - name: Build site
         env:
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          LOGOS_CACHE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/api/logos.json
+          # Served from the domain root on Vercel. SITE_URL (repo variable) is the public URL, used for
+          # Open Graph links, API examples and the logo cache.
+          NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL }}
+          LOGOS_CACHE_URL: ${{ vars.SITE_URL && format('{0}/api/logos.json', vars.SITE_URL) || '' }}
         run: |
           pnpm web:build
           cp -r site/api apps/web/out/api
-          touch apps/web/out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: apps/web/out
-
-  deploy:
-    needs: tick
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          cp apps/web/vercel.json apps/web/out/vercel.json
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then echo "VERCEL_TOKEN not set: skipping deploy"; exit 0; fi
+          npx -y vercel@39.1.1 deploy apps/web/out --prod --yes --token "$VERCEL_TOKEN"

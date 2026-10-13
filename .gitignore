@@ -25,3 +25,4 @@ site/
 apps/web/lib/methodology.generated.ts
 apps/web/out/
 .contrast-export/
+.vercel
