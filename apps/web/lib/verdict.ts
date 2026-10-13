@@ -4,7 +4,7 @@ import type { Flag, Level, Row, Verdict } from "./levels";
 
 export { LEVEL_HINT, LEVEL_LABEL, RULES, type Flag, type Level, type Row, type Verdict } from "./levels";
 
-// A token's verdict, computed at build time from the exported numbers only. Each flag is one plain
+// A token's label (what was found, not a risk rating), computed at build time from the exported numbers only. Each flag is one plain
 // sentence backed by a number shown on the token page; the level is the worst flag. Thresholds are
 // listed on the token page and the developers page, so users can judge them.
 

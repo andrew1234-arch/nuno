@@ -13,7 +13,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 function Steps() {
   const steps: Array<[string, string]> = [
     ["Find the token", "Paste its address from nad.fun, or search by name or ticker. Every nad.fun launch in the window is here."],
-    ["Read the verdict", "Red flags, some flags or no flags found, with the reasons in one line each: who the creator is linked to and how many real owners there are."],
+    ["See what was found", "Each token is labelled by how many linked wallets Nuno found, with the facts in one line each: who the creator is linked to and how many real owners there are."],
     ["Check the proof", "Open the token to see each wallet group, how its wallets are linked and the public transactions behind every link."],
   ];
   return (
@@ -32,7 +32,7 @@ function Steps() {
           ))}
         </ol>
         <div className="mt-12 rounded-2xl bg-[var(--panel)] p-6">
-          <p className="font-medium">What the verdicts mean</p>
+          <p className="font-medium">What the labels mean</p>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {(["red", "amber", "clear", "none"] as Level[]).map((l) => (
               <li key={l}>
@@ -42,7 +42,8 @@ function Steps() {
             ))}
           </ul>
           <p className="mt-5 text-xs text-[var(--muted)]">
-            A verdict is a starting point, not financial advice. The exact rules are on the{" "}
+            Labels describe links found in public transactions, not whether a token is good or bad, and are not financial advice. Grouping was checked
+            by hand on a small sample only (see the proof on every token). The exact rules are on the{" "}
             <Link href="/developers/#rules" className="text-[var(--accent-text)] underline">developers page</Link>.
           </p>
         </div>
@@ -54,7 +55,7 @@ function Steps() {
 function Build() {
   const dep = testnetDeployment();
   const cards: Array<[string, string, string, string]> = [
-    ["JSON API", "Every token's verdict inputs, wallet groups and proof as static JSON. Free, no key, updated every 15 minutes.", `${BASE}/api/tokens.json`, "Open tokens.json"],
+    ["JSON API", "Every token's numbers, wallet groups and proof as static JSON. Free, no key, updated every 15 minutes.", `${BASE}/api/tokens.json`, "Open tokens.json"],
     ["On-chain feed", `Read a token's real-owner numbers from the NunoFeed contract on Monad testnet${dep ? ` (${dep.NunoFeed.slice(0, 8)}…)` : ""}.`, "/developers/#contracts", "See the contract"],
     ["OrganicGate", "One call lets your contract refuse tokens that are mostly held by wallet groups, or whose data is stale.", "/developers/#contracts", "See the example"],
   ];
@@ -94,7 +95,7 @@ export function Home() {
             Check a nad.fun Token <span className="fade">Before You Buy</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--muted)]">
-            Nuno shows how many real people own a token and flags tokens run by groups of linked wallets, with public proof for every flag.
+            Nuno shows how many real people own a token and which of its wallets are linked to each other, with public proof for every link.
           </p>
         </div>
       </section>
@@ -108,7 +109,7 @@ export function Home() {
               {(["red", "amber", "clear"] as Level[]).map((l, i) => (
                 <span key={l}>
                   {i ? " · " : ""}
-                  <b className="font-medium text-[var(--text)]">{counts[l]}</b> {LEVEL_LABEL[l].toLowerCase()}
+                  <b className="font-medium text-[var(--text)]">{counts[l]}</b> with {LEVEL_LABEL[l].toLowerCase()}
                 </span>
               ))}
             </p>

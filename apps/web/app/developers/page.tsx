@@ -55,7 +55,7 @@ export default function Developers() {
           The numbers on this site are open. Read them as static JSON from any app or bot, or straight from a contract on Monad. No key, no sign-up, no cost.
         </p>
         <nav className="mt-6 flex flex-wrap gap-2 text-sm" aria-label="On this page">
-          {[["#api", "JSON API"], ["#rules", "Verdict rules"], ["#contracts", "Contracts"], ["#limits", "Limits"]].map(([h, l]) => (
+          {[["#api", "JSON API"], ["#rules", "Label rules"], ["#contracts", "Contracts"], ["#limits", "Limits"]].map(([h, l]) => (
             <a key={h} href={h} className="pill border border-[var(--line)] px-3.5 py-1.5 hover:border-[var(--accent)] hover:text-[var(--accent-text)]">{l}</a>
           ))}
         </nav>
@@ -95,11 +95,11 @@ console.log(\`wallet groups trading it: \${t.clusters.length}\`);`}</Code>
           ))}
         </dl>
 
-        <H2 id="rules">How verdicts are decided</H2>
+        <H2 id="rules">How labels are decided</H2>
         <p className="mt-2 text-[var(--muted)]">
-          The site turns the fields above into a verdict with these rules. Any red rule gives <b className="text-[var(--text)]">Red flags</b>, any other rule gives{" "}
-          <b className="text-[var(--text)]">Some flags</b>, none gives <b className="text-[var(--text)]">No flags found</b>. A token with no holders and no trading
-          is <b className="text-[var(--text)]">Not enough data</b>. Copy them, or set your own thresholds.
+          The site turns the fields above into a label with these rules. Any of the first three gives <b className="text-[var(--text)]">Many linked wallets</b>, any other gives{" "}
+          <b className="text-[var(--text)]">Some linked wallets</b>, none gives <b className="text-[var(--text)]">No linked wallets found</b>. A token with no holders and no trading
+          is <b className="text-[var(--text)]">Not enough data</b>. Labels describe what was found, not risk. The cut-offs are our own choice and have not been tested against hand-labelled tokens, so set your own thresholds if you need to.
         </p>
         <ul className="mt-4 space-y-3">
           {RULES.map(([level, text]) => (

@@ -66,9 +66,9 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
         </div>
       </div>
 
-      <section className="rounded-2xl border border-[var(--line)] p-5 sm:p-6" aria-labelledby="verdict">
+      <section className="rounded-2xl border border-[var(--line)] p-5 sm:p-6" aria-labelledby="found">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 id="verdict" className="sr-only">Verdict</h2>
+          <h2 id="found" className="sr-only">What Nuno found</h2>
           <Badge level={v.level} large />
           <p className="text-sm text-[var(--muted)]">{LEVEL_HINT[v.level]}</p>
         </div>
@@ -93,7 +93,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
               {clusters.length} wallet group{clusters.length > 1 ? "s" : ""} trade this token ↓
             </a>
           ) : null}
-          <Link href="/developers/#rules" className="text-[var(--muted)] hover:underline">How verdicts are decided</Link>
+          <Link href="/developers/#rules" className="text-[var(--muted)] hover:underline">How labels are decided</Link>
         </div>
       </section>
 

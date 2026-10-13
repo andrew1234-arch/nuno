@@ -9,7 +9,7 @@ import { Badge } from "./badge";
 
 // Search, filter and sort run in the browser: the site is a static export with no server.
 const SORTS: Array<[string, string, (r: Row) => number | bigint]> = [
-  ["risk", "Most flags", (r) => ({ red: 3, amber: 2, none: 1, clear: 0 })[r.level] * 100 + r.flags],
+  ["risk", "Most links found", (r) => ({ red: 3, amber: 2, none: 1, clear: 0 })[r.level] * 100 + r.flags],
   ["raw_volume", "Most traded", (r) => BigInt(r.rawVolume)],
   ["holders", "Most holders", (r) => r.rawHolders ?? -1],
   ["holder_gap", "Biggest holder gap", (r) => (r.rawHolders === null ? -1 : r.rawHolders - (r.realHolders ?? 0))],
@@ -95,7 +95,7 @@ export function SortableTable({ rows, base, limit }: { rows: Row[]; base: string
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by verdict">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by what was found">
           {FILTERS.map((l) => (
             <button
               key={l}
@@ -122,7 +122,7 @@ export function SortableTable({ rows, base, limit }: { rows: Row[]; base: string
           <thead className="text-xs uppercase text-[var(--muted)]">
             <tr>
               <th className="py-2 text-left">Token</th>
-              <th className="text-left">Verdict</th>
+              <th className="text-left">Linked wallets</th>
               <th className="pr-3 text-right" title="Wallets holding the token → real owners, once one person's wallets count as one">Holders → real</th>
               <th className="hidden pr-3 text-right sm:table-cell" title="All buys and sells, in MON">Traded (MON)</th>
               <th className="hidden text-right sm:table-cell" title="Share of trading done by owners who kept their tokens. Quick in-and-out trading, by bots or ordinary traders, is left out.">By holders</th>

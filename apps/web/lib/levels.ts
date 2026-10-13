@@ -15,17 +15,17 @@ export interface Verdict {
 }
 
 export const LEVEL_LABEL: Record<Level, string> = {
-  red: "Red flags",
-  amber: "Some flags",
-  clear: "No flags found",
+  red: "Many linked wallets",
+  amber: "Some linked wallets",
+  clear: "No linked wallets found",
   none: "Not enough data",
 };
 
 export const LEVEL_HINT: Record<Level, string> = {
-  red: "Strong signs that a few people control this token through many wallets.",
-  amber: "Some signs of linked wallets. Worth checking who they are before you buy.",
-  clear: "No linked wallets found among its creator and holders. Not a guarantee.",
-  none: "Too little trading to judge.",
+  red: "Its creator or holders are linked to many other wallets. See who, and the proof.",
+  amber: "Some of its creator's or holders' wallets are linked. See who, and the proof.",
+  clear: "No links found between its creator and holders and other wallets. Not a guarantee.",
+  none: "Too little trading to say.",
 };
 
 /** The rules, in the order they are checked (shown on the developers page). */
