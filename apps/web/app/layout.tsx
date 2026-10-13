@@ -10,18 +10,18 @@ import "./globals.css";
 const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Nuno: how many people really own this token?", template: "%s · Nuno" },
-  description: "Nuno is a wallet-cluster detector for nad.fun tokens on Monad: it finds groups of wallets run by one person and shows how many real people are behind each token, with public proof.",
+  title: { default: "Nuno: check a nad.fun token before you buy", template: "%s · Nuno" },
+  description: "Check any nad.fun token on Monad: how many real people own it, whether its creator runs a group of linked wallets, and the public proof. Free web app, JSON API and on-chain feed.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const REPO = "https://github.com/andrew1234-arch/nuno";
 
 const NAV: Array<[string, string]> = [
-  ["/#screener", "Tokens"],
-  ["/#how", "How it works"],
-  ["/#faq", "Questions"],
-  ["/methodology/", "Detailed method"],
+  ["/#tokens", "Check a token"],
+  ["/#how-to", "How to use"],
+  ["/developers/", "Developers"],
+  ["/about/", "About"],
 ];
 
 function Nav() {
@@ -42,9 +42,9 @@ function Nav() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <a href={`${BASE}/api/tokens.json`} className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)]">
-            Get the data
-          </a>
+          <Link href="/developers/" className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)]">
+            API
+          </Link>
         </div>
       </div>
       {/* Small screens: the same links as a scrollable row (the wide-screen copy is hidden there). */}
@@ -71,7 +71,7 @@ function Footer() {
               <Logo className="h-7 w-10" /> nuno.
             </div>
             <p className="mt-5 max-w-xs text-lg leading-snug">
-              A wallet-cluster detector for nad.fun: how many real people are behind a token, not just how many wallets.
+              Check a nad.fun token before you buy: how many real people are behind it, not just how many wallets.
             </p>
           </div>
           <div className="text-sm">
@@ -100,6 +100,7 @@ function Footer() {
               {[
                 [`${BASE}/api/tokens.json`, "Download all token numbers"],
                 [`${BASE}/api/meta.json`, "Download the summary"],
+                [`${BASE}/developers/`, "Use the API and contracts"],
                 [`${BASE}/methodology/`, "Read the detailed method"],
                 [REPO, "See the source code"],
               ].map(([href, label]) => (

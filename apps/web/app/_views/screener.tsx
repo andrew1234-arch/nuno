@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { api, hasDataset, type Dataset } from "@/lib/api";
+import { rows } from "@/lib/verdict";
 import { SortableTable } from "./sortable";
 
 export const baseFor = (d: Dataset) => (d === "contrast" ? "/contrast" : "");
@@ -39,7 +40,7 @@ export function ScreenerView({ dataset }: { dataset: Dataset }) {
           {meta.generatedAt.slice(0, 16).replace("T", " ")} UTC.
         </p>
       ) : null}
-      <SortableTable tokens={tokens} base={baseFor(dataset)} />
+      <SortableTable rows={rows(dataset)} base={baseFor(dataset)} />
     </div>
   );
 }

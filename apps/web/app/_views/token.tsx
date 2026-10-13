@@ -5,7 +5,11 @@ import { api, type Dataset } from "@/lib/api";
 import { addrUrl, mon, pct, short, txUrl } from "@/lib/format";
 import { ClusterGraph } from "../graph";
 import { EvidenceTable } from "../evidence";
+import { LEVEL_HINT, verdict } from "@/lib/verdict";
+import { Badge } from "./badge";
 import { baseFor } from "./screener";
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function Stat({ label, raw, real, note }: { label: string; raw?: string; real: string; note?: string }) {
   return (
@@ -39,6 +43,9 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
   const clusters = token.clusters ?? [];
   const m = token.metrics;
   const snap = token.latestSnapshot;
+  const v = verdict(token, dataset);
+  // The creator's group first, then the biggest.
+  const groups = [...clusters].sort((a, b) => Number(b.members.includes(token.creator)) - Number(a.members.includes(token.creator)) || b.size - a.size);
 
   return (
     <div className="space-y-8">
@@ -59,6 +66,37 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
         </div>
       </div>
 
+      <section className="rounded-2xl border border-[var(--line)] p-5 sm:p-6" aria-labelledby="verdict">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 id="verdict" className="sr-only">Verdict</h2>
+          <Badge level={v.level} large />
+          <p className="text-sm text-[var(--muted)]">{LEVEL_HINT[v.level]}</p>
+        </div>
+        {v.flags.length ? (
+          <ul className="mt-4 space-y-2">
+            {v.flags.map((f) => (
+              <li key={f.text} className="flex gap-3 text-base">
+                <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${f.level === "red" ? "bg-[var(--flag)]" : "bg-[var(--c-accent)]"}`} aria-hidden="true" />
+                <span>{f.text}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          {v.creatorGroup ? (
+            <Link href={`${base}/cluster/${v.creatorGroup.id}/`} className="font-medium text-[var(--accent-text)] hover:underline">
+              See the creator&apos;s wallet group →
+            </Link>
+          ) : null}
+          {clusters.length ? (
+            <a href="#groups" className="font-medium text-[var(--accent-text)] hover:underline">
+              {clusters.length} wallet group{clusters.length > 1 ? "s" : ""} trade this token ↓
+            </a>
+          ) : null}
+          <Link href="/developers/#rules" className="text-[var(--muted)] hover:underline">How verdicts are decided</Link>
+        </div>
+      </section>
+
       {m ? (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Stat label="Holders" raw={String(m.rawHolders)} real={String(m.realHolders)} note="wallets holding it → real owners, once wallets of the same person are counted as one" />
@@ -78,7 +116,16 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
 
       {dataset === "live" ? (
         <section className="rounded-lg border border-[var(--line)] p-3 text-sm">
-          <h2 className="font-semibold">Published on-chain</h2>
+          <h2 className="font-semibold">Use these numbers in your app</h2>
+          <p className="mt-1 text-[var(--muted)]">
+            JSON:{" "}
+            <a className="mono break-all text-[var(--accent-text)] hover:underline" href={`${BASE}/api/tokens/${token.address}.json`}>
+              /api/tokens/{token.address}.json
+            </a>
+            {" · "}
+            Solidity: <span className="mono">NunoFeed.latest({short(token.address)})</span> ·{" "}
+            <Link href="/developers/" className="text-[var(--accent-text)] hover:underline">developer guide</Link>
+          </p>
           <p className="mt-1 text-[var(--muted)]">These numbers are also written to Nuno&apos;s contract on the Monad test network, so other apps and smart contracts can read them directly.</p>
           {snap ? (
             <p className="mt-1 text-[var(--muted)]">
@@ -98,27 +145,34 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
         </section>
       ) : null}
 
-      <section>
+      <section id="groups" className="scroll-mt-20">
         <h2 className="text-lg font-semibold">Wallet groups trading this token ({clusters.length})</h2>
         <p className="text-sm text-[var(--muted)]">
-          A group is a set of wallets that very likely belong to the same person. Each group keeps the same name on every token, so you can follow one owner across launches.
+          Click a group to open it. A group is a set of wallets that very likely belong to the same person. Each group keeps the same name on every token, so you can follow one owner across launches.
         </p>
         <div className="mt-4 space-y-8">
-          {clusters.map((c) => (
-            <div key={c.id} className="rounded-lg border border-[var(--line)] p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <Link href={`${base}/cluster/${c.id}/`} className="font-semibold hover:text-[var(--accent-text)]">
+          {groups.map((c, i) => (
+            <details key={c.id} open={i === 0} className="faq rounded-lg border border-[var(--line)] p-4">
+              <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
+                <span className="font-semibold">
                   Group <span className="mono">{short(c.id)}</span>: {c.size} wallets, one owner
-                </Link>
-                {c.createdTokens.length ? (
-                  <span className="text-xs text-[var(--bad)]">launched {c.createdTokens.length} token{c.createdTokens.length > 1 ? "s" : ""}</span>
-                ) : null}
-              </div>
+                  {c.members.includes(token.creator) ? <span className="ml-2 text-xs font-normal text-[var(--bad)]">includes the creator</span> : null}
+                </span>
+                <span className="flex items-center gap-3">
+                  {c.createdTokens.length ? (
+                    <span className="text-xs text-[var(--bad)]">launched {c.createdTokens.length} token{c.createdTokens.length > 1 ? "s" : ""}</span>
+                  ) : null}
+                  <span className="icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--panel)]" aria-hidden="true" />
+                </span>
+              </summary>
               <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,22rem)_1fr]">
                 <ClusterGraph cluster={c} highlight={token.creator} />
-                <EvidenceTable cluster={c} limit={25} base={base} />
+                <EvidenceTable cluster={c} limit={10} base={base} />
               </div>
-            </div>
+              <Link href={`${base}/cluster/${c.id}/`} className="mt-3 inline-block text-sm font-medium text-[var(--accent-text)] hover:underline">
+                Open this group →
+              </Link>
+            </details>
           ))}
           {clusters.length === 0 ? <p className="text-[var(--muted)]">No groups found: every buyer and holder of this token looks like a separate person.</p> : null}
         </div>

@@ -1,97 +1,144 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Token } from "@/lib/api";
 import { mon, pct, short } from "@/lib/format";
+import { LEVEL_LABEL, type Level, type Row } from "@/lib/levels";
+import { Badge } from "./badge";
 
-// Sorting runs in the browser: the site is a static export, so there is no server to sort by query string.
-const SORTS: Array<[string, string, (t: Token) => number | bigint]> = [
-  ["holder_gap", "Biggest holder gap", (t) => (t.metrics ? t.metrics.rawHolders - t.metrics.realHolders : -1)],
-  ["cluster_supply", "Most owned by groups", (t) => t.metrics?.clusterSupplyBps ?? -1],
-  ["creator_supply", "Most owned by creator's side", (t) => t.metrics?.creatorLinkedSupplyBps ?? -1],
-  ["wash", "Most in-and-out trading", (t) => (t.metrics && t.metrics.rawVolume !== "0" ? 10_000 - t.metrics.organicVolumeBps : -1)],
-  ["raw_volume", "Most traded", (t) => (t.metrics ? BigInt(t.metrics.rawVolume) : -1n)],
-  ["newest", "Newest", (t) => t.createBlock],
+// Search, filter and sort run in the browser: the site is a static export with no server.
+const SORTS: Array<[string, string, (r: Row) => number | bigint]> = [
+  ["risk", "Most flags", (r) => ({ red: 3, amber: 2, none: 1, clear: 0 })[r.level] * 100 + r.flags],
+  ["raw_volume", "Most traded", (r) => BigInt(r.rawVolume)],
+  ["holders", "Most holders", (r) => r.rawHolders ?? -1],
+  ["holder_gap", "Biggest holder gap", (r) => (r.rawHolders === null ? -1 : r.rawHolders - (r.realHolders ?? 0))],
+  ["newest", "Newest", (r) => r.createBlock],
 ];
 
-function Row({ t, base }: { t: Token; base: string }) {
-  const m = t.metrics;
+const FILTERS: Array<Level | "all"> = ["all", "red", "amber", "clear"];
+
+function TokenRow({ r, base }: { r: Row; base: string }) {
+  const href = `${base}/token/${r.address}/`;
   return (
     <tr className="border-t border-[var(--line)] hover:bg-[var(--panel)]">
-      <td className="py-2 pr-3">
-        <Link href={`${base}/token/${t.address}/`} className="font-medium hover:text-[var(--accent-text)]">
-          {t.symbol}
+      <td className="py-3 pr-3">
+        <Link href={href} className="font-medium hover:text-[var(--accent-text)]">
+          {r.symbol}
         </Link>
-        <div className="mono text-xs text-[var(--muted)]">{short(t.address)}</div>
+        <div className="max-w-[12rem] truncate text-xs text-[var(--muted)]" title={r.name}>
+          {r.name} · <span className="mono">{short(r.address)}</span>
+        </div>
       </td>
-      {m ? (
-        <>
-          <td className="pr-3 text-right tabular-nums">
-            {m.rawHolders} <span className="text-[var(--muted)]">→</span> <b>{m.realHolders}</b>
-          </td>
-          <td className="pr-3 text-right tabular-nums">{pct(m.clusterSupplyBps)}</td>
-          <td className="pr-3 text-right tabular-nums">{pct(m.creatorLinkedSupplyBps)}</td>
-          <td className="pr-3 text-right tabular-nums">{pct(m.effectiveTop10Bps)}</td>
-          <td className="pr-3 text-right tabular-nums">
-            {mon(m.rawVolume)} <span className="text-[var(--muted)]">→</span> <b>{mon(m.organicVolume)}</b>
-          </td>
-          <td className="text-right tabular-nums">
-            {m.rawVolume === "0" ? "–" : pct(m.organicVolumeBps)}
-          </td>
-        </>
-      ) : (
-        <td colSpan={6} className="text-right text-[var(--muted)]">{t.pruned ? "too few buyers to analyse" : "not ready yet"}</td>
-      )}
+      <td className="py-3 pr-3">
+        <Link href={href} className="block">
+          <Badge level={r.level} />
+          {r.reason ? <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">{r.reason}{r.flags > 1 ? ` (+${r.flags - 1} more)` : ""}</p> : null}
+        </Link>
+      </td>
+      <td className="pr-3 text-right tabular-nums">
+        {r.rawHolders === null ? "–" : r.rawHolders === r.realHolders ? r.rawHolders : <>{r.rawHolders} <span className="text-[var(--muted)]">→</span> <b>{r.realHolders}</b></>}
+      </td>
+      <td className="hidden pr-3 text-right tabular-nums sm:table-cell">{mon(r.rawVolume)}</td>
+      <td className="hidden text-right tabular-nums sm:table-cell">{r.organicVolumeBps === null ? "–" : pct(r.organicVolumeBps)}</td>
     </tr>
   );
 }
 
-export function SortableTable({ tokens, base, limit }: { tokens: Token[]; base: string; limit?: number }) {
-  const [sort, setSort] = useState("holder_gap");
+export function SortableTable({ rows, base, limit }: { rows: Row[]; base: string; limit?: number }) {
+  const router = useRouter();
+  const [sort, setSort] = useState("raw_volume");
+  const [filter, setFilter] = useState<Level | "all">("all");
+  const [q, setQ] = useState("");
   const [all, setAll] = useState(false);
+  const query = q.trim().toLowerCase();
   const key = SORTS.find(([k]) => k === sort)![2];
-  const sorted = [...tokens].sort((a, b) => {
-    const x = key(a), y = key(b);
-    return x === y ? b.createBlock - a.createBlock : y > x ? 1 : -1;
-  });
+  const matches = rows.filter(
+    (r) => !query || r.address.includes(query) || r.symbol.toLowerCase().includes(query.replace(/^\$/, "")) || r.name.toLowerCase().includes(query),
+  );
+  const shown = matches
+    .filter((r) => filter === "all" || r.level === filter)
+    .sort((a, b) => {
+      const x = key(a), y = key(b);
+      return x === y ? b.createBlock - a.createBlock : y > x ? 1 : -1;
+    });
+  const count = (l: Level | "all") => (l === "all" ? matches.length : matches.filter((r) => r.level === l).length);
+  const isAddress = /^0x[0-9a-f]{40}$/.test(query);
+  const visible = all || !limit || query ? shown : shown.slice(0, limit);
+
   return (
     <>
-      <div className="mt-4 flex flex-wrap gap-2 text-sm">
-        {SORTS.map(([k, label]) => (
-          <button
-            key={k}
-            onClick={() => setSort(k)}
-            className={`rounded-full border px-3.5 py-1.5 ${k === sort ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent-text)]"}`}
-          >
-            {label}
-          </button>
-        ))}
+      <form
+        className="mt-6"
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (shown.length === 1) router.push(`${base}/token/${shown[0]!.address}/`);
+        }}
+      >
+        <label htmlFor="token-search" className="sr-only">Search tokens</label>
+        <input
+          id="token-search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Paste a token address, or search by name or $TICKER"
+          autoComplete="off"
+          spellCheck={false}
+          className="w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-5 py-4 text-base shadow-sm outline-none placeholder:text-[var(--soft)] focus:border-[var(--accent)]"
+        />
+      </form>
+      {isAddress && matches.length === 0 ? (
+        <p className="mt-3 rounded-xl bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
+          This address isn&apos;t a nad.fun token launched in the window Nuno checks (see the dates above). Check that it is a nad.fun token, or try again
+          after the next update.
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by verdict">
+          {FILTERS.map((l) => (
+            <button
+              key={l}
+              onClick={() => setFilter(l)}
+              aria-pressed={l === filter}
+              className={`rounded-full border px-3.5 py-1.5 ${l === filter ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent-text)]"}`}
+            >
+              {l === "all" ? "All" : LEVEL_LABEL[l]} <span className="tabular-nums opacity-70">{count(l)}</span>
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-[var(--muted)]">
+          Sort
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[var(--text)]">
+            {SORTS.map(([k, label]) => (
+              <option key={k} value={k}>{label}</option>
+            ))}
+          </select>
+        </label>
       </div>
+
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase text-[var(--muted)]">
             <tr>
               <th className="py-2 text-left">Token</th>
-              <th className="pr-3 text-right" title="Wallets holding the token → real owners once one person's wallets count as one">Holders shown → real</th>
-              <th className="pr-3 text-right" title="Share of the token held by groups of wallets that belong to one owner">Held by groups</th>
-              <th className="pr-3 text-right" title="Share held by the creator and every wallet linked to them">Creator&apos;s side</th>
-              <th className="pr-3 text-right" title="Share held by the 10 biggest owners, counting each group as one">Top 10 owners</th>
-              <th className="pr-3 text-right" title="All trading → trading by owners who kept their tokens">Trading (MON) all → by holders</th>
-              <th className="text-right" title="Share of trading done by owners who kept their tokens. Quick in-and-out trading, by bots or ordinary traders, is left out.">By holders</th>
+              <th className="text-left">Verdict</th>
+              <th className="pr-3 text-right" title="Wallets holding the token → real owners, once one person's wallets count as one">Holders → real</th>
+              <th className="hidden pr-3 text-right sm:table-cell" title="All buys and sells, in MON">Traded (MON)</th>
+              <th className="hidden text-right sm:table-cell" title="Share of trading done by owners who kept their tokens. Quick in-and-out trading, by bots or ordinary traders, is left out.">By holders</th>
             </tr>
           </thead>
           <tbody>
-            {(all || !limit ? sorted : sorted.slice(0, limit)).map((t) => (
-              <Row key={t.address} t={t} base={base} />
+            {visible.map((r) => (
+              <TokenRow key={r.address} r={r} base={base} />
             ))}
           </tbody>
         </table>
-        {tokens.length === 0 ? <p className="mt-6 text-[var(--muted)]">No tokens in this dataset.</p> : null}
-        {limit && !all && sorted.length > limit ? (
+        {shown.length === 0 ? <p className="mt-6 text-center text-[var(--muted)]">No tokens match.</p> : null}
+        {visible.length < shown.length ? (
           <div className="mt-6 text-center">
             <button onClick={() => setAll(true)} className="pill border border-[var(--accent)] px-6 py-2.5 text-sm font-medium text-[var(--accent-text)] hover:bg-[var(--panel)]">
-              Show all {sorted.length} tokens
+              Show all {shown.length} tokens
             </button>
           </div>
         ) : null}

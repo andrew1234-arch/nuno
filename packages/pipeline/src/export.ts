@@ -87,7 +87,7 @@ export async function exportStatic(
       curveTrades: await scalar(db, sql`select count(*) from curve_trades`),
       fundingEdges: await scalar(db, sql`select count(*) from funding_edges`),
     },
-    refreshIntervalMinutes: 10,
+    refreshIntervalMinutes: 15,
   });
   write("tokens.json", { sort: "holder_gap", count: tokens.length, tokens: tokens.map((t) => ({ ...t, pruned: prunedHex.has(t.address) })) });
 

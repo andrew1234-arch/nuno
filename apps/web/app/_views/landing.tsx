@@ -1,14 +1,13 @@
 import Link from "next/link";
-import { api, hasDataset, type Cluster, type Token } from "@/lib/api";
+import { api, type Cluster, type Token } from "@/lib/api";
 import { PAYOUTS, SEEDER, SEEDER_DEPOSIT, computeFinding, type Finding } from "@/lib/finding";
 import { addrUrl, mon, short, txUrl } from "@/lib/format";
-import { SortableTable } from "./sortable";
 
 const n = (v: number) => v.toLocaleString("en-US");
 const monNum = (wei: string) => Number(BigInt(wei) / 10n ** 16n) / 100;
 
 /** Data freshness badge: when the last indexed block was produced, and how far behind the chain it was at export. */
-function Freshness({ meta, tokens }: { meta: NonNullable<ReturnType<typeof api.meta>>; tokens: number }) {
+export function Freshness({ meta, tokens }: { meta: NonNullable<ReturnType<typeof api.meta>>; tokens: number }) {
   // ~0.302 s per block (measured); more than 30 minutes behind is shown as stale.
   const behindMin = meta.behindBlocks === undefined ? null : Math.round((meta.behindBlocks * 0.302) / 60);
   const stale = behindMin !== null && behindMin > 30;
@@ -19,35 +18,6 @@ function Freshness({ meta, tokens }: { meta: NonNullable<ReturnType<typeof api.m
       {n(tokens)} nad.fun tokens checked · data as of {asOf}
       {behindMin !== null && behindMin > 1 ? <span className={stale ? "font-medium text-[var(--text)]" : ""}>· {behindMin < 120 ? `${behindMin} min` : `${Math.round(behindMin / 60)} h`} behind the live chain</span> : null}
     </span>
-  );
-}
-
-function Hero({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.meta> }) {
-  return (
-    <section className="relative overflow-hidden px-4 pb-10 pt-16 text-center">
-      <div className="dots pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div className="relative mx-auto max-w-3xl">
-        {meta ? <Freshness meta={meta} tokens={tokens.length} /> : null}
-        <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent-text)]">Wallet-cluster detector for nad.fun</p>
-        <h1 className="headline mt-3 text-5xl sm:text-7xl">
-          How Many People <span className="fade">Really</span>
-          <br />
-          Own <span className="fade">This Token?</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--muted)]">
-          <b className="font-medium text-[var(--text)]">Nuno is a wallet-cluster detector for nad.fun tokens on Monad.</b> A wallet cluster is a group of
-          wallets run by one person, often used to make a new token look more popular than it is. Nuno finds these clusters and shows how many real people
-          are behind each token.
-        </p>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--muted)]">
-          Under the hood: it reads the public Monad blockchain and publishes its results as open data that apps and smart contracts can use.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
-          <a href="#screener" className="pill bg-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-ink)] hover:opacity-90">See the tokens</a>
-          <a href="#how" className="pill border border-[var(--accent)] px-6 py-3 font-medium text-[var(--accent-text)] hover:bg-[var(--panel)]">How it works</a>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -246,38 +216,6 @@ function Stats({ counts }: { counts: Record<string, number> }) {
   );
 }
 
-function Screener({ tokens, meta }: { tokens: Token[]; meta: ReturnType<typeof api.meta> }) {
-  return (
-    <section id="screener" className="scroll-mt-16 px-2 py-6 sm:px-4">
-      <div className="card mx-auto max-w-6xl px-5 py-12 sm:px-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="headline text-4xl sm:text-5xl">
-              Every <span className="fade">Token</span>
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm text-[var(--muted)]">
-              Each row shows what a token looks like (grey) next to what Nuno found (bold). A big gap in holders means many of its &quot;holders&quot; are
-              the same people. Click a token to see who is behind it and the proof.
-            </p>
-          </div>
-          {meta ? (
-            <p className="mono text-xs text-[var(--muted)]">
-              {meta.window.startTime && meta.window.endTime ? `${meta.window.startTime.slice(0, 10)} → ${meta.window.endTime.slice(0, 10)} · ` : ""}
-              exported {meta.generatedAt.slice(0, 16).replace("T", " ")} UTC
-            </p>
-          ) : null}
-        </div>
-        {hasDataset("contrast") ? (
-          <p className="mt-2 text-sm">
-            <Link href="/contrast/" className="text-[var(--accent-text)] hover:underline">{api.meta("contrast")?.label ?? "Historical contrast"} →</Link>
-          </p>
-        ) : null}
-        <SortableTable tokens={tokens} base="" limit={15} />
-      </div>
-    </section>
-  );
-}
-
 const FAQ: Array<[string, string]> = [
   [
     "What problem does Nuno solve?",
@@ -329,7 +267,7 @@ function Faq() {
   );
 }
 
-export function Landing() {
+export function About() {
   const meta = api.meta("live");
   const tokens = api.tokens("live");
   const clusters = api.clusterIds("live").map((id) => api.cluster(id, "live")).filter((c): c is Cluster => c !== null);
@@ -337,12 +275,19 @@ export function Landing() {
   const finding = meta ? computeFinding(meta, tokens, clusters) : null;
   return (
     <>
-      <Hero tokens={tokens} meta={meta} />
+      <section className="px-4 pb-10 pt-16 text-center">
+        <h1 className="headline text-5xl sm:text-6xl">
+          Count People, <span className="fade">Not Wallets</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--muted)]">
+          New tokens are judged by how many people hold them and how much they trade. One person with many wallets can fake both. Here is what Nuno
+          found on nad.fun, and how it works.
+        </p>
+      </section>
       <Tiles tokens={tokens} largest={largest} />
       {finding ? <FindingBand finding={finding} /> : null}
       <How tokens={tokens} />
       {meta ? <Stats counts={meta.counts} /> : null}
-      <Screener tokens={tokens} meta={meta} />
       <Faq />
     </>
   );
