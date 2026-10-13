@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { marked } from "marked";
-import { METHODOLOGY_MD } from "@/lib/methodology.generated";
+import { METHODOLOGY_MD, VALIDATION_MD } from "@/lib/methodology.generated";
 import { LEVEL_HINT, RULES, type Level } from "@/lib/levels";
 import { Badge } from "../_views/badge";
 import { DocsNav } from "./docs-nav";
 
 export const metadata: Metadata = {
-  title: "Docs",
+  title: "Methodology",
   description: "How to use Nuno, what its labels mean, and the full method it uses to group wallets and count real owners.",
 };
 
@@ -23,9 +23,17 @@ export default async function Docs() {
     sections.push([id, inner.replace(/<[^>]+>/g, ""), Number(d)]);
     return `<h${d} id="${id}">${inner}</h${d}>`;
   });
+  // Validation: the hand-reviewed sample, rendered as-is (its own caveats included).
+  const vSections: Array<[string, string, number]> = [];
+  const vHtml = (await marked.parse(VALIDATION_MD.replace(/^# .*\n/, ""))).replace(/<h([23])>(.*?)<\/h\1>/g, (_, d: string, inner: string) => {
+    const id = `v-${slug(inner)}`;
+    vSections.push([id, inner.replace(/<[^>]+>/g, ""), Number(d)]);
+    return `<h${d} id="${id}">${inner}</h${d}>`;
+  });
   const toc: Array<{ title: string; items: Array<[string, string, number?]> }> = [
     { title: "Guide", items: [["start", "Getting started"], ["labels", "Labels"], ["data", "Where the data comes from"]] },
     { title: "Method", items: [["method", "Overview"], ...sections.map(([id, t, d]) => [id, t, d] as [string, string, number])] },
+    { title: "Validation", items: [["validation", "Hand-reviewed sample"], ...vSections.filter(([, , d]) => d === 2).map(([id, t, d]) => [id, t, d] as [string, string, number])] },
   ];
 
   return (
@@ -34,9 +42,9 @@ export default async function Docs() {
         <DocsNav groups={toc} />
         <article className="card min-w-0 px-5 py-8 sm:px-10">
           <div className="max-w-3xl">
-            <p className="text-sm font-medium text-[var(--accent-text)]">Docs</p>
+            <p className="text-sm font-medium text-[var(--accent-text)]">Transparency is the product</p>
             <h1 className="headline mt-2 text-4xl sm:text-5xl">
-              How Nuno <span className="fade">Works</span>
+              Methodology
             </h1>
             <p className="mt-4 text-lg text-[var(--muted)]">
               Everything about checking a token, what the labels mean and the exact rules behind them. Building something? See the{" "}
@@ -92,6 +100,14 @@ export default async function Docs() {
             <p className="mt-3 text-[var(--prose)]">The full rulebook, for anyone who wants to check every detail.</p>
           </div>
           <div className="prose-nuno docs max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="max-w-3xl">
+            <h2 id="validation" className="scroll-mt-24 pt-10 text-2xl font-semibold tracking-tight">Validation</h2>
+            <p className="mt-3 text-[var(--prose)]">
+              There is no labelled ground truth for wallet clusters. This is the hand review of a reproducible random sample, shown in full. Accuracy is
+              claimed for this sample only.
+            </p>
+          </div>
+          <div className="prose-nuno docs max-w-3xl" dangerouslySetInnerHTML={{ __html: vHtml }} />
         </article>
       </div>
     </div>
