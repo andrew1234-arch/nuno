@@ -1,68 +1,69 @@
 import type { Cluster } from "@/lib/api";
-import { EDGE_SHORT, short } from "@/lib/format";
+import { GraphView, type GraphEdge, type GraphNode } from "./graph-view";
 
-const EDGE_COLORS: Record<string, string> = {
-  same_direct_funder: "#e5484d",
-  common_funding_source: "#d6409f",
-  creator_funded: "#8e4ec6",
-  token_transfer: "#3e63dd",
-  same_block_early_buy: "#12a594",
-  same_block_sell: "#6e56cf",
-};
+const MAX = 60;
 
-/** Static circular layout of an entity's wallets and accepted links (server-rendered SVG). */
+/**
+ * Deterministic force layout (Fruchterman–Reingold from a circle), computed at build time so the graph
+ * renders instantly and never moves. Positions are in a 0..size box.
+ */
+function layout(ids: string[], links: Array<[string, string]>, size: number): Map<string, { x: number; y: number }> {
+  const n = ids.length;
+  const idx = new Map(ids.map((id, i) => [id, i]));
+  const p = ids.map((_, i) => ({ x: Math.cos((2 * Math.PI * i) / n) * size * 0.3, y: Math.sin((2 * Math.PI * i) / n) * size * 0.3 }));
+  const e = links.map(([a, b]) => [idx.get(a)!, idx.get(b)!] as const);
+  const k = Math.sqrt((size * size * 0.5) / Math.max(n, 1));
+  let t = size * 0.1;
+  for (let it = 0; it < 300; it++) {
+    const d = p.map(() => ({ x: 0, y: 0 }));
+    for (let i = 0; i < n; i++)
+      for (let j = i + 1; j < n; j++) {
+        const dx = p[i]!.x - p[j]!.x, dy = p[i]!.y - p[j]!.y;
+        const dist = Math.max(Math.hypot(dx, dy), 0.01);
+        const f = (k * k) / dist;
+        d[i]!.x += (dx / dist) * f; d[i]!.y += (dy / dist) * f;
+        d[j]!.x -= (dx / dist) * f; d[j]!.y -= (dy / dist) * f;
+      }
+    for (const [a, b] of e) {
+      const dx = p[a]!.x - p[b]!.x, dy = p[a]!.y - p[b]!.y;
+      const dist = Math.max(Math.hypot(dx, dy), 0.01);
+      const f = (dist * dist) / k;
+      d[a]!.x -= (dx / dist) * f; d[a]!.y -= (dy / dist) * f;
+      d[b]!.x += (dx / dist) * f; d[b]!.y += (dy / dist) * f;
+    }
+    for (let i = 0; i < n; i++) {
+      const len = Math.max(Math.hypot(d[i]!.x, d[i]!.y), 0.01);
+      p[i]!.x += (d[i]!.x / len) * Math.min(len, t);
+      p[i]!.y += (d[i]!.y / len) * Math.min(len, t);
+      // Gentle pull to the centre keeps disconnected wallets on screen.
+      p[i]!.x *= 0.995; p[i]!.y *= 0.995;
+    }
+    t *= 0.985;
+  }
+  const xs = p.map((q) => q.x), ys = p.map((q) => q.y);
+  const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const pad = 24;
+  const sx = (size - 2 * pad) / Math.max(maxX - minX, 1), sy = (size - 2 * pad) / Math.max(maxY - minY, 1);
+  const s = Math.min(sx, sy);
+  return new Map(ids.map((id, i) => [id, { x: pad + (p[i]!.x - minX) * s + ((size - 2 * pad) - (maxX - minX) * s) / 2, y: pad + (p[i]!.y - minY) * s + ((size - 2 * pad) - (maxY - minY) * s) / 2 }]));
+}
+
+/** An entity's wallets and evidence links; layout precomputed here, interaction in GraphView. */
 export function ClusterGraph({ cluster, highlight }: { cluster: Cluster; highlight?: string }) {
-  const MAX = 60;
-  const members = cluster.members.slice(0, MAX);
   const size = 360;
-  const r = size / 2 - 40;
-  const pos = new Map(
-    members.map((m, i) => {
-      const a = (2 * Math.PI * i) / members.length - Math.PI / 2;
-      return [m, { x: size / 2 + r * Math.cos(a), y: size / 2 + r * Math.sin(a) }];
-    }),
-  );
-  const edges = new Map<string, string>();
-  for (const l of cluster.links) if (pos.has(l.a) && pos.has(l.b)) edges.set(`${l.a}|${l.b}`, l.type);
-  return (
-    <figure>
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-sm" role="img" aria-label={`Cluster of ${cluster.size} wallets`}>
-        {[...edges].map(([k, type]) => {
-          const [a, b] = k.split("|") as [string, string];
-          const p = pos.get(a)!;
-          const q = pos.get(b)!;
-          return <line key={k} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={EDGE_COLORS[type] ?? "#8b8d98"} strokeOpacity={0.6} strokeWidth={1.2} />;
-        })}
-        {members.map((m) => {
-          const p = pos.get(m)!;
-          const isHl = m === highlight;
-          return (
-            <g key={m}>
-              <circle cx={p.x} cy={p.y} r={isHl ? 7 : 5} style={isHl ? { fill: "var(--surface)", stroke: "var(--text)", strokeWidth: 2.5 } : { fill: "var(--text)" }} />
-              {members.length <= 16 ? (
-                <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={8} style={{ fill: "var(--muted)" }} className="mono">
-                  {short(m)}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
-      </svg>
-      <figcaption className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--muted)]">
-        {Object.entries(EDGE_COLORS).map(([t, c]) => (
-          <span key={t} className="flex items-center gap-1">
-            <span className="inline-block h-0.5 w-3" style={{ background: c }} />
-            {EDGE_SHORT[t] ?? t}
-          </span>
-        ))}
-        {cluster.members.length > MAX ? <span>showing {MAX} of {cluster.members.length} wallets</span> : null}
-        {highlight && members.includes(highlight) ? (
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-[var(--text)]" /> token creator
-          </span>
-        ) : null}
-        <span>· each dot is a wallet, each line a reason they&apos;re linked</span>
-      </figcaption>
-    </figure>
-  );
+  // The creator first, so it is always among the drawn wallets.
+  const ordered = highlight && cluster.members.includes(highlight) ? [highlight, ...cluster.members.filter((m) => m !== highlight)] : cluster.members;
+  const ids = ordered.slice(0, MAX);
+  const shown = new Set(ids);
+  const seen = new Set<string>();
+  const edges: GraphEdge[] = [];
+  for (const l of cluster.links) {
+    const key = `${l.a}|${l.b}|${l.type}`;
+    if (!shown.has(l.a) || !shown.has(l.b) || seen.has(key)) continue;
+    seen.add(key);
+    edges.push({ a: l.a, b: l.b, type: l.type, evidence: l.evidence.slice(0, 3).map((e) => ({ txHash: e.txHash, block: e.block, detail: e.detail ?? null })) });
+  }
+  const pos = layout(ids, edges.map((e) => [e.a, e.b]), size);
+  const nodes: GraphNode[] = ids.map((id) => ({ id, ...pos.get(id)!, creator: id === highlight }));
+  return <GraphView nodes={nodes} edges={edges} size={size} total={cluster.members.length} />;
 }
