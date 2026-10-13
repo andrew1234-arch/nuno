@@ -4,6 +4,9 @@ import Link from "next/link";
 import { testnetDeployment } from "@/lib/deployments";
 import { addrUrl, short } from "@/lib/format";
 import { Logo } from "./logo";
+import { searchItems } from "@/lib/verdict";
+import { MenuCloser } from "./_views/menu-closer";
+import { Search } from "./_views/search";
 import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
 import "./globals.css";
 
@@ -18,43 +21,60 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const REPO = "https://github.com/andrew1234-arch/nuno";
 
 const NAV: Array<[string, string]> = [
-  ["/#tokens", "Check a token"],
-  ["/#how-to", "How to use"],
+  ["/tokens/", "Tokens"],
   ["/developers/", "Developers"],
+  ["/methodology/", "Method"],
   ["/about/", "About"],
 ];
 
 function Nav() {
+  const items = searchItems("live");
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur">
-      <nav aria-label="Main">
-      <div className="flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]" aria-label="Nuno home">
+    <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur">
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]" aria-label="Nuno home">
           <Logo className="h-5 w-7" />
           nuno.
         </Link>
-        <div className="hidden items-center gap-1 rounded-full bg-[var(--panel)] p-1 text-sm md:flex">
+        <div className="hidden items-center gap-1 text-sm lg:flex">
           {NAV.map(([href, label]) => (
-            <Link key={href} href={href} className="pill px-4 py-1.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--accent-text)]">
+            <Link key={href} href={href} className="rounded-full px-3 py-1.5 text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--text)]">
               {label}
             </Link>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link href="/developers/" className="pill border border-[var(--line)] px-4 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)]">
-            API
-          </Link>
+        <div className="ml-auto hidden w-full max-w-xs md:block">
+          <Search items={items} />
         </div>
-      </div>
-      {/* Small screens: the same links as a scrollable row (the wide-screen copy is hidden there). */}
-      <div className="flex gap-1 overflow-x-auto px-4 pb-2 text-sm sm:px-6 md:hidden">
-        {NAV.map(([href, label]) => (
-          <Link key={href} href={href} className="pill shrink-0 bg-[var(--panel)] px-3 py-1 text-[var(--muted)] hover:text-[var(--accent-text)]">
-            {label}
-          </Link>
-        ))}
-      </div>
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <ThemeToggle />
+          <a href={`${BASE}/api/tokens.json`} className="pill hidden border border-[var(--line)] px-3.5 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)] sm:inline-block">
+            API
+          </a>
+          {/* Small screens: menu with search and links. */}
+          <details className="menu relative lg:hidden">
+            <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--line)]" aria-label="Menu">
+              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M3 6h14M3 10h14M3 14h14" strokeLinecap="round" />
+              </svg>
+            </summary>
+            <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-xl">
+              <div className="md:hidden">
+                <Search items={items} />
+              </div>
+              <ul className="mt-2 md:mt-0">
+                {NAV.map(([href, label]) => (
+                  <li key={href}>
+                    <Link href={href} className="block rounded-xl px-3 py-2.5 hover:bg-[var(--panel)]">{label}</Link>
+                  </li>
+                ))}
+                <li>
+                  <a href={`${BASE}/api/tokens.json`} className="block rounded-xl px-3 py-2.5 hover:bg-[var(--panel)]">API (JSON)</a>
+                </li>
+              </ul>
+            </div>
+          </details>
+        </div>
       </nav>
     </header>
   );
@@ -62,62 +82,45 @@ function Nav() {
 
 function Footer() {
   const dep = testnetDeployment();
+  const cols: Array<[string, Array<[string, string, boolean?]>]> = [
+    ["Product", [["/", "Home"], ["/tokens/", "All tokens"], ["/about/", "About"]]],
+    ["Developers", [["/developers/", "Developer guide"], [`${BASE}/api/tokens.json`, "tokens.json", true], [`${BASE}/api/meta.json`, "meta.json", true]]],
+    ["Resources", [["/methodology/", "Detailed method"], ["/developers/#rules", "How labels work"], [REPO, "Source code", true]]],
+  ];
   return (
-    <footer className="band-plain pt-10">
-      <div className="notch card mx-2 overflow-hidden rounded-b-none px-6 pt-20 text-[var(--accent-text)] sm:mx-4 sm:px-12">
-        <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.3fr_1fr_1fr]">
-          <div>
-            <div className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
-              <Logo className="h-7 w-10" /> nuno.
-            </div>
-            <p className="mt-5 max-w-xs text-lg leading-snug">
-              Check a nad.fun token before you buy: how many real people are behind it, not just how many wallets.
+    <footer className="mt-16 border-t border-[var(--line)] bg-[var(--surface)]">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div>
+          <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]">
+            <Logo className="h-5 w-7" /> nuno.
+          </Link>
+          <p className="mt-3 max-w-xs text-sm text-[var(--muted)]">How many real people are behind a nad.fun token, not just how many wallets. Built on Monad.</p>
+          {dep ? (
+            <p className="mt-4 text-xs text-[var(--muted)]">
+              NunoFeed{" "}
+              <a className="mono hover:text-[var(--accent-text)]" href={addrUrl(dep.NunoFeed, dep.chainId)} target="_blank" rel="noreferrer">{short(dep.NunoFeed)}</a>
+              {" · "}OrganicGate{" "}
+              <a className="mono hover:text-[var(--accent-text)]" href={addrUrl(dep.OrganicGate, dep.chainId)} target="_blank" rel="noreferrer">{short(dep.OrganicGate)}</a>
+              <br />on Monad testnet
             </p>
-          </div>
-          <div className="text-sm">
-            <p className="text-[var(--muted)]">On the Monad test network</p>
-            <p className="mt-3">Nuno writes its numbers to a contract that other apps can read:</p>
-            {dep ? (
-              <ul className="mt-3 space-y-2">
-                <li>
-                  NunoFeed{" "}
-                  <a className="mono hover:underline" href={addrUrl(dep.NunoFeed, dep.chainId)} target="_blank" rel="noreferrer">{short(dep.NunoFeed)}</a>
-                </li>
-                <li>
-                  OrganicGate{" "}
-                  <a className="mono hover:underline" href={addrUrl(dep.OrganicGate, dep.chainId)} target="_blank" rel="noreferrer">{short(dep.OrganicGate)}</a>
-                </li>
-              </ul>
-            ) : (
-              <p className="mt-3">Not deployed yet.</p>
-            )}
-            <p className="mt-6 text-[var(--muted)]">Where the data comes from</p>
-            <p className="mt-3">The public Monad blockchain. Nuno only reads it; nothing private is used.</p>
-          </div>
-          <div className="text-sm">
-            <p className="text-[var(--muted)]">Read it yourself</p>
-            <ul className="mt-3 divide-y divide-[var(--line)]">
-              {[
-                [`${BASE}/api/tokens.json`, "Download all token numbers"],
-                [`${BASE}/api/meta.json`, "Download the summary"],
-                [`${BASE}/developers/`, "Use the API and contracts"],
-                [`${BASE}/methodology/`, "Read the detailed method"],
-                [REPO, "See the source code"],
-              ].map(([href, label]) => (
+          ) : null}
+        </div>
+        {cols.map(([title, links]) => (
+          <div key={title}>
+            <p className="text-sm font-medium">{title}</p>
+            <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
+              {links.map(([href, label, raw]) => (
                 <li key={href}>
-                  <a href={href} className="flex items-center justify-between py-2.5 hover:underline">
-                    {label} <span aria-hidden="true">→</span>
-                  </a>
+                  {raw ? <a href={href} className="hover:text-[var(--accent-text)]">{label}</a> : <Link href={href} className="hover:text-[var(--accent-text)]">{label}</Link>}
                 </li>
               ))}
             </ul>
           </div>
-        </div>
-        <div aria-hidden="true" className="pointer-events-none mx-auto -mb-8 mt-10 max-w-6xl select-none text-center text-[clamp(6rem,24vw,20rem)] font-semibold leading-none tracking-tighter text-[var(--panel)]">
-          nuno
-        </div>
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] py-5 text-xs">
-          <span>Groups are a careful best guess, not a certainty. Every link shows its proof.</span>
+        ))}
+      </div>
+      <div className="border-t border-[var(--line)]">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-[var(--muted)] sm:px-6">
+          <span>Labels describe links found in public Monad transactions. Not financial advice.</span>
           <span>MIT licensed · Monad Metropolis 2026</span>
         </div>
       </div>
@@ -131,12 +134,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="min-h-screen">
+      <body className="flex min-h-screen flex-col">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-[var(--surface)] focus:px-3 focus:py-2">
           Skip to content
         </a>
         <Nav />
-        <main id="main" tabIndex={-1} className="outline-none">
+        <MenuCloser />
+        <main id="main" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
         <Footer />

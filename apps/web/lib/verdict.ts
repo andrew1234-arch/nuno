@@ -80,3 +80,6 @@ export function rows(d: Dataset = "live"): Row[] {
     };
   });
 }
+
+/** Compact index for the search box: [address, symbol, name, label]. */
+export const searchItems = (d: Dataset = "live"): Array<[string, string, string, Level]> => rows(d).map((r) => [r.address, r.symbol, r.name, r.level]);

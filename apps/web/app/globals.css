@@ -126,3 +126,4 @@ details.faq[open] .icon::before { content: "−"; }
 .prose-nuno th, .prose-nuno td { border: 1px solid var(--line); padding: 0.45rem 0.65rem; text-align: left; vertical-align: top; }
 .prose-nuno th { background: var(--panel); font-weight: 600; }
 .prose-nuno a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
+details.menu summary::-webkit-details-marker { display: none; }

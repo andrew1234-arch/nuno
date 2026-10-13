@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { mon, pct, short } from "@/lib/format";
 import { LEVEL_LABEL, type Level, type Row } from "@/lib/levels";
 import { Badge } from "./badge";
@@ -45,12 +45,32 @@ function TokenRow({ r, base }: { r: Row; base: string }) {
   );
 }
 
-export function SortableTable({ rows, base, limit }: { rows: Row[]; base: string; limit?: number }) {
+export function SortableTable({ rows, base, limit, syncUrl }: { rows: Row[]; base: string; limit?: number; syncUrl?: boolean }) {
   const router = useRouter();
   const [sort, setSort] = useState("raw_volume");
   const [filter, setFilter] = useState<Level | "all">("all");
   const [q, setQ] = useState("");
   const [all, setAll] = useState(false);
+  // Static export: no server-side query params, so read them once in the browser and keep the URL in step.
+  const [ready, setReady] = useState(!syncUrl);
+  useEffect(() => {
+    if (!syncUrl) return;
+    const p = new URLSearchParams(window.location.search);
+    const s0 = p.get("sort"), f0 = p.get("filter");
+    if (p.get("q")) setQ(p.get("q")!);
+    if (s0 && SORTS.some(([k]) => k === s0)) setSort(s0);
+    if (f0 && (FILTERS as string[]).includes(f0)) setFilter(f0 as Level | "all");
+    setReady(true);
+  }, [syncUrl]);
+  useEffect(() => {
+    if (!syncUrl || !ready) return;
+    const p = new URLSearchParams();
+    if (q.trim()) p.set("q", q.trim());
+    if (sort !== "raw_volume") p.set("sort", sort);
+    if (filter !== "all") p.set("filter", filter);
+    const qs = p.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  }, [q, sort, filter, syncUrl, ready]);
   const query = q.trim().toLowerCase();
   const key = SORTS.find(([k]) => k === sort)![2];
   const matches = rows.filter(
