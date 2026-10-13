@@ -90,7 +90,7 @@ export function Search({ items, size = "md", autoFocus }: { items: SearchItem[];
         placeholder={lg ? "Paste a token address, or search by name or $TICKER" : "Search token or address"}
         autoComplete="off"
         spellCheck={false}
-        className={`w-full border border-[var(--line)] bg-[var(--surface)] outline-none placeholder:text-[var(--soft)] focus:border-[var(--accent)] ${lg ? "rounded-2xl py-4 pl-13 pr-28 text-base shadow-sm" : "rounded-full py-2 pl-9 pr-3 text-sm"}`}
+        className={`w-full border border-[var(--line)] bg-[var(--surface)] outline-none placeholder:text-[var(--soft)] focus:border-[var(--accent)] ${lg ? "rounded-md py-4 pl-13 pr-28 text-base" : "rounded-full py-2 pl-9 pr-3 text-sm"}`}
       />
       {lg ? (
         <button type="submit" className="pill absolute right-2 top-1/2 -translate-y-1/2 bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-[var(--c-accent-ink)] hover:opacity-90">
@@ -98,7 +98,7 @@ export function Search({ items, size = "md", autoFocus }: { items: SearchItem[];
         </button>
       ) : null}
       {open && q.trim() ? (
-        <div id={`${id}-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-left shadow-xl">
+        <div id={`${id}-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface)] text-left shadow-md">
           {top.map(([a, s, n, l, img], i) => (
             <button
               key={a}

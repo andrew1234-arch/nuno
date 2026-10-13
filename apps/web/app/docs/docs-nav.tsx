@@ -28,7 +28,7 @@ export function DocsNav({ groups }: { groups: Array<{ title: string; items: Arra
                 <a
                   href={`#${id}`}
                   aria-current={active === id ? "location" : undefined}
-                  className={`block rounded-lg py-1.5 pr-3 ${depth === 3 ? "pl-7 text-xs" : "pl-3"} ${active === id ? "bg-[var(--panel)] font-medium text-[var(--accent-text)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
+                  className={`block rounded-md py-1.5 pr-3 ${depth === 3 ? "pl-7 text-xs" : "pl-3"} ${active === id ? "bg-[var(--panel)] font-medium text-[var(--accent-text)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
                 >
                   {label}
                 </a>

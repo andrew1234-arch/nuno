@@ -59,7 +59,7 @@ body {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0;
 }
 
@@ -89,8 +89,8 @@ body {
   mask-image: radial-gradient(ellipse at center, transparent 35%, black 75%);
 }
 
-.card { background: var(--surface); border-radius: 18px; }
-.pill { border-radius: 999px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.pill { border-radius: 6px; }
 
 /* Footer tab notch, like a folder tab cut into the sheet. */
 .notch { position: relative; }
@@ -137,3 +137,7 @@ details.menu summary::-webkit-details-marker { display: none; }
   color: transparent;
   mask-image: linear-gradient(180deg, black 40%, transparent 100%);
 }
+
+/* Aligned numbers everywhere numbers sit in columns or tiles. */
+table, .tabular { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }

@@ -14,7 +14,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function Stat({ label, raw, real, note }: { label: string; raw?: string; real: string; note?: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-3">
+    <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3">
       <div className="text-xs uppercase text-[var(--muted)]">{label}</div>
       <div className="mt-1 text-xl font-semibold tabular-nums">
         {raw !== undefined ? <><span className="text-[var(--muted)] line-through decoration-1">{raw}</span>{" "}</> : null}
@@ -80,7 +80,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
         </div>
       </div>
 
-      <section className="rounded-2xl border border-[var(--line)] p-5 sm:p-6" aria-labelledby="found">
+      <section className="rounded-md border border-[var(--line)] p-5 sm:p-6" aria-labelledby="found">
         <div className="flex flex-wrap items-center gap-3">
           <h2 id="found" className="sr-only">What Nuno found</h2>
           <Badge level={v.level} large />
@@ -129,7 +129,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
       )}
 
       {dataset === "live" ? (
-        <section className="rounded-lg border border-[var(--line)] p-3 text-sm">
+        <section className="rounded-md border border-[var(--line)] p-3 text-sm">
           <h2 className="font-semibold">Use these numbers in your app</h2>
           <p className="mt-1 text-[var(--muted)]">
             JSON:{" "}
@@ -166,7 +166,7 @@ export function TokenView({ address, dataset }: { address: string; dataset: Data
         </p>
         <div className="mt-4 space-y-8">
           {groups.map((c, i) => (
-            <details key={c.id} open={i === 0} className="faq rounded-lg border border-[var(--line)] p-4">
+            <details key={c.id} open={i === 0} className="faq rounded-md border border-[var(--line)] p-4">
               <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
                 <span className="font-semibold">
                   Group <span className="mono">{short(c.id)}</span>: {c.size} wallets, one owner

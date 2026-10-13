@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 function Code({ children }: { children: string }) {
-  return <pre className="mono mt-3 overflow-x-auto rounded-xl bg-[var(--panel)] p-4 text-xs leading-relaxed">{children}</pre>;
+  return <pre className="mono mt-3 overflow-x-auto rounded-md bg-[var(--panel)] p-4 text-xs leading-relaxed">{children}</pre>;
 }
 
 function H2({ id, children }: { id: string; children: React.ReactNode }) {

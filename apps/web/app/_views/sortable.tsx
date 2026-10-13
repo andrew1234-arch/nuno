@@ -108,11 +108,11 @@ export function SortableTable({ rows, base, limit, syncUrl }: { rows: Row[]; bas
           placeholder="Paste a token address, or search by name or $TICKER"
           autoComplete="off"
           spellCheck={false}
-          className="w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-5 py-4 text-base shadow-sm outline-none placeholder:text-[var(--soft)] focus:border-[var(--accent)]"
+          className="w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-5 py-4 text-base outline-none placeholder:text-[var(--soft)] focus:border-[var(--accent)]"
         />
       </form>
       {isAddress && matches.length === 0 ? (
-        <p className="mt-3 rounded-xl bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
+        <p className="mt-3 rounded-md bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
           This address isn&apos;t a nad.fun token launched in the window Nuno checks (see the dates above). Check that it is a nad.fun token, or try again
           after the next update.
         </p>
@@ -125,7 +125,7 @@ export function SortableTable({ rows, base, limit, syncUrl }: { rows: Row[]; bas
               key={l}
               onClick={() => setFilter(l)}
               aria-pressed={l === filter}
-              className={`rounded-full border px-3.5 py-1.5 ${l === filter ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent-text)]"}`}
+              className={`rounded-md border px-3.5 py-1.5 ${l === filter ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--accent-text)]"}`}
             >
               {l === "all" ? "All" : LEVEL_LABEL[l]} <span className="tabular-nums opacity-70">{count(l)}</span>
             </button>
@@ -133,7 +133,7 @@ export function SortableTable({ rows, base, limit, syncUrl }: { rows: Row[]; bas
         </div>
         <label className="flex items-center gap-2 text-[var(--muted)]">
           Sort
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[var(--text)]">
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[var(--text)]">
             {SORTS.map(([k, label]) => (
               <option key={k} value={k}>{label}</option>
             ))}

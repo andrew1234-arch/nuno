@@ -31,7 +31,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
   return (
     <section className="grid w-full gap-4 px-4 pb-14 md:grid-cols-3">
       {gap ? (
-        <Link href={`/token/${gap.address}/`} className="card block p-5 text-left shadow-sm transition hover:-translate-y-0.5">
+        <Link href={`/token/${gap.address}/`} className="card block p-5 text-left transition hover:-translate-y-0.5">
           <p className="text-sm text-[var(--muted)]">Biggest gap between looks and reality</p>
           <p className="mt-3 text-4xl font-medium tracking-tight">
             {gap.metrics!.rawHolders} <span className="text-[var(--soft)]">→</span> {gap.metrics!.realHolders}
@@ -41,7 +41,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
         </Link>
       ) : null}
       {byVol.length ? (
-        <div className="card p-5 text-left shadow-sm">
+        <div className="card p-5 text-left">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--muted)]">Trading: all vs by holders</p>
             <span className="flex gap-3 text-[10px] text-[var(--muted)]">
@@ -66,7 +66,7 @@ function Tiles({ tokens, largest }: { tokens: Token[]; largest: Cluster | null }
         </div>
       ) : null}
       {largest ? (
-        <Link href={`/cluster/${largest.id}/`} className="card block p-5 text-left shadow-sm transition hover:-translate-y-0.5">
+        <Link href={`/cluster/${largest.id}/`} className="card block p-5 text-left transition hover:-translate-y-0.5">
           <p className="text-sm text-[var(--muted)]">Biggest group found</p>
           <p className="mt-3 text-4xl font-medium tracking-tight">{largest.size} <span className="text-lg text-[var(--muted)]">wallets, one owner</span></p>
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -157,7 +157,7 @@ function How({ tokens }: { tokens: Token[] }) {
             ))}
           </ol>
           {top.length ? (
-            <div className="rounded-2xl bg-[var(--panel)] p-6">
+            <div className="rounded-md bg-[var(--panel)] p-6">
               <div className="flex items-center justify-between">
                 <p className="font-medium">Holders shown vs real owners</p>
                 <span className="pill bg-[var(--accent)] px-3 py-1 text-xs text-[var(--accent-ink)]">top {top.length} by holders</span>

@@ -33,7 +33,7 @@ function Steps() {
             </li>
           ))}
         </ol>
-        <div className="mt-12 rounded-2xl bg-[var(--panel)] p-6">
+        <div className="mt-12 rounded-md bg-[var(--panel)] p-6">
           <p className="font-medium">What the labels mean</p>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {(["red", "amber", "clear", "none"] as Level[]).map((l) => (
@@ -97,7 +97,7 @@ function Top({ title, list, value, sort, filter }: { title: string; list: Row[];
       <ol className="mt-3 flex-1 divide-y divide-[var(--line)]">
         {list.map((r, i) => (
           <li key={r.address}>
-            <Link href={`/token/${r.address}/`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-[var(--panel)]">
+            <Link href={`/token/${r.address}/`} className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-[var(--panel)]">
               <span className="w-4 text-sm tabular-nums text-[var(--soft)]">{i + 1}</span>
               <TokenLogo src={r.image} symbol={r.symbol} size={36} />
               <span className="min-w-0 flex-1">
@@ -135,8 +135,7 @@ export function Home() {
   return (
     <>
       <section className="relative px-4 pb-12 pt-16 text-center sm:pt-20">
-        <div className="dots pointer-events-none absolute inset-0" aria-hidden="true" />
-        <div className="relative mx-auto max-w-3xl">
+                <div className="relative mx-auto max-w-3xl">
           {meta ? <Freshness meta={meta} tokens={all.length} /> : null}
           <h1 className="headline mt-6 text-5xl sm:text-6xl">
             Check a nad.fun Token <span className="fade">Before You Buy</span>

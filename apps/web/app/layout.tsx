@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter_Tight } from "next/font/google";
+import { Inter_Tight, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
 import { testnetDeployment } from "@/lib/deployments";
 import { addrUrl } from "@/lib/format";
@@ -12,6 +12,7 @@ import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
 import "./globals.css";
 
 const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Nuno: check a nad.fun token before you buy", template: "%s · Nuno" },
@@ -56,18 +57,18 @@ function Nav() {
                 <path d="M3 6h14M3 10h14M3 14h14" strokeLinecap="round" />
               </svg>
             </summary>
-            <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-xl">
+            <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-md border border-[var(--line)] bg-[var(--surface)] p-3 shadow-md">
               <div className="md:hidden">
                 <Search items={items} />
               </div>
               <ul className="mt-2 md:mt-0">
                 {NAV.map(([href, label]) => (
                   <li key={href}>
-                    <Link href={href} className="block rounded-xl px-3 py-2.5 hover:bg-[var(--panel)]">{label}</Link>
+                    <Link href={href} className="block rounded-md px-3 py-2.5 hover:bg-[var(--panel)]">{label}</Link>
                   </li>
                 ))}
                 <li>
-                  <a href={`${BASE}/api/tokens.json`} className="block rounded-xl px-3 py-2.5 hover:bg-[var(--panel)]">API (JSON)</a>
+                  <a href={`${BASE}/api/tokens.json`} className="block rounded-md px-3 py-2.5 hover:bg-[var(--panel)]">API (JSON)</a>
                 </li>
               </ul>
             </div>
@@ -93,7 +94,7 @@ function Footer() {
   ];
   return (
     <footer className="mt-16 px-4 pb-4 sm:px-6 lg:px-8">
-      <div className="band-plain relative overflow-hidden rounded-3xl px-6 pt-14 sm:px-10 lg:px-14">
+      <div className="band-plain relative overflow-hidden rounded-md px-6 pt-14 sm:px-10 lg:px-14">
         <div className="grid gap-10 lg:grid-cols-[1fr_auto]">
           <div className="max-w-sm">
             <Link href="/" className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-[var(--band-ink)]">
@@ -137,7 +138,7 @@ function Footer() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={sans.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

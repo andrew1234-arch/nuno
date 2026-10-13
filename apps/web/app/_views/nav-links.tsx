@@ -14,7 +14,7 @@ export function NavLinks({ items }: { items: Array<[string, string]> }) {
           key={href}
           href={href}
           aria-current={isActive(href) ? "page" : undefined}
-          className={`rounded-full px-4 py-1.5 ${isActive(href) ? "bg-[var(--accent)] font-medium text-[var(--c-accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--text)]"}`}
+          className={`rounded-md px-4 py-1.5 ${isActive(href) ? "bg-[var(--accent)] font-medium text-[var(--c-accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--text)]"}`}
         >
           {label}
         </Link>
