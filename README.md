@@ -1,6 +1,8 @@
 # Nuno
 
-**A wallet-cluster detector for nad.fun tokens on Monad.**
+**Count people, not wallets.**
+
+One operator can look like a hundred holders. Nuno groups linked wallets into real entities and publishes the corrected numbers, through an open API and on-chain on Monad, with public proof for every link.
 
 A wallet cluster is a group of wallets run by one person, often used to make a new token look more popular than it is. Nuno detects these clusters behind [nad.fun](https://nad.fun) tokens on Monad and publishes cluster-adjusted metrics (real holders, real concentration, organic volume) through a static JSON API and an on-chain feed contract that other apps and contracts can read.
 

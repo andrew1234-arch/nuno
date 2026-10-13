@@ -1,5 +1,6 @@
 {
   "name": "@nuno/web",
+  "description": "Nuno groups linked wallets behind nad.fun tokens into real entities and publishes real holder counts and organic volume, through an open API and on-chain on Monad.",
   "version": "0.1.0",
   "private": true,
   "type": "module",

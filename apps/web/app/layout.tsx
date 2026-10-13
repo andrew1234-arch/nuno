@@ -6,6 +6,7 @@ import { addrUrl } from "@/lib/format";
 import { Logo } from "./logo";
 import { api, hasDataset } from "@/lib/api";
 import { dateRange } from "@/lib/finding";
+import { ONE_LINER, SITE_URL, TAGLINE } from "@/lib/copy";
 import { searchItems } from "@/lib/verdict";
 import { FreshnessBar } from "./_views/freshness-bar";
 import { MenuCloser } from "./_views/menu-closer";
@@ -18,8 +19,17 @@ const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display:
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Nuno: check a nad.fun token before you buy", template: "%s · Nuno" },
-  description: "Check any nad.fun token on Monad: how many real people own it, whether its creator runs a group of linked wallets, and the public proof. Free web app, JSON API and on-chain feed.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: `Nuno: ${TAGLINE.replace(/\.$/, "")}`, template: "%s · Nuno" },
+  description: ONE_LINER,
+  openGraph: {
+    type: "website",
+    siteName: "Nuno",
+    title: `Nuno: ${TAGLINE.replace(/\.$/, "")}`,
+    description: ONE_LINER,
+    images: [{ url: `${SITE_URL}/og.png`, width: 1200, height: 630, alt: `Nuno: ${TAGLINE}` }],
+  },
+  twitter: { card: "summary_large_image", title: `Nuno: ${TAGLINE.replace(/\.$/, "")}`, description: ONE_LINER, images: [`${SITE_URL}/og.png`] },
 };
 
 const REPO = "https://github.com/andrew1234-arch/nuno";
@@ -119,9 +129,7 @@ function Footer() {
             <Link href="/" className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-[var(--band-ink)]">
               <Logo className="h-6 w-8" /> nuno.
             </Link>
-            <p className="mt-4 text-sm leading-relaxed text-[var(--band-soft)]">
-              Check a nad.fun token before you buy: how many real people own it and which of its wallets are linked, with public proof for every link.
-            </p>
+            <p className="mt-3 text-sm text-[var(--band-soft)]">{TAGLINE}</p>
           </div>
           <div className="grid grid-cols-2 gap-x-12 gap-y-8 sm:grid-cols-4">
             {cols.map(([title, links]) => (

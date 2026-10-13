@@ -6,11 +6,12 @@ import { addrUrl } from "@/lib/format";
 import { RULES } from "@/lib/verdict";
 import { Badge } from "../_views/badge";
 import { CopyButton } from "../_views/copy";
+import { ONE_LINER } from "@/lib/copy";
 import { Sheet } from "../sheet";
 
 export const metadata: Metadata = {
   title: "API",
-  description: "Use Nuno's numbers in your app or contract: a free static JSON API and the NunoFeed and OrganicGate contracts on Monad testnet.",
+  description: ONE_LINER,
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -71,7 +72,7 @@ export default function Developers() {
           Use Nuno <span className="fade">in Your App</span>
         </h1>
         <p className="mt-4 text-lg text-[var(--muted)]">
-          The numbers on this site are open. Read them as static JSON from any app or bot, or straight from a contract on Monad. No key, no sign-up, no cost.
+          Nuno counts people, not wallets. The numbers on this site are open. Read them as static JSON from any app or bot, or straight from a contract on Monad. No key, no sign-up, no cost.
         </p>
         <nav className="mt-6 flex flex-wrap gap-2 text-sm" aria-label="On this page">
           {[["#api", "JSON API"], ["#rules", "Label rules"], ["#contracts", "Contracts"], ["#limits", "Limits"]].map(([h, l]) => (

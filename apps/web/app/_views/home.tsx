@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api, type Cluster } from "@/lib/api";
 import { computeFinding } from "@/lib/finding";
+import { SUBLINE, TAGLINE } from "@/lib/copy";
 import { pct } from "@/lib/format";
 import { rows } from "@/lib/verdict";
 import { SortableTable } from "./sortable";
@@ -30,11 +31,19 @@ export function Home() {
   ];
   return (
     <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
+      <section aria-labelledby="hero" className="pb-8 pt-4 sm:pt-8">
+        <h1 id="hero" className="headline text-4xl sm:text-6xl">{TAGLINE}</h1>
+        <p className="mt-4 max-w-3xl text-base text-[var(--muted)] sm:text-lg">{SUBLINE}</p>
+        <div className="mt-6 flex flex-wrap gap-3 text-sm">
+          <a href="#screener" className="rounded-md bg-[var(--accent)] px-5 py-2.5 font-medium text-[var(--c-accent-ink)] hover:opacity-90">Explore tokens</a>
+          <Link href="/developers/" className="rounded-md border border-[var(--line)] px-5 py-2.5 font-medium hover:border-[var(--accent)] hover:text-[var(--accent-text)]">Use the API</Link>
+        </div>
+      </section>
       <section aria-labelledby="headline">
-        <p className="text-xs font-medium uppercase tracking-wider text-[var(--accent-text)]">nad.fun on Monad · cluster-adjusted metrics</p>
-        <h1 id="headline" className="mt-2 max-w-4xl text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
+        <p className="text-xs font-medium uppercase tracking-wider text-[var(--accent-text)]">The finding</p>
+        <h2 id="headline" className="mt-2 max-w-4xl text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
           {finding ? finding.headline : "Data pending."}
-        </h1>
+        </h2>
         {finding ? (
           <p className="mt-2 text-[var(--muted)]">
             {finding.sub}{" "}
