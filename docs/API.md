@@ -1,6 +1,6 @@
 # Nuno static API
 
-Plain JSON files served with the site (GitHub Pages), rebuilt by the scheduled pipeline about every 15 minutes. No key, no rate limit beyond GitHub Pages'. Addresses are lowercase. Paths are relative to the site root.
+Plain JSON files served with the site (Vercel), rebuilt by the scheduled pipeline about every 20 minutes. No key needed; files are static and cacheable.. Addresses are lowercase. Paths are relative to the site root.
 
 | Path | Contents |
 |---|---|

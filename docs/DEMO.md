@@ -10,12 +10,12 @@ Rules: real operation only, Monad interactions visible, no fake data. Every numb
 | 1:15–1:35 | Cluster page: 10 wallets, tokens created, full evidence list | "Entities are resolved across all tokens, so the operator has one id everywhere." |
 | 1:35–2:05 | **[needs deploy]** Token page → "On-chain snapshot (NunoFeed)" → click the publish tx → **Monadscan testnet**: `publish(token, snapshot)` with the metrics and `evidenceRoot` | "Nuno publishes these numbers on Monad so other contracts can use them. The evidence root is the hash of the evidence JSON in the static API." Show `api/tokens/<t>.json` → `evidenceCanonical` and that `keccak256(evidenceCanonical) == evidenceRoot` (one terminal line). |
 | 2:05–2:35 | **[needs deploy]** `cast call` to `OrganicGate.isOrganic(token, 3000, 3600)` on testnet → `false` for an operator-heavy token; `requireOrganic` reverting with `TooClustered` | "Any contract can refuse tokens whose supply sits with one coordinated entity, or whose data is stale. This is the integration story: a static JSON API and an on-chain feed." |
-| 2:35–2:50 | GitHub Actions: a recent **tick** run log (`indexed`, `funded`, `metrics`, `published`) | "It runs every 15 minutes on GitHub Actions and is served from GitHub Pages, for $0: new blocks, incremental clustering, snapshots only when something meaningful changes." |
+| 2:35–2:50 | GitHub Actions: a recent **tick** run log (`indexed`, `funded`, `metrics`, `published`) | "It runs every 20 minutes on GitHub Actions and is served from GitHub Pages, for $0: new blocks, incremental clustering, snapshots only when something meaningful changes." |
 | 2:50–3:00 | Methodology page (limitations section), then the home hero | "Methodology, limitations and a hand-reviewed validation sample are in the repo. Open source, MIT. Count people, not wallets." |
 
 ## Pre-recording checklist
 - [ ] Contracts deployed; `deployments/monad-testnet.json` committed; at least one real snapshot tx.
-- [ ] `tick` workflow ran within the last 15 minutes (`api/meta.json` → `generatedAt` fresh).
+- [ ] `tick` workflow ran within the last 20 minutes (`api/meta.json` → `generatedAt` fresh).
 - [ ] Pages site live and the repo public.
 - [ ] Pick the token for the walk-through from the live screener at recording time, with real numbers.
 - [ ] Measured publish cost/frequency for "Why Monad" taken from the `snapshots` table, not estimated.

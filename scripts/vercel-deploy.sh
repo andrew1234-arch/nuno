@@ -18,5 +18,5 @@ export VERCEL_PROJECT_ID=$(node -p 'require("./.vercel/project.json").projectId'
 NEXT_PUBLIC_SITE_URL="${SITE_URL:-}" LOGOS_CACHE_URL="" pnpm web:build
 cp -r site/api apps/web/out/api
 cp apps/web/vercel.json apps/web/out/vercel.json
-$CLI deploy apps/web/out --prod --yes "${TOKEN_ARGS[@]}"
+$CLI deploy apps/web/out --prod --yes --archive=tgz "${TOKEN_ARGS[@]}"
 echo "ids for GitHub secrets: VERCEL_ORG_ID=$VERCEL_ORG_ID VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID"

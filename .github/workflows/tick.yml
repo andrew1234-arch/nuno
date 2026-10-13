@@ -1,4 +1,4 @@
-# Every 15 minutes: restore the DB from the `data` branch, run one bounded pipeline tick
+# Every 20 minutes (Vercel Hobby allows about 100 deployments a day): restore the DB from the `data` branch, run one bounded pipeline tick
 # (index → funding → cluster/metrics → testnet snapshots → Nansen hub checks), save the DB,
 # export the static API, build the static site and deploy it to Vercel (Hobby). The backend (pipeline,
 # DB on the `data` branch, testnet snapshots) stays on GitHub Actions. $0 hosting.
@@ -6,7 +6,7 @@ name: tick
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -79,4 +79,4 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then echo "VERCEL_TOKEN not set: skipping deploy"; exit 0; fi
-          npx -y vercel@63.1.2 deploy apps/web/out --prod --yes --token "$VERCEL_TOKEN"
+          npx -y vercel@63.1.2 deploy apps/web/out --prod --yes --archive=tgz --token "$VERCEL_TOKEN"

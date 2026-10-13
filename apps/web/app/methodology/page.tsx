@@ -93,7 +93,7 @@ export default async function Docs() {
             <h2 id="data" className="scroll-mt-24 pt-10 text-2xl font-semibold tracking-tight">Where the data comes from</h2>
             <p className="mt-3 text-[var(--prose)]">
               Nuno reads every nad.fun launch, trade and transfer from the public Monad blockchain, traces where each buyer&apos;s money came from, and updates
-              every 15 minutes. Its numbers are published as open JSON and written to a contract on Monad testnet. Nothing private is used.
+              every 20 minutes. Its numbers are published as open JSON and written to a contract on Monad testnet. Nothing private is used.
             </p>
 
             <h2 id="method" className="scroll-mt-24 pt-10 text-2xl font-semibold tracking-tight">Method</h2>

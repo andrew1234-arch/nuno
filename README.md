@@ -39,10 +39,10 @@ Monad mainnet (read-only)
                           OrganicGate.sol (example consumer)
 ```
 
-**Hosting is $0: GitHub Actions + GitHub Pages.** There is no server and no hosted database.
+**Live: [nuno-eight.vercel.app](https://nuno-eight.vercel.app).** Hosting is $0: the backend runs on GitHub Actions and the static site and JSON API are served by Vercel (Hobby). There is no server and no hosted database.
 
 - The heavy one-time job (the window backfill, funding resolution, first full clustering) runs locally into one SQLite file. The file is gzipped and kept on the `data` branch as a single, force-pushed commit, so the repo does not grow with every run.
-- [`.github/workflows/tick.yml`](.github/workflows/tick.yml) runs every 15 minutes: restore the DB → one bounded tick (tail new blocks, resolve funding for new buyers, incremental entity + metrics update, publish changed snapshots to NunoFeed on testnet, Nansen hub-funder checks within the free-plan budget, daily prune) → save the DB → export the static API → build the site → deploy to GitHub Pages.
+- [`.github/workflows/tick.yml`](.github/workflows/tick.yml) runs every 20 minutes: restore the DB → one bounded tick (tail new blocks, resolve funding for new buyers, incremental entity + metrics update, publish changed snapshots to NunoFeed on testnet, Nansen hub-funder checks within the free-plan budget, daily prune) → save the DB → export the static API → build the site → deploy to Vercel (one archive upload, so the free plan's file and deployment limits hold).
 - Every step is bounded and resumable by cursor; a run never assumes it finishes everything.
 
 Storage is budgeted (target 40 MB, alarm 70 MB, hard stop 90 MB). Addresses are stored once in a dictionary and referenced by integer ids, and hashes are stored as bytes. **Measured: the 7-day window is ~0.3 MB.**
@@ -51,7 +51,7 @@ Every metric is defined in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md), also re
 
 ## Stack
 
-TypeScript (pnpm workspaces), viem, Drizzle ORM (SQLite dialect, `node:sqlite`), Vitest, Next.js App Router (static export) + Tailwind, Solidity + Foundry, GitHub Actions + GitHub Pages.
+TypeScript (pnpm workspaces), viem, Drizzle ORM (SQLite dialect, `node:sqlite`), Vitest, Next.js App Router (static export) + Tailwind, Solidity + Foundry, GitHub Actions + Vercel.
 
 ## Data split
 
@@ -110,13 +110,13 @@ pnpm web:build                     # static site -> apps/web/out
 cp -r site/api apps/web/out/api && npx serve apps/web/out
 ```
 
-**4. Run it on GitHub ($0):**
+**4. Run it on GitHub Actions + Vercel ($0):**
 
-1. Push the repo to GitHub (Pages on a free account needs a public repo).
+1. Push the repo to GitHub.
 2. `scripts/data-push.sh backfill` uploads the local DB to the `data` branch.
-3. Settings → Pages → Source: **GitHub Actions**.
-4. Settings → Secrets and variables → Actions: secrets `PUBLISHER_PRIVATE_KEY` and (optional) `NANSEN_API_KEY`; variable `NUNO_FEED_ADDRESS`. RPC URLs have working public defaults in `tick.yml` and can be overridden with variables of the same name.
-5. Actions → **tick** → Run workflow. After that it runs every 15 minutes.
+3. `npx vercel@63.1.2 login` (in a normal terminal), then `SITE_URL=<your Vercel URL> scripts/vercel-deploy.sh`: creates the Vercel project `nuno`, deploys, and prints `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
+4. Settings → Secrets and variables → Actions: secrets `PUBLISHER_PRIVATE_KEY`, (optional) `NANSEN_API_KEY`, `VERCEL_TOKEN` (vercel.com/account/tokens), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`; variables `NUNO_FEED_ADDRESS` and `SITE_URL`. RPC URLs have working public defaults in `tick.yml` and can be overridden with variables of the same name.
+5. Actions → **tick** → Run workflow. After that it runs every 20 minutes; without `VERCEL_TOKEN` the run skips the deploy step.
 
 **Checks:** `pnpm test && pnpm typecheck && pnpm lint`.
 
@@ -124,7 +124,7 @@ Public Monad RPCs differ in what they serve (log ranges, archive state, debug tr
 
 ## Static API
 
-Plain JSON files, regenerated every tick and served from GitHub Pages under `/api/`:
+Plain JSON files, regenerated every tick and served from Vercel under `/api/` (CORS open):
 
 | File | Returns |
 |---|---|
