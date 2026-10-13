@@ -51,6 +51,14 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
   const book = new AddressBook(db);
   const { logsRpc, archiveRpc } = deps;
   const out: Record<string, unknown> = {};
+  // Per-step wall time (ms), so slow steps show up in the Actions log.
+  const timings: Record<string, number> = {};
+  let stepStart = Date.now();
+  const step = (name: string) => {
+    timings[name] = Date.now() - stepStart;
+    stepStart = Date.now();
+  };
+  out.timings = timings;
   const runStartedAt = Date.now();
 
   const cursor = await getCursor(db, INDEXER_CURSOR);
@@ -66,6 +74,7 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
   const hardStop = budgetLevel(await dbBytes(db, cfg.dbPath), cfg.budget) === "hard_stop";
   await setCursor(db, HARD_STOP_FLAG, hardStop ? 1 : 0);
 
+  step("storage");
   // 1. Tail (bounded). Skipped at the hard stop; metrics, publishing and the site keep running.
   let head = cursor;
   if (!hardStop) {
@@ -78,6 +87,7 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
     out.behindBlocks = Math.max(0, tip - head);
   } else out.hardStop = true;
 
+  step("index");
   // 2. Funding for new buyers (bounded; never-tried first).
   // Parallel and time-boxed: fresh V2 wallet chains can take ~1 min per buyer, and a run killed by
   // the job timeout never reaches "Save DB". Buyers not started stay pending for the next run.
@@ -96,11 +106,13 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
   );
   out.funded = funded;
 
+  step("funding");
   // 3. Nansen hub/related-wallet checks (free-plan budget; cached forever). New infrastructure
   // labels feed the incremental run below.
   const nansen = new Nansen(db, book, { ...cfg.nansen, log });
   out.nansen = await nansenChecks(db, book, nansen, log);
 
+  step("nansen");
   // 4. Incremental entities + metrics since the last completed metrics run. "Newly funded" is read
   // from the DB, so a run that failed after funding is picked up next time.
   let mc = (await db.select().from(s.cursors).where(eq(s.cursors.name, METRICS_CURSOR)))[0];
@@ -118,6 +130,7 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
     out.metrics = { tokens: run.tokens.length, newlyFunded: newlyFunded.length };
   }
 
+  step("metrics");
   // 5. Publish changed snapshots (bounded; the publisher's policy decides per token).
   if (cfg.publisher) {
     const results = await publishAll({ db, book, ...cfg.publisher, log, maxPublishes: cfg.maxPublishPerRun });
@@ -125,8 +138,10 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
     out.publishFailed = results.filter((r) => r.error).length;
   }
 
+  step("publish");
   // 6. Record size, row counts and Nansen credits for this run.
   out.storage = await recordStorage(db, cfg, nansen.spent);
+  step("record");
   return out;
 }
 

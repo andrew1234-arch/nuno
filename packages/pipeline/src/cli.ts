@@ -129,7 +129,9 @@ async function main() {
       // Daily prune (+ VACUUM) inside the tick, once per 24 h.
       const lastPrune = (await getCursor(db, LAST_PRUNE_AT)) ?? 0;
       if (Date.now() - lastPrune >= 24 * HOUR) {
+        const pruneStart = Date.now();
         out.prune = await dailyPrune(db, cfg);
+        (out.timings as Record<string, number>).prune = Date.now() - pruneStart;
         await setCursor(db, LAST_PRUNE_AT, Date.now());
       }
       // Anti-bloat: commit the data branch only on real activity, or hourly so cursors keep moving.
