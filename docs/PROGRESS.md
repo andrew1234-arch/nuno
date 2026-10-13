@@ -284,3 +284,12 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - The recent-state cut-off is fixed per backfill run; only relevant to hours-long backfills, and endpoints keep ≥ 2.5M blocks.
   - The funding in-flight dedupe is keyed by address only (pre-existing; affects only which later deposits are searched).
   - Sequential balance→nonce probe: a deliberate trade for rate-limited endpoints.
+
+## 2026-10-13 (evening): product site to the design brief
+
+- **Data:** catch-up stopped at block 113,076,810 (Oct 13 15:29 UTC) by user decision; recluster done: 381 tokens, 327 entities, 1,721 clustered wallets. DB 13.8 MB, pushed to the `data` branch (`7f87edd`).
+- **Push blocked:** `git push origin main` is rejected: the stored GitHub credential lacks the `workflow` scope needed to update `.github/workflows/tick.yml`. Needs a token with `repo` + `workflow`, or a push from another client. The site is not live yet (repo private; Pages not enabled).
+- **Site (local build verified):** screener home (headline from data, four tiles, table with curve, age, raw→real holders, cluster supply, organic volume, label, entity); token page (header, flags, raw vs real, supply bar, precomputed force-layout graph with wallet panel, evidence, on-chain snapshot card); entity page (tiles, timeline, funding trail, members, tokens, evidence); methodology (METHODOLOGY + VALIDATION embedded); API (real samples, viem); contracts (addresses, 10 latest publishes); freshness bar; logos, links, curve version and creation time from token metadata at build (`apps/web/scripts/fetch-logos.mjs`, 292 V2 / 89 V1).
+- **Labels:** "Many / Some / No linked wallets found" (user-approved wording); cut-offs are ours and untested against hand-labelled tokens, stated on the site.
+- **Brief items not done (need new export data):** round-trip share column; per-cluster supply shares and curve balance in the composition bar; raw top-10 and raw creator-linked supply; graph node size by balance and the top-50-holders view; infrastructure marking in funding trails; Lighthouse run (no Lighthouse here).
+- **Contrast (existing palette, not changed):** `--soft` text 2.4:1 (light) / 2.8:1 (dark) fails AA; `--flag` 3.9:1 and `--organic` 3.2:1 as small text in light mode fail AA (large text only).
