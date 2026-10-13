@@ -46,7 +46,7 @@ function Steps() {
           <p className="mt-5 text-xs text-[var(--muted)]">
             Labels describe links found in public transactions, not whether a token is good or bad, and are not financial advice. Grouping was checked
             by hand on a small sample only (see the proof on every token). The exact rules are on the{" "}
-            <Link href="/developers/#rules" className="text-[var(--accent-text)] underline">developers page</Link>.
+            <Link href="/docs/#labels" className="text-[var(--accent-text)] underline">docs</Link>.
           </p>
         </div>
       </div>

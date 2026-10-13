@@ -127,3 +127,4 @@ details.faq[open] .icon::before { content: "−"; }
 .prose-nuno th { background: var(--panel); font-weight: 600; }
 .prose-nuno a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 details.menu summary::-webkit-details-marker { display: none; }
+.prose-nuno.docs h2, .prose-nuno.docs h3 { scroll-margin-top: 6rem; }

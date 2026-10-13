@@ -6,6 +6,7 @@ import { addrUrl, short } from "@/lib/format";
 import { Logo } from "./logo";
 import { searchItems } from "@/lib/verdict";
 import { MenuCloser } from "./_views/menu-closer";
+import { NavLinks } from "./_views/nav-links";
 import { Search } from "./_views/search";
 import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
 import "./globals.css";
@@ -21,9 +22,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const REPO = "https://github.com/andrew1234-arch/nuno";
 
 const NAV: Array<[string, string]> = [
+  ["/", "Home"],
   ["/tokens/", "Tokens"],
+  ["/docs/", "Docs"],
   ["/developers/", "Developers"],
-  ["/methodology/", "Method"],
   ["/about/", "About"],
 ];
 
@@ -31,22 +33,18 @@ function Nav() {
   const items = searchItems("live");
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur">
-      <nav aria-label="Main" className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
+      <nav aria-label="Main" className="grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]" aria-label="Nuno home">
           <Logo className="h-5 w-7" />
           nuno.
         </Link>
-        <div className="hidden items-center gap-1 text-sm lg:flex">
-          {NAV.map(([href, label]) => (
-            <Link key={href} href={href} className="rounded-full px-3 py-1.5 text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--text)]">
-              {label}
-            </Link>
-          ))}
+        <div className="hidden items-center justify-center gap-1 rounded-full border border-[var(--line)] bg-[var(--surface)] p-1 text-sm lg:flex">
+          <NavLinks items={NAV} />
         </div>
-        <div className="ml-auto hidden w-full max-w-xs md:block">
-          <Search items={items} />
-        </div>
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
+        <div className="flex items-center justify-end gap-2 lg:col-start-3">
+          <div className="hidden w-64 md:block xl:w-72">
+            <Search items={items} />
+          </div>
           <ThemeToggle />
           <a href={`${BASE}/api/tokens.json`} className="pill hidden border border-[var(--line)] px-3.5 py-1.5 text-sm hover:border-[var(--accent)] hover:text-[var(--accent-text)] sm:inline-block">
             API
@@ -85,7 +83,7 @@ function Footer() {
   const cols: Array<[string, Array<[string, string, boolean?]>]> = [
     ["Product", [["/", "Home"], ["/tokens/", "All tokens"], ["/about/", "About"]]],
     ["Developers", [["/developers/", "Developer guide"], [`${BASE}/api/tokens.json`, "tokens.json", true], [`${BASE}/api/meta.json`, "meta.json", true]]],
-    ["Resources", [["/methodology/", "Detailed method"], ["/developers/#rules", "How labels work"], [REPO, "Source code", true]]],
+    ["Resources", [["/docs/", "Docs"], ["/docs/#labels", "How labels work"], [REPO, "Source code", true]]],
   ];
   return (
     <footer className="mt-16 border-t border-[var(--line)] bg-[var(--surface)]">

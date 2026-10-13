@@ -112,7 +112,7 @@ console.log(\`wallet groups trading it: \${t.clusters.length}\`);`}</Code>
         <p className="mt-4 text-sm text-[var(--muted)]">
           &quot;The creator&apos;s wallet group&quot; comes from <span className="mono">clusters/{"{groupId}"}.json</span>: the group whose{" "}
           <span className="mono">members</span> include the token&apos;s <span className="mono">creator</span>; <span className="mono">createdTokens</span> lists what it launched.
-          How groups are formed is in the <Link href="/methodology/" className="text-[var(--accent-text)] underline">detailed method</Link>.
+          How groups are formed is in the <Link href="/docs/#method" className="text-[var(--accent-text)] underline">detailed method</Link>.
         </p>
 
         <H2 id="contracts">Contracts (Monad testnet)</H2>
