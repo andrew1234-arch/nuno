@@ -128,3 +128,12 @@ details.faq[open] .icon::before { content: "−"; }
 .prose-nuno a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 details.menu summary::-webkit-details-marker { display: none; }
 .prose-nuno.docs h2, .prose-nuno.docs h3 { scroll-margin-top: 6rem; }
+
+/* Footer wordmark: amber gradient that fades into the ink card at the edges. */
+.wordmark {
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--c-accent) 55%, transparent) 18%, var(--c-accent) 50%, color-mix(in srgb, var(--c-accent) 55%, transparent) 82%, transparent 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  mask-image: linear-gradient(180deg, black 40%, transparent 100%);
+}

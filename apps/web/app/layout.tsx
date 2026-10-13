@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter_Tight } from "next/font/google";
 import Link from "next/link";
 import { testnetDeployment } from "@/lib/deployments";
-import { addrUrl, short } from "@/lib/format";
+import { addrUrl } from "@/lib/format";
 import { Logo } from "./logo";
 import { searchItems } from "@/lib/verdict";
 import { MenuCloser } from "./_views/menu-closer";
@@ -82,44 +82,53 @@ function Footer() {
   const dep = testnetDeployment();
   const cols: Array<[string, Array<[string, string, boolean?]>]> = [
     ["Product", [["/", "Home"], ["/tokens/", "All tokens"], ["/about/", "About"]]],
-    ["Developers", [["/developers/", "Developer guide"], [`${BASE}/api/tokens.json`, "tokens.json", true], [`${BASE}/api/meta.json`, "meta.json", true]]],
-    ["Resources", [["/docs/", "Docs"], ["/docs/#labels", "How labels work"], [REPO, "Source code", true]]],
+    ["Docs", [["/docs/", "Getting started"], ["/docs/#labels", "Labels"], ["/docs/#method", "Method"]]],
+    ["Developers", [["/developers/", "Developer guide"], [`${BASE}/api/tokens.json`, "JSON API", true], [REPO, "Source code", true]]],
+    [
+      "On Monad",
+      dep
+        ? [[addrUrl(dep.NunoFeed, dep.chainId), "NunoFeed", true], [addrUrl(dep.OrganicGate, dep.chainId), "OrganicGate", true], ["https://nad.fun", "nad.fun", true]]
+        : [["https://nad.fun", "nad.fun", true]],
+    ],
   ];
   return (
-    <footer className="mt-16 border-t border-[var(--line)] bg-[var(--surface)]">
-      <div className="grid w-full gap-10 px-4 py-12 sm:px-6 lg:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-        <div>
-          <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[var(--accent-text)]">
-            <Logo className="h-5 w-7" /> nuno.
-          </Link>
-          <p className="mt-3 max-w-xs text-sm text-[var(--muted)]">How many real people are behind a nad.fun token, not just how many wallets. Built on Monad.</p>
-          {dep ? (
-            <p className="mt-4 text-xs text-[var(--muted)]">
-              NunoFeed{" "}
-              <a className="mono hover:text-[var(--accent-text)]" href={addrUrl(dep.NunoFeed, dep.chainId)} target="_blank" rel="noreferrer">{short(dep.NunoFeed)}</a>
-              {" · "}OrganicGate{" "}
-              <a className="mono hover:text-[var(--accent-text)]" href={addrUrl(dep.OrganicGate, dep.chainId)} target="_blank" rel="noreferrer">{short(dep.OrganicGate)}</a>
-              <br />on Monad testnet
+    <footer className="mt-16 px-4 pb-4 sm:px-6 lg:px-8">
+      <div className="band-plain relative overflow-hidden rounded-3xl px-6 pt-14 sm:px-10 lg:px-14">
+        <div className="grid gap-10 lg:grid-cols-[1fr_auto]">
+          <div className="max-w-sm">
+            <Link href="/" className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-[var(--band-ink)]">
+              <Logo className="h-6 w-8" /> nuno.
+            </Link>
+            <p className="mt-4 text-sm leading-relaxed text-[var(--band-soft)]">
+              Check a nad.fun token before you buy: how many real people own it and which of its wallets are linked, with public proof for every link.
             </p>
-          ) : null}
-        </div>
-        {cols.map(([title, links]) => (
-          <div key={title}>
-            <p className="text-sm font-medium">{title}</p>
-            <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
-              {links.map(([href, label, raw]) => (
-                <li key={href}>
-                  {raw ? <a href={href} className="hover:text-[var(--accent-text)]">{label}</a> : <Link href={href} className="hover:text-[var(--accent-text)]">{label}</Link>}
-                </li>
-              ))}
-            </ul>
           </div>
-        ))}
-      </div>
-      <div className="border-t border-[var(--line)]">
-        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-[var(--muted)] sm:px-6 lg:px-8">
-          <span>Labels describe links found in public Monad transactions. Not financial advice.</span>
-          <span>MIT licensed · Monad Metropolis 2026</span>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-8 sm:grid-cols-4">
+            {cols.map(([title, links]) => (
+              <div key={title}>
+                <p className="text-sm font-medium text-[var(--band-ink)]">{title}</p>
+                <ul className="mt-3 space-y-2 text-sm text-[var(--band-soft)]">
+                  {links.map(([href, label, raw]) => (
+                    <li key={label}>
+                      {raw ? (
+                        <a href={href} className="hover:text-[var(--c-accent)]" {...(href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}>{label}</a>
+                      ) : (
+                        <Link href={href} className="hover:text-[var(--c-accent)]">{label}</Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--band-soft)]">
+          <span>© 2026 Nuno · MIT licensed · Not financial advice</span>
+          <span>Built on Monad · Monad Metropolis 2026</span>
+        </div>
+        {/* Oversized wordmark, cropped by the card's bottom edge. */}
+        <div aria-hidden="true" className="wordmark pointer-events-none -mb-[0.22em] mt-4 select-none text-center text-[clamp(5rem,26vw,24rem)] font-bold leading-[0.8] tracking-[-0.06em]">
+          NUNO
         </div>
       </div>
     </footer>
