@@ -65,6 +65,17 @@ TypeScript (pnpm workspaces), viem, Drizzle ORM (SQLite dialect, `node:sqlite`),
 
 Deployed at testnet block 70,192,539. Publisher: `0x3Da64F02123A5F66f36Ca1591321e2fB5BD98028`. Machine-readable copy: [`deployments/monad-testnet.json`](deployments/monad-testnet.json).
 
+**Real snapshots on NunoFeed.** 40 snapshots of mainnet data were published by the pipeline on 2026-10-12/13, at about 85,300 gas for a token's first snapshot and 50,800 for an update. Examples:
+
+| Token (mainnet) | Snapshot tx (testnet) | Gas |
+|---|---|---|
+| `0x0ed4…7777` | [`0xc785ed0a…dae5`](https://testnet.monadscan.com/tx/0xc785ed0a7067e2f0016024ff4182e415d7bb5ee7311327d4a27dfb0f48e8dae5) | 85,328 |
+| `0x0d21…7777` (JELLY) | [`0x0ae7a856…dbba`](https://testnet.monadscan.com/tx/0x0ae7a8569592b3b2b829ae3013a7e4cfed66e63822d5a5758662399f80c6dbba) | 85,340 |
+| `0x6490…7777` | [`0x82f337ea…72cb`](https://testnet.monadscan.com/tx/0x82f337eaefa9e32b3ac3774a2928793e5314f1c6717f17eae27f79c28ab472cb) | 85,268 |
+| `0x344a…7777` | [`0xaf18eb59…5732`](https://testnet.monadscan.com/tx/0xaf18eb5965aa4c49b66dc8fbf993b3c30ca4eee7e790ed03322b5a0799c15732) | 50,801 |
+
+Every token page links its latest snapshot tx.
+
 ## Setup
 
 Requirements: Node 22.5+ (built-in `node:sqlite`), pnpm 10, [Foundry](https://getfoundry.sh). No accounts are needed to run it locally.

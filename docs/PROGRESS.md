@@ -233,3 +233,39 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
   - After funding: `pnpm infra:scan` → re-index → recluster.
   - Then sanity-check the entity size distribution, the largest entity's linking funders (incl. busy wallets just under the 5,000-tx / 1M-MON thresholds) and a Monadscan spot check, before any headline draft.
   - Any threshold change goes to the user first.
+
+## 2026-10-12 → 2026-10-13: V2 results, hub rule, snapshots
+
+### Data and results
+- **Re-index done**, incl. V2 graduations (Moncat → V2-style pair) and 633 post-graduation pool swaps. Window Oct 4 19:16 → Oct 12 02:34 UTC: 354 tokens, ~23.4k curve trades, ~35k transfers, 3,592 wallets resolved, 4,803 funding edges.
+- **Infrastructure list refreshed** over all 2,306 funding origins: 27 → 61 exchange-like addresses. The scan spreads calls over several RPCs, survives per-origin failures, and never drops an entry it did not re-check.
+- **Giant false group found and fixed** (side-agent warning confirmed). Under the old rules one group held 3,728 wallets, chained mainly by distribution hubs:
+  - `0x198e…9dd4` sent tokens to 1,375 wallets.
+  - `0xc7bf…754f` and `0x4116…0c54` (same 7702 implementation `0x63c0…e32b`) sent tokens to 1,122 and 807 wallets.
+- **New rules (user decisions 2026-10-12):**
+  - **Hub cap:** an address that funds, is a shared ancestor of, or swaps tokens with more than 50 participants no longer groups them.
+  - **Farm exception** (direct funding only): median payment ≤ 10 MON, ≥ 80% of payments within ½×–2× the median, ≥ 80% of recipients freshly funded.
+  - Documented in `docs/METHODOLOGY.md`, with tests.
+- **After the new rules:** 337 multi-wallet groups, 1,754 wallets. Largest groups:
+  - `0xc7bf` farm: 323 wallets, 5 MON payments. Nansen shows `0xc7bf` deploys tokens.
+  - `0xb56e` farm: 101 wallets × ~0.36 MON.
+  - `0x25e5` farm: 100 wallets × 0.15 MON.
+  - Two groups of 64 and 57 linked by transfers and early same-block buys.
+  - `0x4116` is borderline (80% similar / 81% fresh) and is not counted as a farm.
+- **Launchers:** 68% of the window's launches came from wallets in a group. The original 10-wallet group launched 74 of 354; a 3-wallet group launched 62.
+- **Headline** (user-approved 2026-10-12, computed from the export at build time):
+  - "One group of 10 wallets, seeded by a single private wallet in 17 seconds, launched 74 of the 354 nad.fun tokens from Oct 4–12, 2026."
+  - Second line: "Across the week, 68% of launches came from wallets in a group."
+- **Same-funder evidence** is now a time-ordered chain: identical groups, O(n) evidence (a farm produced 82,176 pair rows). The static export fell from > 50 MB (limit) to 19.3 MB.
+- **Nansen:** seeder label cached on the main DB. 5 more credits went on tick hub checks; ~91 remain.
+
+### Snapshots and tick
+- **40 real NunoFeed snapshots on testnet:** first snapshot ≈ 85,300 gas, update ≈ 50,800. Examples in the README.
+- **Tick timing at `TICK_MAX_BLOCKS=8000`:** 204 s in steady state (index 124 s, publish 45 s, prune 8 s, rest < 8 s). The first run took 1,047 s only because of a one-off VACUUM of a DB bloated by reclusters (47.6 MB → 12.8 MB).
+- **DB:** 12.8 MB after VACUUM.
+- **Catch-up:** a day passed between sessions (35 h behind on 2026-10-13 15:27 UTC). The parallel backfill was restarted to the head after clearing a stale `backfill:target`.
+
+### Web
+- Amber brand (`#F5A524` on `#FAFAF7` / `#0E0F12`) with fixed data colours (flag `#E5484D`, organic `#30A46C`, unknown `#8B8D98`).
+- Light/dark mode, edge-to-edge nav, plain-language copy ("wallet-cluster detector for nad.fun"), "trading by holders" wording.
+- Per-page titles, 404 page, mobile nav. Code-review findings on `apps/web` fixed.
