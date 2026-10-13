@@ -23,6 +23,7 @@ import {
   chunks,
   insertIgnore,
   isContractCode,
+  rows,
   sqliteSchema as s,
   toHex,
   txBytes,
@@ -121,6 +122,19 @@ function attribute(trades: TradeRow[], contracts: Set<number>): TradeRow[] {
 }
 
 /** Engine input in hex addresses (the engine's entity ids are the smallest member address). */
+/**
+ * Database-wide fan-out: distinct non-contract wallets each origin funded, and distinct non-contract wallets each
+ * sender sent tracked tokens to. Passed to every run so full and incremental hub decisions agree.
+ */
+async function globalFanout(ctx: StoreCtx, contracts: Set<number>): Promise<{ funded: Map<string, number>; sent: Map<string, number> }> {
+  const funded = await rows<{ a: number; n: number }>(ctx.db, sql`select origin as a, count(distinct wallet) as n from funding_edges group by origin having n > 1`, ["a", "n"]);
+  const sent = await rows<{ a: number; n: number }>(ctx.db, sql`select "from" as a, count(distinct "to") as n from transfers group by "from" having n > 1`, ["a", "n"]);
+  const keep = [...funded, ...sent].filter((r) => !contracts.has(Number(r.a)));
+  const hex = await ctx.book.hexes(keep.map((r) => Number(r.a)));
+  const toMap = (list: Array<{ a: number; n: number }>) => new Map(list.filter((r) => hex.has(Number(r.a))).map((r) => [hex.get(Number(r.a))!.toLowerCase(), Number(r.n)]));
+  return { funded: toMap(funded), sent: toMap(sent) };
+}
+
 async function toInput(ctx: StoreCtx, data: Loaded, wallets: number[], contracts: Set<number>): Promise<{ input: ClusterInput; hex: Map<number, string> }> {
   const ids = [
     ...wallets,
@@ -143,6 +157,7 @@ async function toInput(ctx: StoreCtx, data: Loaded, wallets: number[], contracts
     ),
     trades: data.trades.map((t) => ({ token: h(t.token), wallet: h(t.trader), side: t.side === s.SIDE.buy ? "buy" : "sell", block: t.block, txHash: txHex(t.tx) })),
     transfers: data.transfers.map((t) => ({ token: h(t.token), from: h(t.from), to: h(t.to), block: t.block, txHash: txHex(t.tx) })),
+    fanout: await globalFanout(ctx, contracts),
   };
   return { input, hex };
 }

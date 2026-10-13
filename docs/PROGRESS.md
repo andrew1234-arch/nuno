@@ -269,3 +269,18 @@ Approved public wording: "Every nad.fun launch from Oct 2–9, 2026 came from 10
 - Amber brand (`#F5A524` on `#FAFAF7` / `#0E0F12`) with fixed data colours (flag `#E5484D`, organic `#30A46C`, unknown `#8B8D98`).
 - Light/dark mode, edge-to-edge nav, plain-language copy ("wallet-cluster detector for nad.fun"), "trading by holders" wording.
 - Per-page titles, 404 page, mobile nav. Code-review findings on `apps/web` fixed.
+
+### Final code review (`de54c09..HEAD`), 10 findings
+- **Fixed:**
+  1. Farm check used each wallet's *last* payment instead of its first.
+  2. Creators above the cap lost all creator links; they now get the farm exception.
+  3. Token-transfer hubs counted received tokens too; now only distinct recipients count, so consolidation into one main wallet stays linked. Data check: `0xc7bf` sends to 771 and `0x4116` to 395, so both remain hubs.
+  4. Full vs incremental runs disagreed on hubs; both now use database-wide fan-out counts.
+  5. Tick funding budget lowered to 240 s for headroom; `TICK_MAX_BLOCKS` = 8000 in Actions.
+  6. Backfill `FUNDING_CONCURRENCY` is now validated through settings.
+  - Regression tests added for 1–3; 156 tests pass.
+- **Kept, documented:**
+  - Shared ancestors above the cap get no farm exception (METHODOLOGY §7).
+  - The recent-state cut-off is fixed per backfill run; only relevant to hours-long backfills, and endpoints keep ≥ 2.5M blocks.
+  - The funding in-flight dedupe is keyed by address only (pre-existing; affects only which later deposits are searched).
+  - Sequential balance→nonce probe: a deliberate trade for rate-limited endpoints.

@@ -35,7 +35,8 @@ export function settingsFromEnv(): TickSettings {
     maxBlocksPerRun: num("TICK_MAX_BLOCKS", 4_000),
     maxFundingPerRun: num("TICK_MAX_FUNDING", 25),
     fundingConcurrency: num("FUNDING_CONCURRENCY", 6),
-    fundingBudgetMs: num("TICK_FUNDING_SECONDS", 360) * 1000,
+    // Started funding trees run to completion after the deadline, so leave headroom in the 14-min job.
+    fundingBudgetMs: num("TICK_FUNDING_SECONDS", 240) * 1000,
     maxPublishPerRun: num("TICK_MAX_PUBLISH", 20),
     publisher: key && feed ? { rpcUrl: config.testnetRpcUrl, chainId: config.publishChainId, feed: feed as Address, privateKey: key as Hex } : null,
     nansen: { apiKey: process.env.NANSEN_API_KEY?.trim() || undefined, reserve: num("NANSEN_RESERVE", 3), maxCalls: num("NANSEN_MAX_CALLS_PER_RUN", 5) },

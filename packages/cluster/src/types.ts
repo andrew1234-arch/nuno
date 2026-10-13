@@ -77,6 +77,11 @@ export interface ClusterInput {
   funding: FundingEdge[];
   trades: Trade[];
   transfers: TokenTransfer[];
+  /**
+   * Database-wide fan-out counts. Incremental runs see only a neighbourhood, so hub decisions use the
+   * larger of the local and the global count; full and incremental runs then agree on who is a hub.
+   */
+  fanout?: { funded: Map<Addr, number>; sent: Map<Addr, number> };
 }
 
 export interface ClusterConfig {

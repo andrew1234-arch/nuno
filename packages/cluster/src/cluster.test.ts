@@ -275,6 +275,31 @@ describe("distribution-hub cap", () => {
     expect(clusterToken(input({ wallets: ws, funding: [...earlier, ...tiny] })).clusters).toHaveLength(0);
   });
 
+  it("farm exception uses each wallet's FIRST payment, so later top-ups don't hide a farm", () => {
+    const ws = many(60);
+    const first = ws.map((w, i) => pay(w, "0xfarm2", i, MON / 3n));
+    const topups = ws.map((w, i) => ({ ...pay(w, "0xfarm2", 10_000 + i, 5n * MON), txHash: `0xtop${w}` }));
+    const r = clusterToken(input({ wallets: ws, funding: [...first, ...topups] }));
+    expect(r.clusters).toHaveLength(1);
+    expect(r.clusters[0]!.members).toHaveLength(60);
+  });
+
+  it("farm wallets consolidating tokens into one main wallet stay linked (receiving from many is not a hub)", () => {
+    const ws = many(60);
+    const r = clusterToken(input({ wallets: ["0xmain", ...ws], transfers: ws.map((w, i) => tx(w, "0xmain", i)) }));
+    expect(r.clusters).toHaveLength(1);
+    expect(r.clusters[0]!.members).toHaveLength(61);
+  });
+
+  it("a creator that seeds more than 50 fresh buyer wallets farm-style stays linked to them", () => {
+    const ws = many(60);
+    const funding = ws.map((w, i) => pay(w, CREATOR, i, MON / 5n));
+    const r = clusterToken(input({ wallets: [CREATOR, ...ws], funding }));
+    expect(r.clusters).toHaveLength(1);
+    expect(r.clusters[0]!.members).toContain(CREATOR);
+    expect(r.clusters[0]!.links.some((l) => l.type === "creator_funded")).toBe(true);
+  });
+
   it("a hub's recipients are still grouped by their own evidence", () => {
     const ws = many(80);
     const transfers = [...ws.map((w, i) => tx("0xdrop", w, i)), tx(ws[0]!, ws[1]!, 999)];

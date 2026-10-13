@@ -110,7 +110,7 @@ async function main() {
             await resolveFundingTree({ db, book, rpc: archiveRpc, recent, log: console.log }, b.trader, b.firstBuy - 1, 3);
           }
         };
-        await Promise.all(Array.from({ length: Number(process.env.FUNDING_CONCURRENCY || 6) }, worker));
+        await Promise.all(Array.from({ length: cfg.fundingConcurrency ?? 6 }, worker));
       }
       const complete = done && !shouldStop() && (await pendingBuyers({ db, book }, 1)).length === 0;
       if (complete) {

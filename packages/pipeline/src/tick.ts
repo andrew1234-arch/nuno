@@ -29,7 +29,7 @@ export interface TickSettings {
   maxFundingPerRun: number;
   /** Parallel funding workers (the resolver shares in-flight lookups). Default 6. */
   fundingConcurrency?: number;
-  /** Stop starting new buyers after this long, so the run stays inside the Actions timeout. Default 6 min. */
+  /** Stop starting new buyers after this long, so the run stays inside the Actions timeout. Default 4 min. */
   fundingBudgetMs?: number;
   /** Max snapshots published per run (sequential txs). */
   maxPublishPerRun: number;
@@ -92,7 +92,7 @@ export async function tick(db: SqlDb, cfg: TickSettings, deps: TickDeps): Promis
   // Parallel and time-boxed: fresh V2 wallet chains can take ~1 min per buyer, and a run killed by
   // the job timeout never reaches "Save DB". Buyers not started stay pending for the next run.
   const buyers = await pendingBuyers({ db, book }, cfg.maxFundingPerRun);
-  const fundingDeadline = Date.now() + (cfg.fundingBudgetMs ?? 6 * 60_000);
+  const fundingDeadline = Date.now() + (cfg.fundingBudgetMs ?? 4 * 60_000);
   let nextBuyer = 0;
   let funded = 0;
   await Promise.all(

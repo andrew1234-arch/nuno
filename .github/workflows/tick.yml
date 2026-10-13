@@ -29,12 +29,13 @@ jobs:
       MONAD_MAINNET_ARCHIVE_RPC_URLS: ${{ vars.MONAD_MAINNET_ARCHIVE_RPC_URLS || 'https://rpc1.monad.xyz,https://rpc-mainnet.monadinfra.com,https://rpc2.monad.xyz' }}
       ARCHIVE_RPC_CONCURRENCY: ${{ vars.ARCHIVE_RPC_CONCURRENCY || '12' }}
       FUNDING_CONCURRENCY: ${{ vars.FUNDING_CONCURRENCY || '8' }}
-      TICK_FUNDING_SECONDS: ${{ vars.TICK_FUNDING_SECONDS || '360' }}
+      TICK_FUNDING_SECONDS: ${{ vars.TICK_FUNDING_SECONDS || '240' }}
       MONAD_TESTNET_RPC_URL: ${{ vars.MONAD_TESTNET_RPC_URL || 'https://testnet-rpc.monad.xyz' }}
       NUNO_FEED_ADDRESS: ${{ vars.NUNO_FEED_ADDRESS }}
       PUBLISHER_PRIVATE_KEY: ${{ secrets.PUBLISHER_PRIVATE_KEY }}
       NANSEN_API_KEY: ${{ secrets.NANSEN_API_KEY }}
       MIN_BUYERS: ${{ vars.MIN_BUYERS || '0' }}
+      TICK_MAX_BLOCKS: ${{ vars.TICK_MAX_BLOCKS || '8000' }}
       BACKFILL_DAYS: ${{ vars.BACKFILL_DAYS || '7' }}
       CONTRAST_LABEL: ${{ vars.CONTRAST_LABEL }}
     steps:
