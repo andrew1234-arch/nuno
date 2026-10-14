@@ -100,6 +100,12 @@ export default function Developers() {
       sample: excerpt(wal),
     },
     {
+      path: "api/nansen.json",
+      description: "Nansen cross-checks: for each wallet checked, Nansen's First Funder next to Nuno's own, and whether they match.",
+      url: url("api/nansen.json"),
+      sample: excerpt((() => { const n = api.nansen("live"); return n ? { ...n, checks: [...n.checks.slice(0, 2), "…"] } : null; })()),
+    },
+    {
       path: "api/logos.json",
       description: "Per token: image, website, X, Telegram (from its nad.fun metadata), curve version and creation time.",
       url: url("api/logos.json"),

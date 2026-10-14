@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { SqlRepo, type TokenDto } from "@nuno/api";
 import { INDEXER_CURSOR, WINDOW_CURSOR, getCursor } from "@nuno/indexer";
-import { AddressBook, MONAD_SECONDS_PER_BLOCK, scalar, sqliteSchema as s, type SqlDb } from "@nuno/shared";
+import { AddressBook, MONAD_SECONDS_PER_BLOCK, scalar, sqliteSchema as s, txHex, type SqlDb } from "@nuno/shared";
 import { labelsFor } from "./nansen-checks.js";
 import { Nansen } from "./nansen.js";
 
@@ -128,5 +128,29 @@ export async function exportStatic(
     const dto = await repo.getWallet(w);
     if (dto) write(`wallets/${w}.json`, dto);
   }
+  // Nansen cross-checks: for each address Nansen was asked about (related-wallets, cached), its
+  // "First Funder" next to Nuno's own first funding edge. `match` = same funder and same tx.
+  const nansenRows = await db.select().from(s.nansenCache).where(eq(s.nansenCache.endpoint, "related-wallets"));
+  const checks = [];
+  for (const r of nansenRows) {
+    const address = (await book.hex(r.address))?.toLowerCase();
+    if (!address) continue;
+    const rel = JSON.parse(r.result) as Array<{ address: string; label: string; relation: string; tx: string }>;
+    const ff = rel.find((x) => x.relation === "First Funder") ?? null;
+    const ours = (await db.select().from(s.fundingEdges).where(eq(s.fundingEdges.wallet, r.address)).orderBy(s.fundingEdges.block).limit(1))[0];
+    const ourFunder = ours ? (await book.hex(ours.funder))?.toLowerCase() ?? null : null;
+    const ourTx = ours ? txHex(ours.tx).toLowerCase() : null;
+    const ent = (await db.select({ e: s.entityMembers.entity }).from(s.entityMembers).where(eq(s.entityMembers.wallet, r.address)))[0];
+    checks.push({
+      address,
+      entityId: ent ? (await book.hex(ent.e))?.toLowerCase() ?? null : null,
+      nansenFirstFunder: ff ? { address: ff.address.toLowerCase(), label: ff.label || null, tx: ff.tx.toLowerCase() } : null,
+      nunoFirstFunder: ourFunder && ourTx ? { address: ourFunder, tx: ourTx, block: ours!.block } : null,
+      match: Boolean(ff && ourFunder === ff.address.toLowerCase() && ourTx === ff.tx.toLowerCase()),
+      fetchedAt: new Date(r.fetchedAt).toISOString(),
+    });
+  }
+  write("nansen.json", { endpoint: "POST https://api.nansen.ai/api/v1/profiler/address/related-wallets", checked: checks.length, matches: checks.filter((c) => c.match).length, checks });
+
   return { files, bytes };
 }

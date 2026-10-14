@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { api, type Dataset, type Token, type Wallet } from "@/lib/api";
 import { EDGE_REASON, addrUrl, short, txUrl } from "@/lib/format";
 import { ClusterGraph } from "../graph";
+import { NansenBadge } from "./nansen-badge";
 import { EvidenceTable } from "../evidence";
 import { baseFor } from "./screener";
 
@@ -53,6 +54,9 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
     byFunder.set(f.funder, r);
   }
   const trail = [...byFunder].sort((a, b) => b[1].wallets.size - a[1].wallets.size);
+  // Nansen cross-checks that agree with Nuno, by member wallet.
+  const verified = new Map((api.nansen(dataset)?.checks ?? []).filter((k) => k.match && c.members.includes(k.address)).map((k) => [k.address, k]));
+  const verifiedFunders = new Map([...verified.values()].map((k) => [k.nansenFirstFunder!.address, k]));
   const tiles: Array<[string, string, string]> = [
     ["Member wallets", c.size.toLocaleString("en-US"), `linked by ${c.links.length.toLocaleString("en-US")} evidence links`],
     ["Tokens launched / touched", `${c.createdTokens.length} / ${touched.size}`, "launched by members / bought, sold or launched"],
@@ -139,6 +143,7 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
                     <td className="mono px-3 text-xs">
                       <a href={addrUrl(funder)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{short(funder)}</a>
                       {c.members.includes(funder) ? <span className="ml-1 text-[var(--flag)]">(member)</span> : null}
+                      {verifiedFunders.has(funder) ? <span className="ml-2"><NansenBadge tx={verifiedFunders.get(funder)!.nansenFirstFunder!.tx} title={`Nansen's First Funder for ${verifiedFunders.get(funder)!.address} is this address, in the same transaction`} /></span> : null}
                     </td>
                     <td className="text-[var(--soft)]">→</td>
                     <td className="px-3 text-right">{r.wallets.size}</td>
@@ -175,7 +180,7 @@ export function ClusterView({ id, dataset }: { id: string; dataset: Dataset }) {
                   const role = creators.has(m) ? "creator" : w?.trades.some((t) => t.buys > 0) ? "buyer" : "linked";
                   return (
                     <tr key={m} className="border-t border-[var(--line)]">
-                      <td className="mono px-3 py-1.5 text-xs"><a href={addrUrl(m)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{short(m)}</a>{c.labels?.[m] ? <span className="ml-1 text-[var(--muted)]">({c.labels[m]!.label})</span> : null}</td>
+                      <td className="mono px-3 py-1.5 text-xs"><a href={addrUrl(m)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{short(m)}</a>{c.labels?.[m] ? <span className="ml-1 text-[var(--muted)]">({c.labels[m]!.label})</span> : null}{verified.has(m) ? <span className="ml-2"><NansenBadge /></span> : null}</td>
                       <td className={`px-3 text-xs ${role === "creator" ? "text-[var(--flag)]" : "text-[var(--muted)]"}`}>{role}</td>
                       <td className="px-3 text-right">{w?.trades.length ?? 0}</td>
                       <td className="px-3 text-right">{evidenceCount(m)}</td>

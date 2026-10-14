@@ -5,6 +5,9 @@ import { METHODOLOGY_MD, VALIDATION_MD } from "@/lib/methodology.generated";
 import { LEVEL_HINT, RULES, type Level } from "@/lib/levels";
 import { Badge } from "../_views/badge";
 import { DocsNav } from "./docs-nav";
+import { api } from "@/lib/api";
+import { addrUrl, short, txUrl } from "@/lib/format";
+import { NansenBadge } from "../_views/nansen-badge";
 
 export const metadata: Metadata = {
   title: "Methodology",
@@ -14,6 +17,7 @@ export const metadata: Metadata = {
 const slug = (s: string) => s.toLowerCase().replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export default async function Docs() {
+  const nansen = api.nansen("live");
   // Embedded from docs/METHODOLOGY.md at build time, so the page and the doc never diverge. Its title is
   // replaced by the section heading below; h2/h3 get ids for the sidebar.
   const md = METHODOLOGY_MD.replace(/^# .*\n/, "");
@@ -33,7 +37,7 @@ export default async function Docs() {
   const toc: Array<{ title: string; items: Array<[string, string, number?]> }> = [
     { title: "Guide", items: [["start", "Getting started"], ["labels", "Labels"], ["data", "Where the data comes from"]] },
     { title: "Method", items: [["method", "Overview"], ...sections.map(([id, t, d]) => [id, t, d] as [string, string, number])] },
-    { title: "Validation", items: [["validation", "Hand-reviewed sample"], ...vSections.filter(([, , d]) => d === 2).map(([id, t, d]) => [id, t, d] as [string, string, number])] },
+    { title: "Validation", items: [["nansen", "Nansen cross-checks"], ["validation", "Hand-reviewed sample"], ...vSections.filter(([, , d]) => d === 2).map(([id, t, d]) => [id, t, d] as [string, string, number])] },
   ];
 
   return (
@@ -100,6 +104,38 @@ export default async function Docs() {
             <p className="mt-3 text-[var(--prose)]">The full rulebook, for anyone who wants to check every detail.</p>
           </div>
           <div className="prose-nuno docs max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="max-w-4xl">
+            <h2 id="nansen" className="scroll-mt-24 pt-10 text-2xl font-semibold tracking-tight">Nansen cross-checks</h2>
+            <p className="mt-3 text-[var(--prose)]">
+              For hub funders, Nuno asks Nansen&apos;s <span className="mono text-sm">related-wallets</span> endpoint about a wallet the hub funded and compares
+              Nansen&apos;s &quot;First Funder&quot; with its own funding trace. {nansen ? <><b>{nansen.matches} of {nansen.checked}</b> agree on both the funder and the transaction.</> : "No checks in this export."}{" "}
+              Matching wallets carry a <NansenBadge /> badge on their entity page. Nansen labels exchanges and other shared infrastructure, which stops them from
+              linking unrelated wallets; none of the funders checked so far had such a label.
+            </p>
+            {nansen?.checks.length ? (
+              <div className="mt-4 overflow-x-auto rounded-md border border-[var(--line)]">
+                <table className="w-full min-w-[40rem] text-sm">
+                  <thead className="text-xs text-[var(--muted)]">
+                    <tr className="text-left"><th className="px-3 py-2 font-medium">Wallet</th><th className="px-3 font-medium">Nansen first funder</th><th className="px-3 font-medium">Nuno first funder</th><th className="px-3 font-medium">Tx</th><th className="px-3 font-medium">Result</th></tr>
+                  </thead>
+                  <tbody>
+                    {nansen.checks.map((k) => (
+                      <tr key={k.address} className="border-t border-[var(--line)]">
+                        <td className="mono px-3 py-1.5 text-xs">
+                          <a href={addrUrl(k.address)} target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)]">{short(k.address)}</a>
+                          {k.entityId ? <> · <Link href={`/cluster/${k.entityId}/`} className="text-[var(--accent-text)] hover:underline">#{k.entityId.slice(2, 8)}</Link></> : null}
+                        </td>
+                        <td className="mono px-3 text-xs">{k.nansenFirstFunder ? short(k.nansenFirstFunder.address) : "–"}{k.nansenFirstFunder?.label ? <span className="ml-1 font-sans text-[var(--muted)]">({k.nansenFirstFunder.label})</span> : null}</td>
+                        <td className="mono px-3 text-xs">{k.nunoFirstFunder ? short(k.nunoFirstFunder.address) : "–"}</td>
+                        <td className="mono px-3 text-xs">{k.nansenFirstFunder ? <a href={txUrl(k.nansenFirstFunder.tx)} target="_blank" rel="noreferrer" className="text-[var(--accent-text)] hover:underline">{short(k.nansenFirstFunder.tx)}</a> : "–"}</td>
+                        <td className="px-3 text-xs">{k.match ? <span className="text-[var(--organic)]">✓ same funder and tx</span> : <span className="text-[var(--muted)]">differs</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
           <div className="max-w-3xl">
             <h2 id="validation" className="scroll-mt-24 pt-10 text-2xl font-semibold tracking-tight">Validation</h2>
             <p className="mt-3 text-[var(--prose)]">

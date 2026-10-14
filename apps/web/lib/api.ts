@@ -117,6 +117,15 @@ export interface TokenLinks {
   createdAt?: string;
 }
 
+export interface NansenCheck {
+  address: string;
+  entityId: string | null;
+  nansenFirstFunder: { address: string; label: string | null; tx: string } | null;
+  nunoFirstFunder: { address: string; tx: string; block: number } | null;
+  match: boolean;
+  fetchedAt: string;
+}
+
 export const hasDataset = (dataset: Dataset) => read<Meta>(dataset, "meta.json") !== null;
 
 export const api = {
@@ -128,6 +137,8 @@ export const api = {
   wallet: (address: string, d: Dataset = "live") => read<Wallet>(d, `wallets/${address.toLowerCase()}.json`),
   /** Logos and links from each token's nad.fun metadata (scripts/fetch-logos.mjs); empty when not fetched. */
   links: (address: string, d: Dataset = "live"): TokenLinks => read<Record<string, TokenLinks>>(d, "logos.json")?.[address.toLowerCase()] ?? {},
+  /** Nansen related-wallets cross-checks (empty when the export has none). */
+  nansen: (d: Dataset = "live") => read<{ endpoint: string; checked: number; matches: number; checks: NansenCheck[] }>(d, "nansen.json"),
   clusterIds: (d: Dataset = "live") => {
     const ids = new Set<string>();
     for (const t of api.tokens(d)) for (const c of api.token(t.address, d)?.clusters ?? []) ids.add(c.id);
