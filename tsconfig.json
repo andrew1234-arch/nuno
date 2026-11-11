@@ -8,6 +8,7 @@
     { "path": "packages/metrics" },
     { "path": "packages/publisher" },
     { "path": "packages/api" },
-    { "path": "packages/pipeline" }
+    { "path": "packages/pipeline" },
+    { "path": "packages/mcp" }
   ]
 }
